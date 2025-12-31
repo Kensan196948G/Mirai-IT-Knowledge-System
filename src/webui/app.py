@@ -41,6 +41,15 @@ def index():
 @app.route('/knowledge/search', methods=['GET', 'POST'])
 def search_knowledge():
     """ナレッジ検索"""
+    # GETパラメータからも検索条件を受け取る（統計カードクリック時）
+    if request.method == 'GET' and request.args.get('itsm_type'):
+        itsm_type = request.args.get('itsm_type')
+        results = db_client.search_knowledge(
+            itsm_type=itsm_type,
+            limit=50
+        )
+        return render_template('search_results.html', query='', results=results, itsm_type_filter=itsm_type)
+
     if request.method == 'POST':
         query = request.form.get('query', '')
         itsm_type = request.form.get('itsm_type', '')
@@ -53,7 +62,7 @@ def search_knowledge():
             limit=50
         )
 
-        return render_template('search_results.html', query=query, results=results)
+        return render_template('search_results.html', query=query, results=results, itsm_type_filter=itsm_type)
 
     return render_template('search.html')
 
@@ -68,7 +77,19 @@ def view_knowledge(knowledge_id):
     # 関連ナレッジを取得
     related = db_client.get_related_knowledge(knowledge_id)
 
-    return render_template('knowledge_detail.html', knowledge=knowledge, related=related)
+    # 使用統計を記録
+    try:
+        feedback_client.log_knowledge_usage(knowledge_id, 'view', user_id='webui_user')
+    except:
+        pass  # エラーがあっても表示は継続
+
+    # パンくずリスト用
+    breadcrumb_items = [
+        {'name': 'ナレッジ', 'url': '/knowledge/search'},
+        {'name': knowledge['title'][:50], 'url': None}
+    ]
+
+    return render_template('knowledge_detail.html', knowledge=knowledge, related=related, breadcrumb_items=breadcrumb_items)
 
 
 @app.route('/knowledge/create', methods=['GET', 'POST'])
@@ -94,7 +115,8 @@ def create_knowledge():
         )
 
         if result['success']:
-            return redirect(url_for('view_knowledge', knowledge_id=result['knowledge_id']))
+            # 成功メッセージ付きでリダイレクト
+            return redirect(url_for('view_knowledge', knowledge_id=result['knowledge_id'], success=1, message='ナレッジを作成しました'))
         else:
             return render_template('create.html', error=result.get('error'))
 
