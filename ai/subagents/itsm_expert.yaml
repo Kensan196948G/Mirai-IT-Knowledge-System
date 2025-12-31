@@ -1,0 +1,22 @@
+# ITSM Expert SubAgent Definition
+
+name: ITSM-Expert
+role: compliance
+priority: high
+
+description: |
+  ITSM妥当性チェックと逸脱検知を担当
+  ITSM原則への準拠を確認
+
+capabilities:
+  - ITSM原則チェック
+  - 逸脱検知
+  - ベストプラクティス評価
+  - 推奨事項生成
+
+mcp_dependencies:
+  - Claude-Mem
+
+implementation:
+  python_class: src.subagents.itsm_expert.ITSMExpertSubAgent
+  method: process

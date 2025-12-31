@@ -1,0 +1,59 @@
+# Knowledge Curator SubAgent Definition
+# ナレッジキュレーター・サブエージェント定義
+
+name: KnowledgeCurator
+role: organization
+priority: high
+
+description: |
+  ナレッジの整理・分類・メタデータ付与を担当
+  タグ抽出、カテゴリ分類、重要度評価を実施
+
+capabilities:
+  - タグ自動抽出
+  - カテゴリ分類
+  - キーワード抽出
+  - 重要度評価
+  - メタデータ生成
+
+mcp_dependencies:
+  - Context7  # 技術用語の理解
+
+input_schema:
+  title:
+    type: string
+    required: true
+  content:
+    type: string
+    required: true
+  itsm_type:
+    type: string
+    required: false
+
+output_schema:
+  tags:
+    type: array
+    description: 抽出されたタグ
+  categories:
+    type: array
+    description: カテゴリ分類
+  keywords:
+    type: array
+    description: キーワードリスト
+  importance:
+    type: object
+    properties:
+      score: number
+      level: string
+  metadata:
+    type: object
+    description: メタデータ
+
+implementation:
+  python_class: src.subagents.knowledge_curator.KnowledgeCuratorSubAgent
+  method: process
+
+quality_criteria:
+  min_tags: 1
+  min_categories: 1
+  importance_score_required: true

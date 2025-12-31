@@ -1,0 +1,23 @@
+# QA SubAgent Definition
+
+name: QA
+role: quality_validation
+priority: high
+
+description: |
+  品質保証と重複検知を担当
+  完全性チェック、品質スコア算出
+
+capabilities:
+  - 完全性チェック
+  - 重複検知
+  - 品質スコア算出
+  - 改善提案
+
+mcp_dependencies:
+  - mem-search
+  - sqlite
+
+implementation:
+  python_class: src.subagents.qa.QASubAgent
+  method: process

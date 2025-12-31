@@ -1,0 +1,70 @@
+# Architect SubAgent Definition
+# アーキテクト・サブエージェント定義
+
+name: Architect
+role: design_coherence
+priority: high
+
+description: |
+  全体設計の整合性チェックと判断統制を担当
+  設計原則への準拠を確認し、矛盾を検出する
+
+capabilities:
+  - 設計整合性チェック
+  - 判断の一貫性保証
+  - 矛盾検出
+  - 推奨事項生成
+
+# 使用するMCP
+mcp_dependencies:
+  - Claude-Mem  # 過去の設計判断を参照
+  - sequential-thinking  # 深い分析が必要な場合
+
+# 入力スキーマ
+input_schema:
+  title:
+    type: string
+    required: true
+  content:
+    type: string
+    required: true
+  itsm_type:
+    type: string
+    required: false
+  existing_knowledge:
+    type: array
+    required: false
+
+# 出力スキーマ
+output_schema:
+  coherence_score:
+    type: number
+    description: 整合性スコア（0.0-1.0）
+  checks:
+    type: array
+    description: 各種チェック結果
+  warnings:
+    type: array
+    description: 警告事項
+  recommendations:
+    type: array
+    description: 推奨事項
+
+# 処理ロジック（参照実装）
+implementation:
+  python_class: src.subagents.architect.ArchitectSubAgent
+  method: process
+
+# 品質基準
+quality_criteria:
+  min_coherence_score: 0.7
+  critical_warnings: 0
+  required_checks:
+    - title_content_coherence
+    - itsm_validity
+    - design_principles
+
+# パフォーマンス
+performance:
+  timeout_ms: 5000
+  max_retries: 2
