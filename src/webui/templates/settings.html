@@ -133,33 +133,77 @@
             </div>
         </div>
 
-        <div class="setting-item">
+        <div class="setting-item" id="chatModelSettings" style="display: none;">
             <label class="setting-label">AI対話用モデル</label>
             <div class="setting-description">
                 AI対話ナレッジ作成で使用するモデル
             </div>
-            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_chat">
-                <option value="anthropic/claude-sonnet-4.5" selected>Anthropic Claude Sonnet 4.5（最新・最高品質）</option>
-                <option value="anthropic/claude-haiku-4.5">Anthropic Claude Haiku 4.5（高速・バランス）</option>
-                <option value="openai/gpt-5.2">OpenAI GPT-5.2（最新）</option>
-                <option value="openai/gpt-5.1">OpenAI GPT-5.1</option>
-                <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（最新・低コスト）</option>
-                <option value="deepseek/deepseek-chat-v3.1">DeepSeek Chat V3.1</option>
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_chat" id="chatModelSelect">
+                <!-- Anthropic用 -->
+                <optgroup label="Anthropic Claude" data-provider="anthropic">
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（最新・最高品質）</option>
+                    <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5（高速・バランス）</option>
+                </optgroup>
+                <!-- OpenAI用 -->
+                <optgroup label="OpenAI GPT" data-provider="openai">
+                    <option value="openai/gpt-5.2">GPT-5.2（最新）</option>
+                    <option value="openai/gpt-5.1">GPT-5.1</option>
+                </optgroup>
+                <!-- DeepSeek用 -->
+                <optgroup label="DeepSeek" data-provider="deepseek">
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（最新・低コスト）</option>
+                    <option value="deepseek/deepseek-chat-v3.1">DeepSeek Chat V3.1</option>
+                </optgroup>
+                <!-- OpenRouter用（全て） -->
+                <optgroup label="OpenRouter - Anthropic" data-provider="openrouter">
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（最新・最高品質）</option>
+                    <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5（高速・バランス）</option>
+                </optgroup>
+                <optgroup label="OpenRouter - OpenAI" data-provider="openrouter">
+                    <option value="openai/gpt-5.2">GPT-5.2（最新）</option>
+                    <option value="openai/gpt-5.1">GPT-5.1</option>
+                </optgroup>
+                <optgroup label="OpenRouter - DeepSeek" data-provider="openrouter">
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（最新・低コスト）</option>
+                    <option value="deepseek/deepseek-chat-v3.1">DeepSeek Chat V3.1（最安）</option>
+                </optgroup>
             </select>
         </div>
 
-        <div class="setting-item">
+        <div class="setting-item" id="searchModelSettings" style="display: none;">
             <label class="setting-label">AI検索用モデル</label>
             <div class="setting-description">
                 インテリジェント検索で使用するモデル（高速なモデルを推奨）
             </div>
-            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_search">
-                <option value="anthropic/claude-sonnet-4.5">Anthropic Claude Sonnet 4.5（最新・最高品質）</option>
-                <option value="anthropic/claude-haiku-4.5" selected>Anthropic Claude Haiku 4.5（推奨・高速）</option>
-                <option value="openai/gpt-5.2">OpenAI GPT-5.2（最新）</option>
-                <option value="openai/gpt-5.1">OpenAI GPT-5.1</option>
-                <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（最新・低コスト）</option>
-                <option value="deepseek/deepseek-chat-v3.1">DeepSeek Chat V3.1（最安）</option>
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_search" id="searchModelSelect">
+                <!-- Anthropic用 -->
+                <optgroup label="Anthropic Claude" data-provider="anthropic">
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（最高品質）</option>
+                    <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5（推奨・高速）</option>
+                </optgroup>
+                <!-- OpenAI用 -->
+                <optgroup label="OpenAI GPT" data-provider="openai">
+                    <option value="openai/gpt-5.2">GPT-5.2（最新）</option>
+                    <option value="openai/gpt-5.1">GPT-5.1</option>
+                </optgroup>
+                <!-- DeepSeek用 -->
+                <optgroup label="DeepSeek" data-provider="deepseek">
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（最新）</option>
+                    <option value="deepseek/deepseek-chat-v3.1">DeepSeek Chat V3.1（最安・推奨）</option>
+                </optgroup>
+                <!-- OpenRouter用（全て） -->
+                <optgroup label="OpenRouter - Anthropic" data-provider="openrouter">
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（最高品質）</option>
+                    <option value="anthropic/claude-haiku-4.5">Claude Haiku 4.5（推奨・高速）</option>
+                </optgroup>
+                <optgroup label="OpenRouter - OpenAI" data-provider="openrouter">
+                    <option value="openai/gpt-5.2">GPT-5.2（最新）</option>
+                    <option value="openai/gpt-5.1">GPT-5.1</option>
+                </optgroup>
+                <optgroup label="OpenRouter - DeepSeek" data-provider="openrouter">
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（低コスト）</option>
+                    <option value="deepseek/deepseek-chat-v3.1">DeepSeek Chat V3.1（最安）</option>
+                </optgroup>
             </select>
         </div>
     </div>
@@ -306,15 +350,54 @@
 </div>
 
 <script>
-// AI provider選択時にAPIキー入力欄を表示/非表示
+// AI provider選択時にAPIキー入力欄とモデル選択を表示/非表示
 document.querySelector('select[name="ai_provider"]').addEventListener('change', function(e) {
+    const provider = e.target.value;
     const apiKeySettings = document.getElementById('apiKeySettings');
-    if (e.target.value === 'none') {
+    const chatModelSettings = document.getElementById('chatModelSettings');
+    const searchModelSettings = document.getElementById('searchModelSettings');
+
+    if (provider === 'none') {
         apiKeySettings.style.display = 'none';
+        chatModelSettings.style.display = 'none';
+        searchModelSettings.style.display = 'none';
     } else {
         apiKeySettings.style.display = 'block';
+        chatModelSettings.style.display = 'block';
+        searchModelSettings.style.display = 'block';
+
+        // プロバイダーに応じてモデル選択肢をフィルタ
+        filterModelOptions('chatModelSelect', provider);
+        filterModelOptions('searchModelSelect', provider);
     }
 });
+
+// プロバイダーに応じてモデル選択肢をフィルタ
+function filterModelOptions(selectId, provider) {
+    const select = document.getElementById(selectId);
+    const optgroups = select.querySelectorAll('optgroup');
+
+    optgroups.forEach(optgroup => {
+        const groupProvider = optgroup.getAttribute('data-provider');
+
+        if (provider === 'openrouter') {
+            // OpenRouterの場合は全て表示
+            optgroup.style.display = '';
+        } else if (groupProvider === provider) {
+            // 選択されたプロバイダーのみ表示
+            optgroup.style.display = '';
+        } else {
+            // 他のプロバイダーは非表示
+            optgroup.style.display = 'none';
+        }
+    });
+
+    // 最初の表示されているオプションを自動選択
+    const firstVisibleOption = select.querySelector('optgroup:not([style*="display: none"]) option');
+    if (firstVisibleOption) {
+        select.value = firstVisibleOption.value;
+    }
+}
 
 // パスワード表示切り替え
 function togglePassword(element) {
