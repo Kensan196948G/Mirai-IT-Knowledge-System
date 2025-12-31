@@ -152,14 +152,20 @@ class SQLiteClient:
             cursor = conn.cursor()
 
             if query:
-                # 全文検索
+                # ハイブリッド検索（FTS5 + LIKE）
+                # 日本語対応のため、LIKE検索も併用
+                like_pattern = f'%{query}%'
                 sql = """
-                    SELECT k.* FROM knowledge_entries k
-                    JOIN knowledge_fts f ON k.id = f.rowid
-                    WHERE knowledge_fts MATCH ?
-                    AND k.status = ?
+                    SELECT DISTINCT k.* FROM knowledge_entries k
+                    WHERE k.status = ?
+                    AND (
+                        k.title LIKE ?
+                        OR k.content LIKE ?
+                        OR k.summary_technical LIKE ?
+                        OR k.summary_non_technical LIKE ?
+                    )
                 """
-                params = [query, status]
+                params = [status, like_pattern, like_pattern, like_pattern, like_pattern]
             else:
                 sql = "SELECT * FROM knowledge_entries WHERE status = ?"
                 params = [status]
