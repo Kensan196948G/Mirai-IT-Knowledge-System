@@ -366,7 +366,7 @@ if __name__ == '__main__':
     print("")
     print("終了するには Ctrl+C を押してください")
     print("")
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+    app.run(host='0.0.0.0', port=PORT, debug=False)
 
 
 # ========== 設定機能 ==========
@@ -451,4 +451,4 @@ if __name__ == '__main__':
     print("")
     print("終了するには Ctrl+C を押してください")
     print("")
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+    app.run(host='0.0.0.0', port=PORT, debug=False)
