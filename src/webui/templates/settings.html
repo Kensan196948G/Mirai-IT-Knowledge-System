@@ -97,10 +97,18 @@
 
 {% block content %}
 <div class="card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid var(--color-primary);">
-    <h2>⚙️ システム設定</h2>
-    <p style="color: #666;">
-        システムの動作を設定できます。設定の保存には管理者権限（ユーザー名・パスワード）が必要です。
-    </p>
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <h2>⚙️ システム設定</h2>
+            <p style="color: #666;">
+                システムの動作を設定できます。設定の保存には管理者権限（ユーザー名・パスワード）が必要です。
+            </p>
+        </div>
+        <div style="text-align: right; font-size: 0.85rem; color: #999;">
+            <div>最終更新: 2025年12月31日</div>
+            <div>モデル: 2025年12月最新版</div>
+        </div>
+    </div>
 </div>
 
 <form id="settingsForm" onsubmit="saveSettings(event)">
