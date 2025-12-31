@@ -3,9 +3,10 @@ WebUI Application
 Flask-based Web Interface for Knowledge Management
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from pathlib import Path
 import sys
+from datetime import datetime
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.parent
@@ -15,6 +16,8 @@ from src.core.workflow import WorkflowEngine
 from src.core.itsm_classifier import ITSMClassifier
 from src.mcp.sqlite_client import SQLiteClient
 from src.mcp.feedback_client import FeedbackClient
+from src.workflows.interactive_knowledge_creation import InteractiveKnowledgeCreationWorkflow
+from src.workflows.intelligent_search import IntelligentSearchAssistant
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mirai-it-knowledge-systems-secret-key'
@@ -24,6 +27,10 @@ db_client = SQLiteClient()
 feedback_client = FeedbackClient()
 workflow_engine = WorkflowEngine()
 itsm_classifier = ITSMClassifier()
+intelligent_search = IntelligentSearchAssistant()
+
+# セッション管理（簡易版）
+chat_sessions = {}
 
 
 @app.route('/')
@@ -265,6 +272,85 @@ def api_knowledge_stats(knowledge_id):
         'usage_stats': usage_stats,
         'rating': rating
     })
+
+
+# ========== AI対話機能 ==========
+
+@app.route('/chat')
+def chat():
+    """AI対話ナレッジ作成ページ"""
+    return render_template('chat.html', now=datetime.now().strftime('%H:%M'))
+
+
+@app.route('/api/chat/message', methods=['POST'])
+def chat_message():
+    """チャットメッセージ処理"""
+    data = request.get_json()
+    session_id = data.get('session_id')
+    message = data.get('message')
+    collected_data = data.get('collected_data', {})
+
+    # セッション取得または作成
+    if session_id not in chat_sessions:
+        chat_sessions[session_id] = InteractiveKnowledgeCreationWorkflow()
+
+    workflow = chat_sessions[session_id]
+
+    # 最初のメッセージか？
+    if len(workflow.conversation_history) == 0:
+        result = workflow.start_conversation(message)
+    else:
+        result = workflow.answer_question(message)
+
+    return jsonify(result)
+
+
+@app.route('/api/chat/save', methods=['POST'])
+def chat_save():
+    """対話で生成したナレッジを保存"""
+    data = request.get_json()
+    title = data.get('title')
+    content = data.get('content')
+    itsm_type = data.get('itsm_type')
+    session_id = data.get('session_id')
+    conversation_history = data.get('conversation_history', [])
+
+    # ワークフロー実行
+    result = workflow_engine.process_knowledge(
+        title=title,
+        content=content,
+        itsm_type=itsm_type,
+        created_by='ai_chat'
+    )
+
+    # セッションをクリーンアップ
+    if session_id in chat_sessions:
+        del chat_sessions[session_id]
+
+    return jsonify(result)
+
+
+# ========== インテリジェント検索 ==========
+
+@app.route('/search/intelligent')
+def intelligent_search_page():
+    """インテリジェント検索ページ"""
+    return render_template('intelligent_search.html')
+
+
+@app.route('/api/search/intelligent', methods=['POST'])
+def api_intelligent_search():
+    """インテリジェント検索API"""
+    data = request.get_json()
+    query = data.get('query', '')
+
+    if not query:
+        return jsonify({'error': 'クエリが空です'}), 400
+
+    # インテリジェント検索実行
+    result = intelligent_search.search(query)
+
+    return jsonify(result)
 
 
 if __name__ == '__main__':

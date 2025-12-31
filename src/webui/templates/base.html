@@ -504,10 +504,11 @@
     <nav class="nav">
         <ul>
             <li><a href="/" {% if request.path == '/' %}class="active"{% endif %}>🏠 ホーム</a></li>
-            <li><a href="/knowledge/search" {% if '/search' in request.path %}class="active"{% endif %}>🔍 検索</a></li>
-            <li><a href="/knowledge/create" {% if '/create' in request.path %}class="active"{% endif %}>✍️ 新規作成</a></li>
+            <li><a href="/chat" {% if '/chat' in request.path %}class="active"{% endif %}>💬 AI対話</a></li>
+            <li><a href="/search/intelligent" {% if '/search/intelligent' in request.path %}class="active"{% endif %}>🤖 AI検索</a></li>
+            <li><a href="/knowledge/search" {% if '/knowledge/search' in request.path %}class="active"{% endif %}>🔍 検索</a></li>
+            <li><a href="/knowledge/create" {% if '/create' in request.path and '/chat' not in request.path %}class="active"{% endif %}>✍️ 作成</a></li>
             <li><a href="/analytics" {% if '/analytics' in request.path %}class="active"{% endif %}>📊 分析</a></li>
-            <li><a href="/feedback" {% if '/feedback' in request.path %}class="active"{% endif %}>💬 フィードバック</a></li>
             <li><a href="/dashboard" {% if '/dashboard' in request.path %}class="active"{% endif %}>⚙️ 管理</a></li>
         </ul>
     </nav>
