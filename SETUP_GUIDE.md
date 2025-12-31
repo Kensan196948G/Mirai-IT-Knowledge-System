@@ -38,13 +38,17 @@ python3 scripts/generate_sample_data.py
 ### 3. WebUI起動
 
 ```bash
-# WebUIを起動
+# 簡単起動（推奨）
+./start.sh
+
+# または直接起動
 python3 src/webui/app.py
 ```
 
 **アクセス方法:**
-- ネットワーク経由: `http://192.168.0.187:5000`
-- ローカル: `http://localhost:5000`
+- ネットワーク経由: `http://192.168.0.187:8888`
+- ローカル: `http://localhost:8888`
+- ポート番号: 8888（他プロジェクトと競合なし）
 
 ---
 
@@ -143,7 +147,7 @@ python3 scripts/test_workflow.py
 
 ### 2. WebUIの確認
 
-ブラウザで `http://192.168.0.187:5000` にアクセスし、以下を確認:
+ブラウザで `http://192.168.0.187:8888` にアクセスし、以下を確認:
 
 - ✅ ホームページの統計情報
 - ✅ ナレッジ一覧表示
@@ -173,7 +177,7 @@ print(status)
 #### 1. ナレッジの作成
 
 **WebUIから:**
-1. `http://192.168.0.187:5000/knowledge/create` にアクセス
+1. `http://192.168.0.187:8888/knowledge/create` にアクセス
 2. タイトルと内容を入力
 3. ITSMタイプを選択（または自動判定）
 4. 「ナレッジを作成」をクリック
@@ -200,7 +204,7 @@ result = engine.process_knowledge(
 
 **APIから:**
 ```bash
-curl "http://192.168.0.187:5000/api/knowledge?query=データベース"
+curl "http://192.168.0.187:8888/api/knowledge?query=データベース"
 ```
 
 #### 3. フィードバックの収集
@@ -300,7 +304,7 @@ if __name__ == '__main__':
 python3 -c "import flask; print(flask.__version__)"
 
 # ポートが使用中でないか確認
-lsof -i:5000
+lsof -i:8888
 
 # 別のポートで起動
 python3 src/webui/app.py --port 8080

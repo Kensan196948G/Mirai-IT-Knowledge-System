@@ -86,8 +86,8 @@ python3 src/webui/app.py
 
 ### アクセスURL
 
-- **ネットワーク**: http://192.168.0.187:5000
-- **ローカル**: http://localhost:5000
+- **ネットワーク**: http://192.168.0.187:8888
+- **ローカル**: http://localhost:8888
 
 ### 利用可能なページ
 
@@ -136,7 +136,7 @@ git push
 python3 src/webui/app.py &
 
 # 動作確認（別ターミナル）
-curl http://192.168.0.187:5000/api/statistics
+curl http://192.168.0.187:8888/api/statistics
 ```
 
 ### 2. データベース確認
@@ -174,7 +174,7 @@ for mcp, enabled in status.items():
 ### 1. About セクション
 
 - **Description**: AI-assisted Internal IT Knowledge Management System powered by Claude Code Workflow
-- **Website**: http://192.168.0.187:5000
+- **Website**: http://192.168.0.187:8888
 - **Topics**: `knowledge-management`, `itsm`, `ai-assisted`, `claude-code`, `python`, `flask`
 
 ### 2. Settings
@@ -196,7 +196,7 @@ for mcp, enabled in status.items():
 
 - [ ] GitHubリポジトリ作成完了
 - [ ] 初回プッシュ完了
-- [ ] WebUIが起動し、`192.168.0.187:5000` でアクセス可能
+- [ ] WebUIが起動し、`192.168.0.187:8888` でアクセス可能
 - [ ] データベースにサンプルデータあり（16件）
 - [ ] 新規ナレッジ作成テスト成功
 - [ ] フィードバック機能動作確認

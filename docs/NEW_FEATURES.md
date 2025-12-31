@@ -385,9 +385,9 @@ python3 src/webui/app.py
 
 ### 4. 新機能にアクセス
 
-- フィードバック: http://localhost:5000/feedback
-- 分析ダッシュボード: http://localhost:5000/analytics
-- ナレッジ詳細（フィードバック機能付き）: http://localhost:5000/knowledge/{id}
+- フィードバック: http://localhost:8888/feedback
+- 分析ダッシュボード: http://localhost:8888/analytics
+- ナレッジ詳細（フィードバック機能付き）: http://localhost:8888/knowledge/{id}
 
 ---
 
