@@ -436,3 +436,19 @@ def api_settings_save():
             'success': False,
             'error': str(e)
         }), 500
+
+
+if __name__ == '__main__':
+    import socket
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+
+    PORT = 8888
+
+    print("🌐 Mirai IT Knowledge Systems - WebUI")
+    print(f"   http://{ip_address}:{PORT}")
+    print(f"   http://localhost:{PORT}")
+    print("")
+    print("終了するには Ctrl+C を押してください")
+    print("")
+    app.run(host='0.0.0.0', port=PORT, debug=True)
