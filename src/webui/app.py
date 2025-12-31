@@ -367,3 +367,72 @@ if __name__ == '__main__':
     print("終了するには Ctrl+C を押してください")
     print("")
     app.run(host='0.0.0.0', port=PORT, debug=True)
+
+
+# ========== 設定機能 ==========
+
+@app.route('/settings')
+def settings():
+    """設定ページ"""
+    return render_template('settings.html')
+
+
+@app.route('/api/settings/authenticate', methods=['POST'])
+def api_settings_authenticate():
+    """設定変更用の認証"""
+    data = request.get_json()
+    username = data.get('username', '')
+    password = data.get('password', '')
+
+    # 簡易認証（本番環境ではハッシュ化したパスワードと照合）
+    # デフォルト: admin / admin123
+    if username == 'admin' and password == 'admin123':
+        # トークン生成（簡易版）
+        import secrets
+        token = secrets.token_urlsafe(32)
+
+        return jsonify({
+            'success': True,
+            'token': token,
+            'username': username
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'ユーザー名またはパスワードが正しくありません'
+        }), 401
+
+
+@app.route('/api/settings/save', methods=['POST'])
+def api_settings_save():
+    """設定を保存"""
+    # 認証トークン確認（簡易版）
+    auth_header = request.headers.get('Authorization', '')
+
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'success': False, 'error': '認証が必要です'}), 401
+
+    data = request.get_json()
+    settings = data.get('settings', {})
+
+    # 設定をファイルに保存（簡易実装）
+    # 本番環境ではデータベースに保存
+    try:
+        import json
+        from pathlib import Path
+
+        config_file = Path('config/runtime_settings.json')
+        config_file.parent.mkdir(exist_ok=True)
+
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+
+        return jsonify({
+            'success': True,
+            'message': '設定を保存しました'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

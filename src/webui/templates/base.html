@@ -510,6 +510,7 @@
             <li><a href="/" {% if request.path == '/' %}class="active"{% endif %}>🏠 ホーム</a></li>
             <li><a href="/chat" {% if '/chat' in request.path %}class="active"{% endif %}>💬 AI対話</a></li>
             <li><a href="/search/intelligent" {% if '/search/intelligent' in request.path %}class="active"{% endif %}>🤖 AI検索</a></li>
+            <li><a href="/settings" {% if '/settings' in request.path %}class="active"{% endif %}>⚙️ 設定</a></li>
             <li><a href="/knowledge/search" {% if '/knowledge/search' in request.path %}class="active"{% endif %}>🔍 検索</a></li>
             <li><a href="/knowledge/create" {% if '/create' in request.path and '/chat' not in request.path %}class="active"{% endif %}>✍️ 作成</a></li>
             <li><a href="/analytics" {% if '/analytics' in request.path %}class="active"{% endif %}>📊 分析</a></li>
@@ -529,6 +530,7 @@
                 <div><strong>✍️ 作成:</strong> 障害や作業の記録を残せます</div>
                 <div><strong>📊 分析:</strong> よく見られている記録や評価を確認</div>
                 <div><strong>⚙️ 管理:</strong> システムの動作状況を確認（管理者向け）</div>
+                <div><strong>⚙️ 設定:</strong> AI APIやシステム設定を変更（要認証）</div>
             </div>
         </div>
     </div>
