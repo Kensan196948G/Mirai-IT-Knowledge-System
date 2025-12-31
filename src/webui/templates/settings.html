@@ -113,7 +113,7 @@
             <div class="setting-description">
                 AI対話・AI検索で使用するAPIを選択します。「なし」の場合はルールベースで動作します。
             </div>
-            <select class="form-control" name="ai_provider">
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_provider">
                 <option value="none" selected>なし（ルールベース）</option>
                 <option value="anthropic">Anthropic Claude（推奨）</option>
                 <option value="openrouter">OpenRouter（複数モデル対応）</option>
@@ -128,7 +128,7 @@
                 選択したプロバイダーのAPIキーを入力してください。
             </div>
             <div class="password-field">
-                <input type="password" class="form-control" name="api_key" placeholder="sk-...">
+                <input type="password" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="api_key" placeholder="sk-...">
                 <span class="password-toggle" onclick="togglePassword(this)">👁️</span>
             </div>
         </div>
@@ -138,7 +138,7 @@
             <div class="setting-description">
                 AI対話ナレッジ作成で使用するモデル
             </div>
-            <select class="form-control" name="ai_model_chat">
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_chat">
                 <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet（高品質）</option>
                 <option value="claude-3-5-haiku-20241022" selected>Claude 3.5 Haiku（バランス）</option>
                 <option value="deepseek-chat">DeepSeek Chat（低コスト）</option>
@@ -152,7 +152,7 @@
             <div class="setting-description">
                 インテリジェント検索で使用するモデル（高速なモデルを推奨）
             </div>
-            <select class="form-control" name="ai_model_search">
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_search">
                 <option value="claude-3-5-haiku-20241022" selected>Claude 3.5 Haiku（推奨）</option>
                 <option value="deepseek-chat">DeepSeek Chat（最安）</option>
                 <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
@@ -169,7 +169,7 @@
             <div class="setting-description">
                 検索結果やナレッジ一覧の1ページあたりの表示件数
             </div>
-            <input type="number" class="form-control" name="items_per_page" value="50" min="10" max="100">
+            <input type="number" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="items_per_page" value="50" min="10" max="100">
         </div>
 
         <div class="setting-item">
@@ -193,7 +193,7 @@
             <div class="setting-description">
                 画面の配色テーマ（ダークモードは今後実装予定）
             </div>
-            <select class="form-control" name="theme">
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="theme">
                 <option value="light" selected>ライト</option>
                 <option value="dark" disabled>ダーク（準備中）</option>
             </select>
@@ -242,7 +242,7 @@
             <div class="setting-description">
                 ログインセッションの有効期限（分）
             </div>
-            <input type="number" class="form-control" name="session_timeout_minutes" value="60" min="5" max="1440">
+            <input type="number" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="session_timeout_minutes" value="60" min="5" max="1440">
         </div>
     </div>
 
@@ -268,13 +268,13 @@
         <form id="authForm" onsubmit="authenticate(event)">
             <div class="form-group">
                 <label>ユーザー名</label>
-                <input type="text" id="authUsername" class="form-control" required placeholder="admin">
+                <input type="text" id="authUsername" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" required placeholder="admin">
             </div>
 
             <div class="form-group">
                 <label>パスワード</label>
                 <div class="password-field">
-                    <input type="password" id="authPassword" class="form-control" required placeholder="パスワード">
+                    <input type="password" id="authPassword" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" required placeholder="パスワード">
                     <span class="password-toggle" onclick="togglePassword(this)">👁️</span>
                 </div>
             </div>
