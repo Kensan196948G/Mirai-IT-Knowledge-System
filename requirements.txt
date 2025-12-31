@@ -1,0 +1,12 @@
+# Mirai IT Knowledge Systems - Requirements
+
+# Web Framework
+Flask>=2.3.0
+
+# Database (Built-in with Python)
+# sqlite3 - 標準ライブラリに含まれています
+
+# 今後の拡張用（オプション）
+# markdown>=3.4.0  # Markdown処理の強化
+# python-dotenv>=1.0.0  # 環境変数管理
+# requests>=2.31.0  # 外部API連携

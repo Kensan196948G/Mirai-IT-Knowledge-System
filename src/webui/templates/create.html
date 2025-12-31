@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}新規ナレッジ作成 - Mirai IT Knowledge Systems{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>✍️ 新規ナレッジ作成</h2>
+
+    {% if error %}
+    <div style="background: #ffebee; color: #c62828; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+        エラー: {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/knowledge/create" id="createForm">
+        <div class="form-group">
+            <label for="title">タイトル *</label>
+            <input type="text" id="title" name="title" required placeholder="例: Webサーバーの503エラー発生">
+        </div>
+
+        <div class="form-group">
+            <label for="content">内容 *</label>
+            <textarea id="content" name="content" required placeholder="## 発生事象&#10;&#10;## 対応内容&#10;&#10;## 原因&#10;&#10;## 対策"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="itsm_type">ITSMタイプ</label>
+            <select id="itsm_type" name="itsm_type">
+                <option value="auto">自動判定</option>
+                <option value="Incident">Incident (インシデント)</option>
+                <option value="Problem">Problem (問題管理)</option>
+                <option value="Change">Change (変更管理)</option>
+                <option value="Release">Release (リリース)</option>
+                <option value="Request">Request (サービスリクエスト)</option>
+                <option value="Other">Other (その他)</option>
+            </select>
+            <small style="color: #666; display: block; margin-top: 0.25rem;">
+                「自動判定」を選択すると、AIがタイトルと内容からITSMタイプを自動的に分類します
+            </small>
+        </div>
+
+        <div class="form-group">
+            <label for="created_by">作成者</label>
+            <input type="text" id="created_by" name="created_by" value="webui_user" placeholder="ユーザー名">
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <button type="submit" class="btn">ナレッジを作成</button>
+            <a href="/" class="btn btn-secondary" style="margin-left: 1rem;">キャンセル</a>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 2rem;">
+    <h3>💡 ナレッジ作成のヒント</h3>
+    <ul style="line-height: 2; color: #666;">
+        <li>タイトルは簡潔でわかりやすいものにしてください</li>
+        <li>内容はMarkdown形式で記述できます（見出し、リスト、コードブロックなど）</li>
+        <li>発生日時、影響範囲、対応手順、原因、対策などを含めると品質が向上します</li>
+        <li>技術的な用語（コマンド、エラーメッセージなど）を含めると自動分析がより正確になります</li>
+        <li>作成後、AIによる品質チェックと重複検知が自動的に行われます</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ITSMタイプの自動提案（オプション）
+document.getElementById('title').addEventListener('blur', suggestITSMType);
+document.getElementById('content').addEventListener('blur', suggestITSMType);
+
+function suggestITSMType() {
+    const title = document.getElementById('title').value;
+    const content = document.getElementById('content').value;
+
+    if (!title || !content) return;
+
+    fetch('/api/classify', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title, content })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const classification = data.classification;
+        console.log('推奨ITSMタイプ:', classification.itsm_type, '信頼度:', classification.confidence);
+    });
+}
+</script>
+{% endblock %}
