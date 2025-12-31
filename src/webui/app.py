@@ -452,7 +452,3 @@ if __name__ == '__main__':
     print("終了するには Ctrl+C を押してください")
     print("")
     app.run(host='0.0.0.0', port=PORT, debug=True)
-
-@app.route('/test-route-check')
-def test_route():
-    return "Latest version loaded!"
