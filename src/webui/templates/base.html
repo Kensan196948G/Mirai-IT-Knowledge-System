@@ -513,6 +513,22 @@
         </ul>
     </nav>
 
+    <!-- Menu Description for Non-Engineers -->
+    <div style="background: #f0f7ff; border-left: 4px solid var(--color-primary); margin-bottom: 1.5rem;">
+        <div class="container" style="padding: 1rem 20px; font-size: 0.9rem; color: #555; line-height: 1.8;">
+            <strong style="color: var(--color-primary); display: block; margin-bottom: 0.5rem;">📖 各メニューの説明</strong>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.5rem 1.5rem;">
+                <div><strong>🏠 ホーム:</strong> システム全体の状況を確認できます</div>
+                <div><strong>💬 AI対話:</strong> AIとの会話でナレッジを簡単に作成</div>
+                <div><strong>🤖 AI検索:</strong> 普通の言葉で質問すると答えてくれます</div>
+                <div><strong>🔍 検索:</strong> キーワードで過去の記録を探せます</div>
+                <div><strong>✍️ 作成:</strong> 障害や作業の記録を残せます</div>
+                <div><strong>📊 分析:</strong> よく見られている記録や評価を確認</div>
+                <div><strong>⚙️ 管理:</strong> システムの動作状況を確認（管理者向け）</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div class="container content">
         {% block content %}{% endblock %}
