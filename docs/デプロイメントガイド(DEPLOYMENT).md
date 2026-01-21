@@ -56,6 +56,23 @@ git push -u origin main
 
 ---
 
+## 🌿 Git Worktree 運用フロー
+
+### 命名規則
+
+- `wt/<type>-<short-desc>-<yyyymmdd>`
+- 例: `wt/feature-chat-ui-20260110`
+
+### 運用手順
+
+1. `git worktree add ../wt/<branch> -b <branch>`
+2. 変更実装とテスト実行
+3. Pull Request 作成とレビュー
+4. マージ後に `git worktree remove ../wt/<branch>`
+5. `git worktree prune` でクリーンアップ
+
+---
+
 ## 📦 現在の状態
 
 ### コミット情報

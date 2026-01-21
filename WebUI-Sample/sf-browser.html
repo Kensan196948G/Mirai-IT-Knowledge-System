@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Server Fault質問ブラウジング - Mirai IT Knowledge Systems">
+    <title>Server Fault質問ブラウジング - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="create.html" class="btn" aria-label="新規作成">
+                        <span aria-hidden="true">✍️</span> 新規作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span aria-hidden="true">💬</span> Server Fault質問ブラウジング
+                </h1>
+                <p class="page-description">
+                    Server Faultから取得した技術的な質問と回答を参照できます
+                </p>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="alert alert-info" style="margin-bottom: 2rem;">
+                <strong><span aria-hidden="true">ℹ️</span> Server Faultについて</strong>
+                <p style="margin: 0.5rem 0 0 0;">
+                    Server Faultは、システム管理者やネットワーク管理者向けのQ&Aコミュニティです。
+                    実際の現場で発生した問題と解決策が蓄積されており、ITナレッジの参考資料として活用できます。
+                </p>
+            </div>
+
+            <!-- Search and Filter Layout -->
+            <div class="layout-sidebar">
+                <!-- Sidebar with Filters -->
+                <aside class="sidebar" role="complementary" aria-label="フィルター">
+                    <div class="filter-panel">
+                        <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">フィルター</h2>
+
+                        <!-- Status Filter -->
+                        <div class="filter-group">
+                            <h3 class="filter-title">ステータス</h3>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="status" value="answered" checked style="margin-right: 0.5rem;">
+                                    <span>回答済み</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="status" value="unanswered" style="margin-right: 0.5rem;">
+                                    <span>未回答</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="status" value="accepted" checked style="margin-right: 0.5rem;">
+                                    <span>解決済み</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Popular Tags -->
+                        <div class="filter-group">
+                            <h3 class="filter-title">人気タグ</h3>
+                            <div class="tags">
+                                <button class="tag" data-tag="apache">apache</button>
+                                <button class="tag" data-tag="mysql">mysql</button>
+                                <button class="tag" data-tag="nginx">nginx</button>
+                                <button class="tag" data-tag="linux">linux</button>
+                                <button class="tag" data-tag="ssl">ssl</button>
+                                <button class="tag" data-tag="dns">dns</button>
+                            </div>
+                        </div>
+
+                        <!-- Score Range -->
+                        <div class="filter-group">
+                            <h3 class="filter-title">スコア</h3>
+                            <select class="form-select" id="scoreFilter" aria-label="スコアフィルター">
+                                <option value="">すべて</option>
+                                <option value="10">10以上</option>
+                                <option value="50">50以上</option>
+                                <option value="100">100以上</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Actions -->
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn btn-primary" style="flex: 1;" onclick="applyFilters()">
+                                適用
+                            </button>
+                            <button class="btn btn-outline" style="flex: 1;" onclick="clearFilters()">
+                                クリア
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="card" style="margin-top: 1rem;">
+                        <h3 style="font-size: 1rem; margin-bottom: 1rem;">統計</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--color-text-secondary);">取得済み質問:</span>
+                                <strong id="totalQuestions">248</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--color-text-secondary);">解決済み:</span>
+                                <strong id="answeredQuestions">192</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--color-text-secondary);">未回答:</span>
+                                <strong id="unansweredQuestions">56</strong>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <div>
+                    <!-- Search Box -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <form id="searchForm" role="search" onsubmit="performSearch(event)">
+                            <div class="search-box">
+                                <input
+                                    type="search"
+                                    id="searchInput"
+                                    placeholder="例: apache 503 error"
+                                    aria-label="質問を検索"
+                                    autofocus
+                                >
+                            </div>
+                            <p class="form-help">
+                                キーワードやタグで検索できます。英語での検索を推奨します。
+                            </p>
+                        </form>
+                    </div>
+
+                    <!-- Results Header -->
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            質問一覧 <span id="resultCount" style="color: var(--color-text-secondary);">(248件)</span>
+                        </h2>
+                        <div class="section-actions">
+                            <select class="form-select" id="sortBy" aria-label="並び替え" onchange="sortResults()">
+                                <option value="score">スコア順</option>
+                                <option value="date">新しい順</option>
+                                <option value="views">閲覧数順</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Question List -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;" id="questionList" role="region" aria-live="polite" aria-label="質問一覧">
+                        <!-- Sample Question Cards -->
+                        <article class="card" style="border-left: 4px solid var(--color-success);">
+                            <div style="display: flex; gap: 1rem;">
+                                <!-- Stats Column -->
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 80px; text-align: center; color: var(--color-text-secondary); font-size: 0.875rem;">
+                                    <div>
+                                        <strong style="display: block; font-size: 1.5rem; color: var(--color-success);">142</strong>
+                                        <span>投票</span>
+                                    </div>
+                                    <div style="background: var(--color-success); color: white; padding: 0.25rem; border-radius: var(--radius-sm);">
+                                        <strong style="display: block; font-size: 1.25rem;">5</strong>
+                                        <span style="font-size: 0.75rem;">回答</span>
+                                    </div>
+                                    <div>
+                                        <strong style="display: block; font-size: 1rem;">1.2k</strong>
+                                        <span>閲覧</span>
+                                    </div>
+                                </div>
+
+                                <!-- Content Column -->
+                                <div style="flex: 1;">
+                                    <h3 style="margin-bottom: 0.5rem;">
+                                        <a href="#question-1" style="color: var(--color-primary); font-size: 1.125rem; text-decoration: none;">
+                                            Apache returns 503 Service Unavailable under high load
+                                        </a>
+                                    </h3>
+                                    <p style="color: var(--color-text-secondary); margin-bottom: 0.75rem; line-height: 1.6;">
+                                        I'm experiencing 503 errors on my Apache server when traffic increases. The error log shows "No space left on device" but disk space is available...
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="tags">
+                                            <span class="tag">apache</span>
+                                            <span class="tag">linux</span>
+                                            <span class="tag">performance</span>
+                                        </div>
+                                        <div style="display: flex; gap: 1rem; align-items: center; font-size: 0.875rem; color: var(--color-text-secondary);">
+                                            <button class="btn btn-sm btn-outline" onclick="importQuestion(1)">
+                                                <span aria-hidden="true">📥</span> インポート
+                                            </button>
+                                            <a href="https://serverfault.com/q/1234567" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">
+                                                詳細 <span aria-hidden="true">🔗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="card" style="border-left: 4px solid var(--color-success);">
+                            <div style="display: flex; gap: 1rem;">
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 80px; text-align: center; color: var(--color-text-secondary); font-size: 0.875rem;">
+                                    <div>
+                                        <strong style="display: block; font-size: 1.5rem; color: var(--color-success);">89</strong>
+                                        <span>投票</span>
+                                    </div>
+                                    <div style="background: var(--color-success); color: white; padding: 0.25rem; border-radius: var(--radius-sm);">
+                                        <strong style="display: block; font-size: 1.25rem;">3</strong>
+                                        <span style="font-size: 0.75rem;">回答</span>
+                                    </div>
+                                    <div>
+                                        <strong style="display: block; font-size: 1rem;">856</strong>
+                                        <span>閲覧</span>
+                                    </div>
+                                </div>
+
+                                <div style="flex: 1;">
+                                    <h3 style="margin-bottom: 0.5rem;">
+                                        <a href="#question-2" style="color: var(--color-primary); font-size: 1.125rem; text-decoration: none;">
+                                            MySQL connection pool exhaustion: Best practices for configuration
+                                        </a>
+                                    </h3>
+                                    <p style="color: var(--color-text-secondary); margin-bottom: 0.75rem; line-height: 1.6;">
+                                        Our application frequently exhausts the MySQL connection pool. What are the recommended settings for max_connections and pool size?
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="tags">
+                                            <span class="tag">mysql</span>
+                                            <span class="tag">connection-pool</span>
+                                            <span class="tag">performance</span>
+                                        </div>
+                                        <div style="display: flex; gap: 1rem; align-items: center; font-size: 0.875rem; color: var(--color-text-secondary);">
+                                            <button class="btn btn-sm btn-outline" onclick="importQuestion(2)">
+                                                <span aria-hidden="true">📥</span> インポート
+                                            </button>
+                                            <a href="https://serverfault.com/q/1234568" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">
+                                                詳細 <span aria-hidden="true">🔗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="card" style="border-left: 4px solid var(--color-warning);">
+                            <div style="display: flex; gap: 1rem;">
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 80px; text-align: center; color: var(--color-text-secondary); font-size: 0.875rem;">
+                                    <div>
+                                        <strong style="display: block; font-size: 1.5rem; color: var(--color-text);">23</strong>
+                                        <span>投票</span>
+                                    </div>
+                                    <div style="background: var(--color-border); color: var(--color-text); padding: 0.25rem; border-radius: var(--radius-sm);">
+                                        <strong style="display: block; font-size: 1.25rem;">0</strong>
+                                        <span style="font-size: 0.75rem;">回答</span>
+                                    </div>
+                                    <div>
+                                        <strong style="display: block; font-size: 1rem;">245</strong>
+                                        <span>閲覧</span>
+                                    </div>
+                                </div>
+
+                                <div style="flex: 1;">
+                                    <h3 style="margin-bottom: 0.5rem;">
+                                        <a href="#question-3" style="color: var(--color-primary); font-size: 1.125rem; text-decoration: none;">
+                                            SSL certificate renewal without downtime for multiple domains
+                                        </a>
+                                    </h3>
+                                    <p style="color: var(--color-text-secondary); margin-bottom: 0.75rem; line-height: 1.6;">
+                                        What's the best approach to renew SSL certificates for 50+ domains on a single server without causing any downtime?
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="tags">
+                                            <span class="tag">ssl</span>
+                                            <span class="tag">nginx</span>
+                                            <span class="tag">automation</span>
+                                        </div>
+                                        <div style="display: flex; gap: 1rem; align-items: center; font-size: 0.875rem; color: var(--color-text-secondary);">
+                                            <button class="btn btn-sm btn-outline" onclick="importQuestion(3)">
+                                                <span aria-hidden="true">📥</span> インポート
+                                            </button>
+                                            <a href="https://serverfault.com/q/1234569" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">
+                                                詳細 <span aria-hidden="true">🔗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="card" style="border-left: 4px solid var(--color-success);">
+                            <div style="display: flex; gap: 1rem;">
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 80px; text-align: center; color: var(--color-text-secondary); font-size: 0.875rem;">
+                                    <div>
+                                        <strong style="display: block; font-size: 1.5rem; color: var(--color-success);">67</strong>
+                                        <span>投票</span>
+                                    </div>
+                                    <div style="background: var(--color-success); color: white; padding: 0.25rem; border-radius: var(--radius-sm);">
+                                        <strong style="display: block; font-size: 1.25rem;">4</strong>
+                                        <span style="font-size: 0.75rem;">回答</span>
+                                    </div>
+                                    <div>
+                                        <strong style="display: block; font-size: 1rem;">543</strong>
+                                        <span>閲覧</span>
+                                    </div>
+                                </div>
+
+                                <div style="flex: 1;">
+                                    <h3 style="margin-bottom: 0.5rem;">
+                                        <a href="#question-4" style="color: var(--color-primary); font-size: 1.125rem; text-decoration: none;">
+                                            DNS propagation time: Understanding the delays
+                                        </a>
+                                    </h3>
+                                    <p style="color: var(--color-text-secondary); margin-bottom: 0.75rem; line-height: 1.6;">
+                                        Why does DNS propagation take so long? Are there ways to speed up the process or minimize the impact during changes?
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="tags">
+                                            <span class="tag">dns</span>
+                                            <span class="tag">networking</span>
+                                        </div>
+                                        <div style="display: flex; gap: 1rem; align-items: center; font-size: 0.875rem; color: var(--color-text-secondary);">
+                                            <button class="btn btn-sm btn-outline" onclick="importQuestion(4)">
+                                                <span aria-hidden="true">📥</span> インポート
+                                            </button>
+                                            <a href="https://serverfault.com/q/1234570" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">
+                                                詳細 <span aria-hidden="true">🔗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem;" role="navigation" aria-label="ページネーション">
+                        <button class="btn btn-outline" disabled aria-label="前のページ">前へ</button>
+                        <span style="color: var(--color-text-secondary);">ページ 1 / 10</span>
+                        <button class="btn btn-outline" aria-label="次のページ">次へ</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <section class="section">
+                <div class="card" style="background: #e8f5e9; border-left: 4px solid var(--color-success);">
+                    <h3 style="color: #2e7d32; margin-bottom: 1rem;">
+                        <span aria-hidden="true">💡</span> Server Fault活用のヒント
+                    </h3>
+                    <ul style="line-height: 2; color: #666;">
+                        <li>高スコアの質問は多くの人が参考にした実用的な内容です</li>
+                        <li>「解決済み」マークのある質問は、承認された回答が存在します</li>
+                        <li>タグを活用することで、特定の技術領域の質問を効率的に探せます</li>
+                        <li>インポート機能を使うと、Server Faultの質問をナレッジとして保存できます</li>
+                        <li>外部リンクから元の質問を参照し、コミュニティの議論を確認できます</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="search.html">検索</a></p>
+                    <p><a href="create.html">ナレッジ作成</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Search functionality
+        function performSearch(event) {
+            if (event) event.preventDefault();
+            const query = document.getElementById('searchInput').value;
+            console.log('Searching for:', query);
+
+            // In production, this would make an API call
+            filterResults();
+        }
+
+        // Filter results
+        function applyFilters() {
+            filterResults();
+        }
+
+        function clearFilters() {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('scoreFilter').value = '';
+            document.getElementById('searchInput').value = '';
+            filterResults();
+        }
+
+        function filterResults() {
+            // In production, this would filter based on selected criteria
+            console.log('Applying filters...');
+        }
+
+        // Sort results
+        function sortResults() {
+            const sortBy = document.getElementById('sortBy').value;
+            console.log('Sorting by:', sortBy);
+            // In production, this would re-fetch sorted data from API
+        }
+
+        // Import question as knowledge
+        function importQuestion(questionId) {
+            if (confirm('この質問をナレッジとしてインポートしますか？')) {
+                console.log('Importing question:', questionId);
+
+                // In production, this would:
+                // 1. Fetch the full question and answers from Server Fault
+                // 2. Create a new knowledge entry with the content
+                // 3. Navigate to the new knowledge detail page
+
+                // For demo, just show a success message
+                alert('質問をインポートしました！作成ページに移動します。');
+                window.location.href = `create.html?import=sf-${questionId}`;
+            }
+        }
+
+        // Tag click handler
+        document.querySelectorAll('.tag').forEach(tag => {
+            tag.addEventListener('click', function() {
+                const tagName = this.dataset.tag;
+                if (tagName) {
+                    document.getElementById('searchInput').value = tagName;
+                    performSearch();
+                }
+            });
+        });
+
+        // Real-time search
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                filterResults();
+            }, 500);
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Server Fault Browser initialized');
+        });
+    </script>
+</body>
+</html>

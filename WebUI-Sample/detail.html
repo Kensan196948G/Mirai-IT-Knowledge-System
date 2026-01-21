@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ナレッジ詳細 - Mirai IT Knowledge Systems">
+    <title>ナレッジ詳細 - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="create.html" class="btn" aria-label="新規作成">
+                        <span aria-hidden="true">✍️</span> 新規作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav aria-label="パンくずリスト">
+                <ul class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="index.html">ホーム</a></li>
+                    <li class="breadcrumb-item"><a href="search.html">検索</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">ナレッジ詳細</li>
+                </ul>
+            </nav>
+
+            <!-- Knowledge Detail -->
+            <article class="card">
+                <!-- Header -->
+                <div class="card-header" style="border-bottom: 2px solid var(--color-border); padding-bottom: 1rem;">
+                    <div style="flex: 1;">
+                        <h1 id="knowledgeTitle" style="font-size: 2rem; margin-bottom: 0.5rem;">
+                            Webサーバーの503エラー発生時の対応手順
+                        </h1>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <span class="badge badge-incident" id="itsmBadge" role="status">Incident</span>
+                            <span style="color: var(--color-text-secondary); font-size: 0.875rem;">
+                                ID: <span id="knowledgeId">KB-2026-001</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-outline btn-sm" onclick="editKnowledge()" aria-label="編集">
+                            <span aria-hidden="true">✏️</span> 編集
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="shareKnowledge()" aria-label="共有">
+                            <span aria-hidden="true">🔗</span> 共有
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div style="background: var(--color-bg); padding: 1rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
+                    <div class="grid grid-3">
+                        <div>
+                            <strong style="color: var(--color-text-secondary);">作成日時:</strong>
+                            <p id="createdAt" style="margin: 0.25rem 0 0 0;">2026-01-15 14:30</p>
+                        </div>
+                        <div>
+                            <strong style="color: var(--color-text-secondary);">更新日時:</strong>
+                            <p id="updatedAt" style="margin: 0.25rem 0 0 0;">2026-01-15 14:30</p>
+                        </div>
+                        <div>
+                            <strong style="color: var(--color-text-secondary);">作成者:</strong>
+                            <p id="createdBy" style="margin: 0.25rem 0 0 0;">webui_user</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Summaries -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <!-- Technical Summary -->
+                    <div class="alert alert-info">
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span aria-hidden="true">📝</span> 技術者向け要約
+                        </h3>
+                        <p id="technicalSummary" style="margin: 0; line-height: 1.6;">
+                            Apacheサーバーで503エラーが発生した際の調査手順と対応方法。エラーログの確認、プロセス状態の確認、設定ファイルの検証、サービス再起動の手順を記載。
+                        </p>
+                    </div>
+
+                    <!-- Non-Technical Summary -->
+                    <div class="alert alert-warning" style="background-color: #f3e5f5; border-left-color: #7b1fa2;">
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #6a1b9a;">
+                            <span aria-hidden="true">👥</span> 非技術者向け要約
+                        </h3>
+                        <p id="nonTechnicalSummary" style="margin: 0; line-height: 1.6; color: #4a148c;">
+                            Webサイトが「サービス利用不可」エラーを表示する問題への対処方法です。サーバーの状態を確認し、必要に応じて再起動する手順をまとめています。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div style="margin-bottom: 1.5rem;">
+                    <strong style="color: var(--color-text-secondary);">
+                        <span aria-hidden="true">🏷️</span> タグ:
+                    </strong>
+                    <div class="tags" id="tagsList" style="display: inline-flex; margin-left: 0.5rem;">
+                        <span class="tag">Apache</span>
+                        <span class="tag">エラー対応</span>
+                        <span class="tag">障害</span>
+                    </div>
+                </div>
+
+                <!-- Divider -->
+                <div class="divider"></div>
+
+                <!-- Main Content -->
+                <section aria-labelledby="content-heading">
+                    <h2 id="content-heading" style="margin-bottom: 1rem;">
+                        <span aria-hidden="true">📄</span> 詳細内容
+                    </h2>
+                    <div id="knowledgeContent" style="line-height: 1.8; white-space: pre-wrap; color: var(--color-text);">## 発生事象
+
+Webサーバー（Apache）にアクセスすると、503 Service Unavailableエラーが返される。
+
+## 影響範囲
+
+- 本番Webサーバー: web01.example.com
+- 発生時刻: 2026-01-15 14:00
+- 影響ユーザー: 全ユーザー
+
+## 対応内容
+
+### 1. エラーログの確認
+
+```bash
+sudo tail -f /var/log/apache2/error.log
+```
+
+### 2. Apacheプロセスの確認
+
+```bash
+sudo systemctl status apache2
+```
+
+### 3. 設定ファイルの検証
+
+```bash
+sudo apache2ctl configtest
+```
+
+### 4. サービスの再起動
+
+```bash
+sudo systemctl restart apache2
+```
+
+## 原因
+
+MaxRequestWorkers設定値が不足しており、接続可能な最大プロセス数に達していた。
+
+## 恒久対策
+
+/etc/apache2/mods-available/mpm_prefork.confのMaxRequestWorkersを150から300に増加。
+
+```apache
+<IfModule mpm_prefork_module>
+    StartServers             5
+    MinSpareServers          5
+    MaxSpareServers         10
+    MaxRequestWorkers      300
+    MaxConnectionsPerChild   0
+</IfModule>
+```
+
+## 参考リンク
+
+- Apache HTTP Server Documentation: https://httpd.apache.org/docs/
+- Server Fault: https://serverfault.com/questions/tagged/apache2
+</div>
+                </section>
+
+                <!-- AI Insights -->
+                <section style="margin-top: 2rem;" aria-labelledby="insights-heading">
+                    <div style="background: #fff3e0; padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid var(--color-warning);">
+                        <h3 id="insights-heading" style="font-size: 1rem; margin-bottom: 0.5rem; color: #e65100;">
+                            <span aria-hidden="true">💡</span> 抽出された知見
+                        </h3>
+                        <ul id="insightsList" style="margin-left: 1.5rem; line-height: 1.8; color: #666;">
+                            <li>503エラーはサーバーリソース不足が主な原因</li>
+                            <li>MaxRequestWorkers設定の最適化が重要</li>
+                            <li>定期的なログ監視により早期発見が可能</li>
+                            <li>負荷テストによる設定値の事前検証を推奨</li>
+                        </ul>
+                    </div>
+                </section>
+            </article>
+
+            <!-- Related Knowledge -->
+            <section class="section" aria-labelledby="related-heading">
+                <div class="card">
+                    <h2 id="related-heading" class="card-title">
+                        <span aria-hidden="true">🔗</span> 関連ナレッジ
+                    </h2>
+                    <div class="card-body">
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <article style="padding: 1rem; border-left: 3px solid var(--color-problem); background: var(--color-bg); border-radius: var(--radius-md);">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">
+                                            <a href="detail.html?id=2" style="color: var(--color-primary); text-decoration: none;">
+                                                Apacheプロセス数の最適化方法
+                                            </a>
+                                        </h3>
+                                        <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin: 0;">
+                                            関係: 原因調査
+                                        </p>
+                                    </div>
+                                    <span class="badge badge-problem">Problem</span>
+                                </div>
+                            </article>
+
+                            <article style="padding: 1rem; border-left: 3px solid var(--color-change); background: var(--color-bg); border-radius: var(--radius-md);">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">
+                                            <a href="detail.html?id=3" style="color: var(--color-primary); text-decoration: none;">
+                                                Apache設定ファイルのベストプラクティス
+                                            </a>
+                                        </h3>
+                                        <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin: 0;">
+                                            関係: 恒久対策
+                                        </p>
+                                    </div>
+                                    <span class="badge badge-change">Change</span>
+                                </div>
+                            </article>
+
+                            <article style="padding: 1rem; border-left: 3px solid var(--color-incident); background: var(--color-bg); border-radius: var(--radius-md);">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">
+                                            <a href="detail.html?id=4" style="color: var(--color-primary); text-decoration: none;">
+                                                Webサーバー監視アラートの設定
+                                            </a>
+                                        </h3>
+                                        <p style="color: var(--color-text-secondary); font-size: 0.875rem; margin: 0;">
+                                            関係: 予防措置
+                                        </p>
+                                    </div>
+                                    <span class="badge badge-incident">Incident</span>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Actions -->
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <a href="search.html" class="btn btn-outline">
+                    <span aria-hidden="true">🔍</span> 検索に戻る
+                </a>
+                <a href="index.html" class="btn btn-outline">
+                    <span aria-hidden="true">🏠</span> ダッシュボードに戻る
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="search.html">検索</a></p>
+                    <p><a href="create.html">ナレッジ作成</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Get knowledge ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const knowledgeId = urlParams.get('id');
+
+        // Load knowledge data
+        async function loadKnowledge() {
+            if (!knowledgeId) {
+                window.location.href = 'search.html';
+                return;
+            }
+
+            // In production, this would fetch from API
+            console.log('Loading knowledge:', knowledgeId);
+
+            // Sample data is already loaded in the HTML
+            // In production, replace with: const data = await fetch(`/api/knowledge/${knowledgeId}`).then(r => r.json());
+        }
+
+        // Edit knowledge
+        function editKnowledge() {
+            // In production, navigate to edit page
+            window.location.href = `create.html?edit=${knowledgeId}`;
+        }
+
+        // Share knowledge
+        function shareKnowledge() {
+            const url = window.location.href;
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('URLをクリップボードにコピーしました！');
+                });
+            } else {
+                // Fallback for older browsers
+                prompt('このURLを共有してください:', url);
+            }
+        }
+
+        // Print knowledge
+        function printKnowledge() {
+            window.print();
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // e key - edit
+            if (e.key === 'e' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                editKnowledge();
+            }
+            // s key - share
+            if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                shareKnowledge();
+            }
+            // p key - print
+            if (e.key === 'p' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                printKnowledge();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', loadKnowledge);
+    </script>
+</body>
+</html>

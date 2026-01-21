@@ -61,7 +61,7 @@
 **OpenRouter + Claude & DeepSeek ハイブリッド**
 - **月額コスト**: $10-20
 - **品質**: 最適化
-- **詳細**: [docs/AI_API_GUIDE.md](AI_API_GUIDE.md)
+- **詳細**: [docs/AIとAPI利用ガイド(AI_API_GUIDE).md](AIとAPI利用ガイド(AI_API_GUIDE).md)
 
 ### サポートAPI
 
@@ -167,13 +167,13 @@ http://192.168.0.187:8888/settings
 | [README.md](../README.md) | プロジェクト概要 |
 | [SETUP_GUIDE.md](../SETUP_GUIDE.md) | セットアップ手順 |
 | [ARCHITECTURE.md](../ARCHITECTURE.md) | システム設計 |
-| [AI_API_GUIDE.md](AI_API_GUIDE.md) | AI API選定ガイド 🆕 |
-| [NEW_FEATURES.md](NEW_FEATURES.md) | 新機能詳細 |
-| [WORKFLOW_STUDIO_INTEGRATION.md](WORKFLOW_STUDIO_INTEGRATION.md) | Workflow Studio統合 |
-| [CLAUDE_CODE_WORKFLOW_STUDIO_IDEAS.md](CLAUDE_CODE_WORKFLOW_STUDIO_IDEAS.md) | アイデア15個 |
-| [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) | 実装ロードマップ |
-| [GITHUB_SETUP.md](GITHUB_SETUP.md) | GitHub連携 |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | デプロイメント |
+| [AIとAPI利用ガイド(AI_API_GUIDE).md](AIとAPI利用ガイド(AI_API_GUIDE).md) | AI API選定ガイド 🆕 |
+| [新機能ガイド(NEW_FEATURES).md](新機能ガイド(NEW_FEATURES).md) | 新機能詳細 |
+| [Workflow Studio統合ガイド(WORKFLOW_STUDIO_INTEGRATION).md](Workflow Studio統合ガイド(WORKFLOW_STUDIO_INTEGRATION).md) | Workflow Studio統合 |
+| [Claude Code Workflow Studioアイデア集(CLAUDE_CODE_WORKFLOW_STUDIO_IDEAS).md](Claude Code Workflow Studioアイデア集(CLAUDE_CODE_WORKFLOW_STUDIO_IDEAS).md) | アイデア15個 |
+| [実装ロードマップ(IMPLEMENTATION_ROADMAP).md](実装ロードマップ(IMPLEMENTATION_ROADMAP).md) | 実装ロードマップ |
+| [GitHub設定ガイド(GITHUB_SETUP).md](GitHub設定ガイド(GITHUB_SETUP).md) | GitHub連携 |
+| [デプロイメントガイド(DEPLOYMENT).md](デプロイメントガイド(DEPLOYMENT).md) | デプロイメント |
 
 ---
 
@@ -181,7 +181,7 @@ http://192.168.0.187:8888/settings
 
 ### 1. Claude Code Workflow完全活用
 
-- 6つのSubAgent並列実行
+- 7つのSubAgent並列実行
 - 5つのHooksによる品質保証
 - 3つのWorkflow定義
 - MCP統合（Context7/Claude-Mem/GitHub）

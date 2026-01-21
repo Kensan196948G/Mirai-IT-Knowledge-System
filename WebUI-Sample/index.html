@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Mirai IT Knowledge Systems - ITナレッジ管理システム">
+    <title>ダッシュボード - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="create.html" class="btn" aria-label="新規作成">
+                        <span aria-hidden="true">✍️</span> 新規作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <!-- Statistics Cards -->
+            <section class="section" aria-labelledby="stats-heading">
+                <h2 id="stats-heading" class="sr-only">統計情報</h2>
+                <div class="dashboard-grid">
+                    <div class="stats-card" role="article">
+                        <div class="stats-icon" aria-hidden="true">📚</div>
+                        <div class="stats-value" id="total-knowledge">156</div>
+                        <div class="stats-label">総ナレッジ数</div>
+                    </div>
+                    <div class="stats-card" role="article" style="background: linear-gradient(135deg, #f44336 0%, #c62828 100%);" data-type="incident">
+                        <div class="stats-icon" aria-hidden="true">🚨</div>
+                        <div class="stats-value" id="incident-count">45</div>
+                        <div class="stats-label">Incident</div>
+                    </div>
+                    <div class="stats-card" role="article" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);" data-type="problem">
+                        <div class="stats-icon" aria-hidden="true">🔍</div>
+                        <div class="stats-value" id="problem-count">32</div>
+                        <div class="stats-label">Problem</div>
+                    </div>
+                    <div class="stats-card" role="article" style="background: linear-gradient(135deg, #2196F3 0%, #1565c0 100%);" data-type="change">
+                        <div class="stats-icon" aria-hidden="true">🔧</div>
+                        <div class="stats-value" id="change-count">28</div>
+                        <div class="stats-label">Change</div>
+                    </div>
+                    <div class="stats-card" role="article" style="background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);" data-type="release">
+                        <div class="stats-icon" aria-hidden="true">🚀</div>
+                        <div class="stats-value" id="release-count">18</div>
+                        <div class="stats-label">Release</div>
+                    </div>
+                    <div class="stats-card" role="article" style="background: linear-gradient(135deg, #9C27B0 0%, #6a1b9a 100%);" data-type="request">
+                        <div class="stats-icon" aria-hidden="true">📝</div>
+                        <div class="stats-value" id="request-count">33</div>
+                        <div class="stats-label">Request</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="section" aria-labelledby="quick-actions-heading">
+                <div class="card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid var(--color-primary);">
+                    <h2 id="quick-actions-heading" style="margin-bottom: 1rem;">
+                        <span aria-hidden="true">⚡</span> クイックアクション
+                    </h2>
+                    <div class="grid grid-3">
+                        <a href="create.html" class="btn btn-primary" style="text-align: center; padding: 1rem;">
+                            <span aria-hidden="true">✍️</span> 新しいナレッジを作成
+                        </a>
+                        <a href="search.html" class="btn btn-outline" style="text-align: center; padding: 1rem;">
+                            <span aria-hidden="true">🔍</span> ナレッジを検索
+                        </a>
+                        <a href="sf-browser.html" class="btn btn-outline" style="text-align: center; padding: 1rem;">
+                            <span aria-hidden="true">💬</span> Server Fault参照
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Knowledge -->
+            <section class="section" aria-labelledby="recent-heading">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 id="recent-heading" class="card-title">
+                            <span aria-hidden="true">📚</span> 最近のナレッジ
+                        </h2>
+                        <a href="search.html" class="btn btn-sm">すべて表示</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="content-grid" id="recent-knowledge-list">
+                            <!-- Knowledge cards will be inserted here by JavaScript -->
+                            <article class="knowledge-card incident" tabindex="0" role="button" onclick="location.href='detail.html?id=1'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=1'">
+                                <div class="card-header">
+                                    <h3 class="card-title">Webサーバーの503エラー発生時の対応手順</h3>
+                                    <span class="badge badge-incident" role="status">Incident</span>
+                                </div>
+                                <p class="card-summary">
+                                    Apacheサーバーで503エラーが発生した際の調査手順と対応方法をまとめたナレッジです。
+                                </p>
+                                <div class="card-footer">
+                                    <span><span aria-hidden="true">🏷️</span> Apache, エラー対応</span>
+                                    <time datetime="2026-01-15">2026-01-15</time>
+                                </div>
+                            </article>
+
+                            <article class="knowledge-card problem" tabindex="0" role="button" onclick="location.href='detail.html?id=2'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=2'">
+                                <div class="card-header">
+                                    <h3 class="card-title">データベース接続プールの枯渇問題</h3>
+                                    <span class="badge badge-problem" role="status">Problem</span>
+                                </div>
+                                <p class="card-summary">
+                                    MySQLの接続プールが枯渇する根本原因の調査と恒久対策について記載しています。
+                                </p>
+                                <div class="card-footer">
+                                    <span><span aria-hidden="true">🏷️</span> MySQL, パフォーマンス</span>
+                                    <time datetime="2026-01-14">2026-01-14</time>
+                                </div>
+                            </article>
+
+                            <article class="knowledge-card change" tabindex="0" role="button" onclick="location.href='detail.html?id=3'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=3'">
+                                <div class="card-header">
+                                    <h3 class="card-title">SSL証明書の更新手順</h3>
+                                    <span class="badge badge-change" role="status">Change</span>
+                                </div>
+                                <p class="card-summary">
+                                    本番環境でのSSL証明書更新時の標準手順と注意事項をまとめています。
+                                </p>
+                                <div class="card-footer">
+                                    <span><span aria-hidden="true">🏷️</span> SSL, セキュリティ</span>
+                                    <time datetime="2026-01-13">2026-01-13</time>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Tips -->
+            <section class="section" aria-labelledby="tips-heading">
+                <div class="card" style="background: #fffbf0; border-left: 4px solid #ffa726;">
+                    <h3 id="tips-heading" style="color: #f57c00; margin-bottom: 1rem;">
+                        <span aria-hidden="true">💡</span> クイックガイド
+                    </h3>
+                    <div class="grid grid-3">
+                        <div>
+                            <h4 style="color: #555; margin-bottom: 0.5rem;">
+                                <span aria-hidden="true">⌨️</span> キーボードショートカット
+                            </h4>
+                            <ul style="color: #666; line-height: 1.8; margin-left: 1.5rem;">
+                                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">/</kbd> - 検索ページへ</li>
+                                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">n</kbd> - 新規作成ページへ</li>
+                                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">?</kbd> - ヘルプを表示</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: #555; margin-bottom: 0.5rem;">
+                                <span aria-hidden="true">🎯</span> 統計カードの使い方
+                            </h4>
+                            <p style="color: #666; line-height: 1.8;">
+                                各ITSMタイプのカードをクリックすると、そのタイプでフィルタされたナレッジ一覧が表示されます。
+                            </p>
+                        </div>
+                        <div>
+                            <h4 style="color: #555; margin-bottom: 0.5rem;">
+                                <span aria-hidden="true">🔍</span> 検索のコツ
+                            </h4>
+                            <p style="color: #666; line-height: 1.8;">
+                                自然な言葉で検索できます。例: 「データベース 接続エラー」「Webサーバー 証明書」
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="search.html">検索</a></p>
+                    <p><a href="create.html">ナレッジ作成</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Screen reader only text -->
+    <style>
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+
+    <!-- JavaScript -->
+    <script>
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // / key - focus search
+            if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                window.location.href = 'search.html';
+            }
+            // n key - new knowledge
+            if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                window.location.href = 'create.html';
+            }
+            // ? key - help
+            if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                alert('キーボードショートカット:\n\n/ - 検索\nn - 新規作成\n? - ヘルプ');
+            }
+        });
+
+        // Stats card click handler for filtering
+        document.querySelectorAll('.stats-card[data-type]').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function() {
+                const type = this.dataset.type;
+                window.location.href = `search.html?type=${type}`;
+            });
+        });
+
+        // Simulate loading data (in real app, this would be an API call)
+        function loadDashboardData() {
+            // This is sample data - in production, fetch from API
+            console.log('Dashboard loaded');
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+    </script>
+</body>
+</html>

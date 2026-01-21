@@ -4,9 +4,11 @@ Flask-based Web Interface for Knowledge Management
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_socketio import SocketIO, emit, join_room
 from pathlib import Path
 import sys
 from datetime import datetime
+from typing import Dict, Any
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.parent
@@ -16,24 +18,64 @@ from src.core.workflow import WorkflowEngine
 from src.core.itsm_classifier import ITSMClassifier
 from src.mcp.sqlite_client import SQLiteClient
 from src.mcp.feedback_client import FeedbackClient
-from src.workflows.interactive_knowledge_creation import InteractiveKnowledgeCreationWorkflow
+from src.workflows.interactive_knowledge_creation import (
+    InteractiveKnowledgeCreationWorkflow,
+)
 from src.workflows.intelligent_search import IntelligentSearchAssistant
+from src.workflows.workflow_studio_engine import WorkflowStudioEngine
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mirai-it-knowledge-systems-secret-key'
+app.config["SECRET_KEY"] = "mirai-it-knowledge-systems-secret-key"
+
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # グローバルインスタンス
+
 db_client = SQLiteClient()
 feedback_client = FeedbackClient()
 workflow_engine = WorkflowEngine()
 itsm_classifier = ITSMClassifier()
 intelligent_search = IntelligentSearchAssistant()
+workflow_studio_engine = WorkflowStudioEngine()
 
 # セッション管理（簡易版）
 chat_sessions = {}
 
 
-@app.route('/')
+def _get_chat_workflow(
+    session_id: str, user_id: str
+) -> InteractiveKnowledgeCreationWorkflow:
+    if session_id not in chat_sessions:
+        chat_sessions[session_id] = InteractiveKnowledgeCreationWorkflow()
+        db_client.create_conversation_session(session_id, user_id)
+    return chat_sessions[session_id]
+
+
+def _process_chat_message(
+    session_id: str, message: str, user_id: str
+) -> Dict[str, Any]:
+    workflow = _get_chat_workflow(session_id, user_id)
+
+    db_client.add_conversation_message(session_id, "user", message)
+
+    if len(workflow.conversation_history) == 0:
+        result = workflow.start_conversation(message)
+    else:
+        result = workflow.answer_question(message)
+
+    assistant_message = None
+    if result.get("type") == "question":
+        assistant_message = result.get("question")
+    elif result.get("type") == "knowledge_generated":
+        assistant_message = f"ナレッジ案を生成しました: {result.get('title', '')}"
+
+    if assistant_message:
+        db_client.add_conversation_message(session_id, "assistant", assistant_message)
+
+    return result
+
+
+@app.route("/")
 def index():
     """トップページ"""
     # 統計情報を取得
@@ -42,39 +84,47 @@ def index():
     # 最近のナレッジを取得
     recent_knowledge = db_client.search_knowledge(limit=5)
 
-    return render_template('index.html', stats=stats, recent_knowledge=recent_knowledge)
+    return render_template("index.html", stats=stats, recent_knowledge=recent_knowledge)
 
 
-@app.route('/knowledge/search', methods=['GET', 'POST'])
+@app.route("/knowledge/search", methods=["GET", "POST"])
 def search_knowledge():
     """ナレッジ検索"""
     # GETパラメータからも検索条件を受け取る（統計カードクリック時）
-    if request.method == 'GET' and request.args.get('itsm_type'):
-        itsm_type = request.args.get('itsm_type')
-        results = db_client.search_knowledge(
-            itsm_type=itsm_type,
-            limit=50
+    if request.method == "GET" and request.args.get("itsm_type"):
+        itsm_type = request.args.get("itsm_type")
+        results = db_client.search_knowledge(itsm_type=itsm_type, limit=50)
+        return render_template(
+            "search_results.html", query="", results=results, itsm_type_filter=itsm_type
         )
-        return render_template('search_results.html', query='', results=results, itsm_type_filter=itsm_type)
 
-    if request.method == 'POST':
-        query = request.form.get('query', '')
-        itsm_type = request.form.get('itsm_type', '')
-        tags = request.form.get('tags', '').split(',') if request.form.get('tags') else None
+    if request.method == "POST":
+        query = request.form.get("query", "")
+        itsm_type = request.form.get("itsm_type", "")
+        tags = (
+            request.form.get("tags", "").split(",")
+            if request.form.get("tags")
+            else None
+        )
 
         results = db_client.search_knowledge(
             query=query if query else None,
             itsm_type=itsm_type if itsm_type else None,
             tags=tags,
-            limit=50
+            limit=50,
         )
 
-        return render_template('search_results.html', query=query, results=results, itsm_type_filter=itsm_type)
+        return render_template(
+            "search_results.html",
+            query=query,
+            results=results,
+            itsm_type_filter=itsm_type,
+        )
 
-    return render_template('search.html')
+    return render_template("search.html")
 
 
-@app.route('/knowledge/<int:knowledge_id>')
+@app.route("/knowledge/<int:knowledge_id>")
 def view_knowledge(knowledge_id):
     """ナレッジ詳細表示"""
     knowledge = db_client.get_knowledge(knowledge_id)
@@ -86,96 +136,98 @@ def view_knowledge(knowledge_id):
 
     # 使用統計を記録
     try:
-        feedback_client.log_knowledge_usage(knowledge_id, 'view', user_id='webui_user')
+        feedback_client.log_knowledge_usage(knowledge_id, "view", user_id="webui_user")
     except:
         pass  # エラーがあっても表示は継続
 
     # パンくずリスト用
     breadcrumb_items = [
-        {'name': 'ナレッジ', 'url': '/knowledge/search'},
-        {'name': knowledge['title'][:50], 'url': None}
+        {"name": "ナレッジ", "url": "/knowledge/search"},
+        {"name": knowledge["title"][:50], "url": None},
     ]
 
-    return render_template('knowledge_detail.html', knowledge=knowledge, related=related, breadcrumb_items=breadcrumb_items)
+    return render_template(
+        "knowledge_detail.html",
+        knowledge=knowledge,
+        related=related,
+        breadcrumb_items=breadcrumb_items,
+    )
 
 
-@app.route('/knowledge/create', methods=['GET', 'POST'])
+@app.route("/knowledge/create", methods=["GET", "POST"])
 def create_knowledge():
     """新規ナレッジ作成"""
-    if request.method == 'POST':
-        title = request.form.get('title', '')
-        content = request.form.get('content', '')
-        itsm_type = request.form.get('itsm_type', '')
-        created_by = request.form.get('created_by', 'webui_user')
+    if request.method == "POST":
+        title = request.form.get("title", "")
+        content = request.form.get("content", "")
+        itsm_type = request.form.get("itsm_type", "")
+        created_by = request.form.get("created_by", "webui_user")
 
         # ITSMタイプが指定されていない場合は自動分類
-        if not itsm_type or itsm_type == 'auto':
+        if not itsm_type or itsm_type == "auto":
             classification = itsm_classifier.classify(title, content)
-            itsm_type = classification['itsm_type']
+            itsm_type = classification["itsm_type"]
 
         # ワークフロー実行
         result = workflow_engine.process_knowledge(
-            title=title,
-            content=content,
-            itsm_type=itsm_type,
-            created_by=created_by
+            title=title, content=content, itsm_type=itsm_type, created_by=created_by
         )
 
-        if result['success']:
+        if result["success"]:
             # 成功メッセージ付きでリダイレクト
-            return redirect(url_for('view_knowledge', knowledge_id=result['knowledge_id'], success=1, message='ナレッジを作成しました'))
+            return redirect(
+                url_for(
+                    "view_knowledge",
+                    knowledge_id=result["knowledge_id"],
+                    success=1,
+                    message="ナレッジを作成しました",
+                )
+            )
         else:
-            return render_template('create.html', error=result.get('error'))
+            return render_template("create.html", error=result.get("error"))
 
-    return render_template('create.html')
+    return render_template("create.html")
 
 
-@app.route('/api/classify', methods=['POST'])
+@app.route("/api/classify", methods=["POST"])
 def api_classify():
     """ITSM分類API"""
     data = request.get_json()
-    title = data.get('title', '')
-    content = data.get('content', '')
+    title = data.get("title", "")
+    content = data.get("content", "")
 
     classification = itsm_classifier.classify(title, content)
     candidates = itsm_classifier.suggest_itsm_type(title, content, threshold=0.3)
 
-    return jsonify({
-        'classification': classification,
-        'candidates': candidates
-    })
+    return jsonify({"classification": classification, "candidates": candidates})
 
 
-@app.route('/api/knowledge', methods=['GET'])
+@app.route("/api/knowledge", methods=["GET"])
 def api_get_knowledge():
     """ナレッジ取得API"""
-    knowledge_id = request.args.get('id', type=int)
+    knowledge_id = request.args.get("id", type=int)
     if knowledge_id:
         knowledge = db_client.get_knowledge(knowledge_id)
-        return jsonify(knowledge) if knowledge else ('', 404)
+        return jsonify(knowledge) if knowledge else ("", 404)
 
     # 検索
-    query = request.args.get('query')
-    itsm_type = request.args.get('itsm_type')
-    limit = request.args.get('limit', 20, type=int)
+    query = request.args.get("query")
+    itsm_type = request.args.get("itsm_type")
+    limit = request.args.get("limit", 20, type=int)
 
-    results = db_client.search_knowledge(
-        query=query,
-        itsm_type=itsm_type,
-        limit=limit
-    )
+    results = db_client.search_knowledge(query=query, itsm_type=itsm_type, limit=limit)
 
     return jsonify(results)
 
 
-@app.route('/api/statistics', methods=['GET'])
+@app.route("/api/statistics", methods=["GET"])
 def api_statistics():
     """統計情報API"""
     stats = db_client.get_statistics()
     return jsonify(stats)
 
 
-@app.route('/dashboard')
+@app.route("/dashboard")
 def dashboard():
     """ダッシュボード"""
     stats = db_client.get_statistics()
@@ -190,59 +242,62 @@ def dashboard():
         """)
         workflow_history = [dict(row) for row in cursor.fetchall()]
 
-    return render_template('dashboard.html', stats=stats, workflow_history=workflow_history)
+    return render_template(
+        "dashboard.html", stats=stats, workflow_history=workflow_history
+    )
 
 
 # ========== フィードバック機能 ==========
 
-@app.route('/knowledge/<int:knowledge_id>/feedback', methods=['POST'])
+
+@app.route("/knowledge/<int:knowledge_id>/feedback", methods=["POST"])
 def add_knowledge_feedback(knowledge_id):
     """ナレッジへのフィードバック追加"""
-    rating = request.form.get('rating', type=int)
-    feedback_type = request.form.get('feedback_type')
-    comment = request.form.get('comment')
-    user_id = request.form.get('user_id', 'anonymous')
+    rating = request.form.get("rating", type=int)
+    feedback_type = request.form.get("feedback_type")
+    comment = request.form.get("comment")
+    user_id = request.form.get("user_id", "anonymous")
 
     feedback_client.add_knowledge_feedback(
         knowledge_id=knowledge_id,
         user_id=user_id,
         rating=rating,
         feedback_type=feedback_type,
-        comment=comment
+        comment=comment,
     )
 
     # 使用統計も記録
-    feedback_client.log_knowledge_usage(knowledge_id, 'feedback', user_id)
+    feedback_client.log_knowledge_usage(knowledge_id, "feedback", user_id)
 
-    return redirect(url_for('view_knowledge', knowledge_id=knowledge_id))
+    return redirect(url_for("view_knowledge", knowledge_id=knowledge_id))
 
 
-@app.route('/feedback', methods=['GET', 'POST'])
+@app.route("/feedback", methods=["GET", "POST"])
 def system_feedback():
     """システムフィードバック"""
-    if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        category = request.form.get('category')
-        priority = request.form.get('priority', 'medium')
-        user_id = request.form.get('user_id', 'anonymous')
+    if request.method == "POST":
+        title = request.form.get("title")
+        description = request.form.get("description")
+        category = request.form.get("category")
+        priority = request.form.get("priority", "medium")
+        user_id = request.form.get("user_id", "anonymous")
 
         feedback_client.add_system_feedback(
             title=title,
             description=description,
             feedback_category=category,
             user_id=user_id,
-            priority=priority
+            priority=priority,
         )
 
-        return redirect(url_for('system_feedback'))
+        return redirect(url_for("system_feedback"))
 
     # フィードバック一覧を取得
     feedbacks = feedback_client.get_system_feedback(limit=50)
-    return render_template('system_feedback.html', feedbacks=feedbacks)
+    return render_template("system_feedback.html", feedbacks=feedbacks)
 
 
-@app.route('/analytics')
+@app.route("/analytics")
 def analytics():
     """分析ダッシュボード"""
     # フィードバックサマリー
@@ -255,73 +310,66 @@ def analytics():
     top_rated = feedback_client.get_top_rated_knowledge(limit=10)
 
     return render_template(
-        'analytics.html',
+        "analytics.html",
         feedback_summary=feedback_summary,
         popular_knowledge=popular_knowledge,
-        top_rated=top_rated
+        top_rated=top_rated,
     )
 
 
-@app.route('/api/knowledge/<int:knowledge_id>/stats', methods=['GET'])
+@app.route("/api/knowledge/<int:knowledge_id>/stats", methods=["GET"])
 def api_knowledge_stats(knowledge_id):
     """ナレッジ統計API"""
     usage_stats = feedback_client.get_knowledge_usage_stats(knowledge_id)
     rating = feedback_client.get_knowledge_rating(knowledge_id)
 
-    return jsonify({
-        'usage_stats': usage_stats,
-        'rating': rating
-    })
+    return jsonify({"usage_stats": usage_stats, "rating": rating})
 
 
 # ========== AI対話機能 ==========
 
-@app.route('/chat')
+
+@app.route("/chat")
 def chat():
     """AI対話ナレッジ作成ページ"""
-    return render_template('chat.html', now=datetime.now().strftime('%H:%M'))
+    return render_template("chat.html", now=datetime.now().strftime("%H:%M"))
 
 
-@app.route('/api/chat/message', methods=['POST'])
+@app.route("/api/chat/message", methods=["POST"])
 def chat_message():
     """チャットメッセージ処理"""
     data = request.get_json()
-    session_id = data.get('session_id')
-    message = data.get('message')
-    collected_data = data.get('collected_data', {})
+    session_id = data.get("session_id")
+    message = data.get("message")
+    user_id = data.get("user_id", "webui_user")
 
-    # セッション取得または作成
-    if session_id not in chat_sessions:
-        chat_sessions[session_id] = InteractiveKnowledgeCreationWorkflow()
+    if not session_id or not message:
+        return jsonify({"error": "session_idとmessageが必要です"}), 400
 
-    workflow = chat_sessions[session_id]
-
-    # 最初のメッセージか？
-    if len(workflow.conversation_history) == 0:
-        result = workflow.start_conversation(message)
-    else:
-        result = workflow.answer_question(message)
+    result = _process_chat_message(session_id, message, user_id)
 
     return jsonify(result)
 
 
-@app.route('/api/chat/save', methods=['POST'])
+@app.route("/api/chat/save", methods=["POST"])
 def chat_save():
     """対話で生成したナレッジを保存"""
     data = request.get_json()
-    title = data.get('title')
-    content = data.get('content')
-    itsm_type = data.get('itsm_type')
-    session_id = data.get('session_id')
-    conversation_history = data.get('conversation_history', [])
+    title = data.get("title")
+    content = data.get("content")
+    itsm_type = data.get("itsm_type")
+    session_id = data.get("session_id")
+    conversation_history = data.get("conversation_history", [])
 
     # ワークフロー実行
     result = workflow_engine.process_knowledge(
-        title=title,
-        content=content,
-        itsm_type=itsm_type,
-        created_by='ai_chat'
+        title=title, content=content, itsm_type=itsm_type, created_by="ai_chat"
     )
+
+    if session_id:
+        db_client.complete_conversation_session(
+            session_id, result.get("knowledge_id") if result.get("success") else None
+        )
 
     # セッションをクリーンアップ
     if session_id in chat_sessions:
@@ -330,74 +378,165 @@ def chat_save():
     return jsonify(result)
 
 
+@socketio.on("join_chat")
+def handle_join_chat(data):
+    """チャットセッション参加"""
+    session_id = data.get("session_id")
+    if not session_id:
+        emit("chat_error", {"error": "session_idが必要です"})
+        return
+
+    join_room(session_id)
+    emit("chat_joined", {"session_id": session_id})
+
+
+@socketio.on("chat_message")
+def handle_socket_chat_message(data):
+    """WebSocket経由のチャット処理"""
+    session_id = data.get("session_id")
+    message = data.get("message")
+    user_id = data.get("user_id", "webui_user")
+
+    if not session_id or not message:
+        emit("chat_error", {"error": "session_idとmessageが必要です"})
+        return
+
+    result = _process_chat_message(session_id, message, user_id)
+
+    if result.get("type") == "question":
+        emit("chat_response", result, to=session_id)
+    elif result.get("type") == "knowledge_generated":
+        emit("chat_generated", result, to=session_id)
+    else:
+        emit("chat_response", result, to=session_id)
+
+
 # ========== インテリジェント検索 ==========
 
-@app.route('/search/intelligent')
+
+@app.route("/search/intelligent")
 def intelligent_search_page():
     """インテリジェント検索ページ"""
-    return render_template('intelligent_search.html')
+    return render_template("intelligent_search.html")
 
 
-@app.route('/api/search/intelligent', methods=['POST'])
+@app.route("/api/search/intelligent", methods=["POST"])
 def api_intelligent_search():
     """インテリジェント検索API"""
     data = request.get_json()
-    query = data.get('query', '')
+    query = data.get("query", "")
 
     if not query:
-        return jsonify({'error': 'クエリが空です'}), 400
+        return jsonify({"error": "クエリが空です"}), 400
 
     # インテリジェント検索実行
     result = intelligent_search.search(query)
 
+    try:
+        db_client.log_search_history(
+            search_query=query,
+            search_type="natural_language",
+            filters={"intent": result.get("intent")},
+            results_count=len(result.get("knowledge", [])),
+            user_id=request.remote_addr,
+        )
+    except Exception:
+        pass
+
+    return jsonify(result)
+
+
+# ========== ワークフロー監視 ==========
+
+
+@app.route("/workflows/monitor")
+def workflow_monitor():
+    """ワークフロー実行モニタリング"""
+    executions = db_client.get_recent_workflow_executions(limit=20)
+    return render_template("workflow_monitor.html", executions=executions)
+
+
+@app.route("/api/workflows/recent", methods=["GET"])
+def api_recent_workflows():
+    """最近のワークフロー実行を取得"""
+    limit = request.args.get("limit", 20, type=int)
+    return jsonify(db_client.get_recent_workflow_executions(limit=limit))
+
+
+@app.route("/api/workflows/<int:execution_id>", methods=["GET"])
+def api_workflow_detail(execution_id):
+    """ワークフロー実行詳細を取得"""
+    execution = db_client.get_workflow_execution(execution_id)
+    if not execution:
+        return jsonify({"error": "not found"}), 404
+
+    return jsonify(
+        {
+            "execution": execution,
+            "subagent_logs": db_client.get_subagent_logs(execution_id),
+            "hook_logs": db_client.get_hook_logs(execution_id),
+        }
+    )
+
+
+@app.route("/api/workflows/run", methods=["POST"])
+def api_run_workflow():
+    """Workflow Studioのワークフローを実行"""
+    data = request.get_json() or {}
+    workflow_name = data.get("workflow")
+    inputs = data.get("inputs", {})
+
+    if not workflow_name:
+        return jsonify({"error": "workflowが必要です"}), 400
+
+    result = workflow_studio_engine.run_workflow(
+        workflow_name, inputs, user_id=request.remote_addr
+    )
     return jsonify(result)
 
 
 # ========== 設定機能 ==========
 
-@app.route('/settings')
+
+@app.route("/settings")
 def settings():
     """設定ページ"""
-    return render_template('settings.html')
+    return render_template("settings.html")
 
 
-@app.route('/api/settings/authenticate', methods=['POST'])
+@app.route("/api/settings/authenticate", methods=["POST"])
 def api_settings_authenticate():
     """設定変更用の認証"""
     data = request.get_json()
-    username = data.get('username', '')
-    password = data.get('password', '')
+    username = data.get("username", "")
+    password = data.get("password", "")
 
     # 簡易認証（本番環境ではハッシュ化したパスワードと照合）
     # デフォルト: admin / admin123
-    if username == 'admin' and password == 'admin123':
+    if username == "admin" and password == "admin123":
         # トークン生成（簡易版）
         import secrets
+
         token = secrets.token_urlsafe(32)
 
-        return jsonify({
-            'success': True,
-            'token': token,
-            'username': username
-        })
+        return jsonify({"success": True, "token": token, "username": username})
     else:
-        return jsonify({
-            'success': False,
-            'error': 'ユーザー名またはパスワードが正しくありません'
-        }), 401
+        return jsonify(
+            {"success": False, "error": "ユーザー名またはパスワードが正しくありません"}
+        ), 401
 
 
-@app.route('/api/settings/save', methods=['POST'])
+@app.route("/api/settings/save", methods=["POST"])
 def api_settings_save():
     """設定を保存"""
     # 認証トークン確認（簡易版）
-    auth_header = request.headers.get('Authorization', '')
+    auth_header = request.headers.get("Authorization", "")
 
-    if not auth_header.startswith('Bearer '):
-        return jsonify({'success': False, 'error': '認証が必要です'}), 401
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"success": False, "error": "認証が必要です"}), 401
 
     data = request.get_json()
-    settings = data.get('settings', {})
+    settings = data.get("settings", {})
 
     # 設定をファイルに保存（簡易実装）
     # 本番環境ではデータベースに保存
@@ -405,25 +544,20 @@ def api_settings_save():
         import json
         from pathlib import Path
 
-        config_file = Path('config/runtime_settings.json')
+        config_file = Path("config/runtime_settings.json")
         config_file.parent.mkdir(exist_ok=True)
 
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(settings, f, ensure_ascii=False, indent=2)
 
-        return jsonify({
-            'success': True,
-            'message': '設定を保存しました'
-        })
+        return jsonify({"success": True, "message": "設定を保存しました"})
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import socket
+
     hostname = socket.gethostname()
     ip_address = socket.gethostbyname(hostname)
 
@@ -435,4 +569,4 @@ if __name__ == '__main__':
     print("")
     print("終了するには Ctrl+C を押してください")
     print("")
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    socketio.run(app, host="0.0.0.0", port=PORT, debug=False)

@@ -1,0 +1,70 @@
+# Coordinator SubAgent Definition
+# コーディネーター・サブエージェント定義
+
+name: Coordinator
+role: coordination_review
+priority: medium
+
+description: |
+  全体調整の観点から情報の抜け漏れや影響範囲を確認し、
+  関係者間の調整ポイントと次アクションを提示する
+
+capabilities:
+  - 調整ポイントの抽出
+  - 影響範囲と依存関係の確認
+  - 抜け漏れチェック
+  - 次アクション提案
+
+# 使用するMCP
+mcp_dependencies:
+  - memory
+  - sequential-thinking
+
+# 入力スキーマ
+input_schema:
+  title:
+    type: string
+    required: true
+  content:
+    type: string
+    required: true
+  itsm_type:
+    type: string
+    required: false
+  existing_knowledge:
+    type: array
+    required: false
+
+# 出力スキーマ
+output_schema:
+  coordination_notes:
+    type: array
+    description: 調整メモ
+  missing_items:
+    type: array
+    description: 不足情報の一覧
+  risk_flags:
+    type: array
+    description: リスクフラグ
+  next_actions:
+    type: array
+    description: 次アクション提案
+
+# 処理ロジック（参照実装）
+implementation:
+  python_class: src.subagents.coordinator.CoordinatorSubAgent
+  method: process
+
+# 品質基準
+quality_criteria:
+  max_missing_items: 2
+  required_checks:
+    - impact_scope
+    - owner
+    - timeline
+    - mitigation
+
+# パフォーマンス
+performance:
+  timeout_ms: 5000
+  max_retries: 2

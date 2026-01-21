@@ -141,7 +141,7 @@ python3 scripts/test_workflow.py
 ```
 
 **確認事項:**
-- ✅ 6つのSubAgentが正常動作
+- ✅ 7つのSubAgentが正常動作
 - ✅ 品質スコアが算出される
 - ✅ Markdownファイルが生成される
 

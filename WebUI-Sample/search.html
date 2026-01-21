@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ナレッジ検索 - Mirai IT Knowledge Systems">
+    <title>ナレッジ検索 - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="create.html" class="btn" aria-label="新規作成">
+                        <span aria-hidden="true">✍️</span> 新規作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">🔍</span> 検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span aria-hidden="true">🔍</span> ナレッジ検索
+                </h1>
+                <p class="page-description">
+                    キーワードやITSMタイプ、タグでナレッジを検索できます
+                </p>
+            </div>
+
+            <!-- Search and Filter Layout -->
+            <div class="layout-sidebar">
+                <!-- Sidebar with Filters -->
+                <aside class="sidebar" role="complementary" aria-label="検索フィルター">
+                    <div class="filter-panel">
+                        <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">フィルター</h2>
+
+                        <!-- ITSM Type Filter -->
+                        <div class="filter-group">
+                            <h3 class="filter-title">ITSMタイプ</h3>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="type" value="Incident" style="margin-right: 0.5rem;">
+                                    <span class="badge badge-incident">Incident</span>
+                                    <span style="margin-left: auto; color: var(--color-text-secondary);">(45)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="type" value="Problem" style="margin-right: 0.5rem;">
+                                    <span class="badge badge-problem">Problem</span>
+                                    <span style="margin-left: auto; color: var(--color-text-secondary);">(32)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="type" value="Change" style="margin-right: 0.5rem;">
+                                    <span class="badge badge-change">Change</span>
+                                    <span style="margin-left: auto; color: var(--color-text-secondary);">(28)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="type" value="Release" style="margin-right: 0.5rem;">
+                                    <span class="badge badge-release">Release</span>
+                                    <span style="margin-left: auto; color: var(--color-text-secondary);">(18)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="type" value="Request" style="margin-right: 0.5rem;">
+                                    <span class="badge badge-request">Request</span>
+                                    <span style="margin-left: auto; color: var(--color-text-secondary);">(33)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Popular Tags -->
+                        <div class="filter-group">
+                            <h3 class="filter-title">人気タグ</h3>
+                            <div class="tags">
+                                <button class="tag" data-tag="Apache">Apache</button>
+                                <button class="tag" data-tag="MySQL">MySQL</button>
+                                <button class="tag" data-tag="SSL">SSL</button>
+                                <button class="tag" data-tag="エラー対応">エラー対応</button>
+                                <button class="tag" data-tag="パフォーマンス">パフォーマンス</button>
+                                <button class="tag" data-tag="セキュリティ">セキュリティ</button>
+                            </div>
+                        </div>
+
+                        <!-- Date Range -->
+                        <div class="filter-group">
+                            <h3 class="filter-title">作成日</h3>
+                            <select class="form-select" id="dateRange" aria-label="作成日フィルター">
+                                <option value="">すべて</option>
+                                <option value="today">今日</option>
+                                <option value="week">過去7日間</option>
+                                <option value="month">過去30日間</option>
+                                <option value="year">過去1年間</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Actions -->
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn btn-primary" style="flex: 1;" onclick="applyFilters()">
+                                適用
+                            </button>
+                            <button class="btn btn-outline" style="flex: 1;" onclick="clearFilters()">
+                                クリア
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <div>
+                    <!-- Search Box -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <form id="searchForm" role="search" onsubmit="performSearch(event)">
+                            <div class="search-box">
+                                <input
+                                    type="search"
+                                    id="searchInput"
+                                    placeholder="例: Webサーバー 503エラー"
+                                    aria-label="ナレッジを検索"
+                                    autofocus
+                                >
+                            </div>
+                            <p class="form-help">
+                                自然な言葉で検索できます。複数のキーワードを入力すると、すべてを含むナレッジが検索されます。
+                            </p>
+                        </form>
+                    </div>
+
+                    <!-- Search Results Header -->
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            検索結果 <span id="resultCount" style="color: var(--color-text-secondary);">(156件)</span>
+                        </h2>
+                        <div class="section-actions">
+                            <select class="form-select" id="sortBy" aria-label="並び替え" onchange="sortResults()">
+                                <option value="date-desc">新しい順</option>
+                                <option value="date-asc">古い順</option>
+                                <option value="relevance">関連度順</option>
+                                <option value="title">タイトル順</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div class="content-grid" id="searchResults" role="region" aria-live="polite" aria-label="検索結果">
+                        <!-- Sample Knowledge Cards -->
+                        <article class="knowledge-card incident" tabindex="0" role="button" onclick="location.href='detail.html?id=1'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=1'">
+                            <div class="card-header">
+                                <h3 class="card-title">Webサーバーの503エラー発生時の対応手順</h3>
+                                <span class="badge badge-incident" role="status">Incident</span>
+                            </div>
+                            <p class="card-summary">
+                                Apacheサーバーで503エラーが発生した際の調査手順と対応方法をまとめたナレッジです。エラーログの確認からプロセスの再起動まで段階的に説明しています。
+                            </p>
+                            <div class="card-footer">
+                                <span><span aria-hidden="true">🏷️</span> Apache, エラー対応, 障害</span>
+                                <time datetime="2026-01-15">2026-01-15</time>
+                            </div>
+                        </article>
+
+                        <article class="knowledge-card problem" tabindex="0" role="button" onclick="location.href='detail.html?id=2'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=2'">
+                            <div class="card-header">
+                                <h3 class="card-title">データベース接続プールの枯渇問題</h3>
+                                <span class="badge badge-problem" role="status">Problem</span>
+                            </div>
+                            <p class="card-summary">
+                                MySQLの接続プールが枯渇する根本原因の調査と恒久対策について記載しています。接続リークの検出方法とプール設定の最適化を解説します。
+                            </p>
+                            <div class="card-footer">
+                                <span><span aria-hidden="true">🏷️</span> MySQL, パフォーマンス, 問題管理</span>
+                                <time datetime="2026-01-14">2026-01-14</time>
+                            </div>
+                        </article>
+
+                        <article class="knowledge-card change" tabindex="0" role="button" onclick="location.href='detail.html?id=3'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=3'">
+                            <div class="card-header">
+                                <h3 class="card-title">SSL証明書の更新手順</h3>
+                                <span class="badge badge-change" role="status">Change</span>
+                            </div>
+                            <p class="card-summary">
+                                本番環境でのSSL証明書更新時の標準手順と注意事項をまとめています。証明書の取得からWebサーバーへの適用、動作確認まで網羅しています。
+                            </p>
+                            <div class="card-footer">
+                                <span><span aria-hidden="true">🏷️</span> SSL, セキュリティ, 変更管理</span>
+                                <time datetime="2026-01-13">2026-01-13</time>
+                            </div>
+                        </article>
+
+                        <article class="knowledge-card release" tabindex="0" role="button" onclick="location.href='detail.html?id=4'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=4'">
+                            <div class="card-header">
+                                <h3 class="card-title">アプリケーションv2.0のリリース手順</h3>
+                                <span class="badge badge-release" role="status">Release</span>
+                            </div>
+                            <p class="card-summary">
+                                メジャーバージョンアップ時のリリース手順書です。デプロイメント手順、切り戻し手順、リリース判定基準を含みます。
+                            </p>
+                            <div class="card-footer">
+                                <span><span aria-hidden="true">🏷️</span> リリース, デプロイ, 手順書</span>
+                                <time datetime="2026-01-12">2026-01-12</time>
+                            </div>
+                        </article>
+
+                        <article class="knowledge-card request" tabindex="0" role="button" onclick="location.href='detail.html?id=5'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=5'">
+                            <div class="card-header">
+                                <h3 class="card-title">VPN接続の設定方法</h3>
+                                <span class="badge badge-request" role="status">Request</span>
+                            </div>
+                            <p class="card-summary">
+                                リモートワーク用のVPN接続設定手順です。Windows、Mac、Linuxそれぞれの設定方法とトラブルシューティングを記載しています。
+                            </p>
+                            <div class="card-footer">
+                                <span><span aria-hidden="true">🏷️</span> VPN, リモートアクセス, 設定</span>
+                                <time datetime="2026-01-11">2026-01-11</time>
+                            </div>
+                        </article>
+
+                        <article class="knowledge-card incident" tabindex="0" role="button" onclick="location.href='detail.html?id=6'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=6'">
+                            <div class="card-header">
+                                <h3 class="card-title">メール送信遅延の原因調査</h3>
+                                <span class="badge badge-incident" role="status">Incident</span>
+                            </div>
+                            <p class="card-summary">
+                                メールサーバーからの送信が遅延する問題の調査結果です。キューの滞留原因とSMTPサーバーの設定見直しについて説明しています。
+                            </p>
+                            <div class="card-footer">
+                                <span><span aria-hidden="true">🏷️</span> メール, SMTP, パフォーマンス</span>
+                                <time datetime="2026-01-10">2026-01-10</time>
+                            </div>
+                        </article>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem;" role="navigation" aria-label="ページネーション">
+                        <button class="btn btn-outline" disabled aria-label="前のページ">前へ</button>
+                        <span style="color: var(--color-text-secondary);">ページ 1 / 10</span>
+                        <button class="btn btn-outline" aria-label="次のページ">次へ</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Tips -->
+            <section class="section">
+                <div class="card" style="background: #e3f2fd; border-left: 4px solid var(--color-info);">
+                    <h3 style="color: #1565c0; margin-bottom: 1rem;">
+                        <span aria-hidden="true">💡</span> 検索のヒント
+                    </h3>
+                    <ul style="line-height: 2; color: #666;">
+                        <li>キーワードは部分一致で検索されます</li>
+                        <li>複数のキーワードを入力すると、すべてを含むナレッジが検索されます</li>
+                        <li>ITSMタイプやタグを組み合わせて絞り込むことができます</li>
+                        <li>「Apache エラー」「データベース 遅い」など自然な言葉で検索できます</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="search.html">検索</a></p>
+                    <p><a href="create.html">ナレッジ作成</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Get URL parameters for initial filters
+        const urlParams = new URLSearchParams(window.location.search);
+        const typeFilter = urlParams.get('type');
+
+        // Apply type filter if present
+        if (typeFilter) {
+            const checkbox = document.querySelector(`input[value="${typeFilter}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        }
+
+        // Search functionality
+        function performSearch(event) {
+            if (event) event.preventDefault();
+            const query = document.getElementById('searchInput').value;
+            console.log('Searching for:', query);
+
+            // In production, this would make an API call
+            // For now, we'll just filter the visible results
+            filterResults();
+        }
+
+        // Filter results based on selected criteria
+        function applyFilters() {
+            filterResults();
+        }
+
+        function clearFilters() {
+            // Clear all checkboxes
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('dateRange').value = '';
+            document.getElementById('searchInput').value = '';
+            filterResults();
+        }
+
+        function filterResults() {
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            const selectedTypes = Array.from(document.querySelectorAll('input[name="type"]:checked'))
+                .map(cb => cb.value.toLowerCase());
+
+            const cards = document.querySelectorAll('.knowledge-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                const summary = card.querySelector('.card-summary').textContent.toLowerCase();
+                const badge = card.querySelector('.badge').textContent.toLowerCase();
+
+                const matchesSearch = !searchQuery || title.includes(searchQuery) || summary.includes(searchQuery);
+                const matchesType = selectedTypes.length === 0 || selectedTypes.some(type => badge.includes(type));
+
+                if (matchesSearch && matchesType) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            document.getElementById('resultCount').textContent = `(${visibleCount}件)`;
+        }
+
+        // Sort results
+        function sortResults() {
+            const sortBy = document.getElementById('sortBy').value;
+            console.log('Sorting by:', sortBy);
+            // In production, this would re-fetch sorted data from API
+        }
+
+        // Tag click handler
+        document.querySelectorAll('.tag').forEach(tag => {
+            tag.addEventListener('click', function() {
+                const tagName = this.dataset.tag;
+                document.getElementById('searchInput').value = tagName;
+                performSearch();
+                this.style.backgroundColor = 'var(--color-primary)';
+                this.style.color = 'white';
+            });
+        });
+
+        // Real-time search
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                filterResults();
+            }, 300);
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeFilter) {
+                filterResults();
+            }
+        });
+    </script>
+</body>
+</html>

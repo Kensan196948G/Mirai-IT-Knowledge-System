@@ -15,9 +15,9 @@ Mirai IT Knowledge Systems を次世代ナレッジシステムへ進化させ�
 
 **1.1 対話的ナレッジ生成API**
 - [x] プロトタイプ実装済み: `src/workflows/interactive_knowledge_creation.py`
-- [ ] WebUIにチャットインターフェース追加
-- [ ] WebSocket対応（リアルタイム対話）
-- [ ] 対話履歴の保存
+- [x] WebUIにチャットインターフェース追加
+- [x] WebSocket対応（リアルタイム対話）
+- [x] 対話履歴の保存
 
 **1.2 インテリジェント検索**
 - [x] プロトタイプ実装済み: `src/workflows/intelligent_search.py`
