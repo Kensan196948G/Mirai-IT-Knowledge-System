@@ -288,6 +288,7 @@
     </div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
 let sessionId = 'session_' + Date.now();
 let conversationHistory = [];
@@ -301,6 +302,26 @@ let collectedData = {
     measures: null
 };
 
+const socket = io();
+
+socket.on('connect', () => {
+    socket.emit('join_chat', { session_id: sessionId });
+});
+
+socket.on('chat_response', (data) => {
+    handleChatResponse(data);
+});
+
+socket.on('chat_generated', (data) => {
+    setSendState(false);
+    showGeneratedKnowledge(data);
+});
+
+socket.on('chat_error', (data) => {
+    setSendState(false);
+    addMessage('assistant', `エラーが発生しました: ${data.error || 'unknown error'}`);
+});
+
 // Enterキーで送信
 document.getElementById('userInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -309,7 +330,23 @@ document.getElementById('userInput').addEventListener('keydown', function(e) {
     }
 });
 
-async function sendMessage() {
+function setSendState(isSending) {
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = isSending;
+    sendBtn.textContent = isSending ? '処理中...' : '送信';
+}
+
+function handleChatResponse(data) {
+    setSendState(false);
+    if (data.type === 'question') {
+        addMessage('assistant', data.question);
+        updateProgress(data.progress);
+    } else if (data.type === 'knowledge_generated') {
+        showGeneratedKnowledge(data);
+    }
+}
+
+function sendMessage() {
     const input = document.getElementById('userInput');
     const message = input.value.trim();
 
@@ -319,41 +356,13 @@ async function sendMessage() {
     addMessage('user', message);
     input.value = '';
 
-    // 送信ボタンを無効化
-    const sendBtn = document.getElementById('sendBtn');
-    sendBtn.disabled = true;
-    sendBtn.textContent = '処理中...';
+    setSendState(true);
 
-    try {
-        // サーバーに送信
-        const response = await fetch('/api/chat/message', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                session_id: sessionId,
-                message: message,
-                collected_data: collectedData
-            })
-        });
-
-        const data = await response.json();
-
-        // AIの応答を表示
-        if (data.type === 'question') {
-            addMessage('assistant', data.question);
-            updateProgress(data.progress);
-        } else if (data.type === 'knowledge_generated') {
-            showGeneratedKnowledge(data);
-        }
-
-    } catch (error) {
-        addMessage('assistant', 'エラーが発生しました: ' + error.message);
-    } finally {
-        sendBtn.disabled = false;
-        sendBtn.textContent = '送信';
-    }
+    socket.emit('chat_message', {
+        session_id: sessionId,
+        message: message,
+        user_id: 'webui_user'
+    });
 }
 
 function addMessage(role, content) {
@@ -483,6 +492,7 @@ function resetChat() {
     if (confirm('会話をリセットしますか？')) {
         sessionId = 'session_' + Date.now();
         conversationHistory = [];
+        socket.emit('join_chat', { session_id: sessionId });
         collectedData = {
             when: null,
             system: null,

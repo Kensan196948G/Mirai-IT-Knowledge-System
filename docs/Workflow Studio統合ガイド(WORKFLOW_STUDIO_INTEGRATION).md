@@ -27,7 +27,8 @@ Mirai IT Knowledge Systems における Claude Code Workflow Studio の完全統
            ┌────────────┼────────────┐
            ↓            ↓            ↓
       SubAgents      Hooks         MCP
-    （6つの役割）   （品質保証）   （統合層）
+     （7つの役割）   （品質保証）   （統合層）
+
 ```
 
 ### 分業構造
@@ -104,7 +105,7 @@ Mirai-IT-Knowledge-Systems/
 **主要ステップ**:
 1. 入力正規化（Context7活用）
 2. ITSM自動分類（Claude-Mem参照）
-3. 並列SubAgent実行（6つ同時）
+3. 並列SubAgent実行（7つ同時）
 4. 要約生成（技術者/非技術者/3行）
 5. 知見抽出（sequential-thinking）
 6. MCP補強（技術ドキュメント・過去の記憶）
@@ -181,14 +182,15 @@ quality_criteria:
   基準名: 値
 ```
 
-### 実装済みSubAgent（6つ）
+### 実装済みSubAgent（7つ）
 
 1. **Architect** - 設計整合性
 2. **KnowledgeCurator** - 整理・分類
 3. **ITSM-Expert** - ITSM妥当性
 4. **DevOps** - 技術分析
 5. **QA** - 品質保証
-6. **Documenter** - 出力整形
+6. **Coordinator** - 全体調整
+7. **Documenter** - 出力整形
 
 ---
 
@@ -230,14 +232,16 @@ steps:
 - [x] knowledge_register.workflow（完全版）
 - [x] incident_to_problem.workflow（完全版）
 - [x] search_assist.workflow（完全版）
-- [x] SubAgent YAML定義（6つ全て）
+- [x] SubAgent YAML定義（7つ全て）
 - [x] Hooks テンプレート構造
+- [x] Workflow実行エンジン（`src/workflows/workflow_studio_engine.py`）
+- [x] VSCode連携タスク（`.vscode/tasks.json`）
+- [x] ワークフロー実行モニタリング（WebUI）
 
 ### ⏳ 次のステップ
 
-- [ ] Workflow実行エンジンの実装
-- [ ] VSCode拡張との連携
-- [ ] リアルタイム実行モニタリング
+- [ ] Workflow Studio UIでのステップ可視化
+- [ ] 実行ログのフィルタ・エクスポート
 
 ---
 
@@ -322,8 +326,8 @@ claude-code workflow run knowledge_register.workflow \
 
 - [要件定義書](../docs/requirements.md)
 - [アーキテクチャ](../ARCHITECTURE.md)
-- [実装ロードマップ](IMPLEMENTATION_ROADMAP.md)
-- [Claude Code Workflow Studio アイデア](CLAUDE_CODE_WORKFLOW_STUDIO_IDEAS.md)
+- [実装ロードマップ](実装ロードマップ(IMPLEMENTATION_ROADMAP).md)
+- [Claude Code Workflow Studio アイデア](Claude Code Workflow Studioアイデア集(CLAUDE_CODE_WORKFLOW_STUDIO_IDEAS).md)
 
 ---
 

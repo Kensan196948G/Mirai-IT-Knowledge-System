@@ -10,14 +10,16 @@ from .itsm_expert import ITSMExpertSubAgent
 from .devops import DevOpsSubAgent
 from .qa import QASubAgent
 from .documenter import DocumenterSubAgent
+from .coordinator import CoordinatorSubAgent
 
 __all__ = [
-    'BaseSubAgent',
-    'SubAgentResult',
-    'ArchitectSubAgent',
-    'KnowledgeCuratorSubAgent',
-    'ITSMExpertSubAgent',
-    'DevOpsSubAgent',
-    'QASubAgent',
-    'DocumenterSubAgent',
+    "BaseSubAgent",
+    "SubAgentResult",
+    "ArchitectSubAgent",
+    "KnowledgeCuratorSubAgent",
+    "ITSMExpertSubAgent",
+    "DevOpsSubAgent",
+    "QASubAgent",
+    "DocumenterSubAgent",
+    "CoordinatorSubAgent",
 ]

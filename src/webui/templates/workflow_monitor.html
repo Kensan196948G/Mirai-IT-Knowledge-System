@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}ワークフロー監視 - Mirai IT Knowledge Systems{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <div class="breadcrumb-content">
+        <a href="/">ホーム</a>
+        <span class="breadcrumb-separator">›</span>
+        <span>ワークフロー監視</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🛰️ ワークフロー実行モニタリング</h2>
+    <p style="color: #666; margin-bottom: 1rem;">最新のワークフロー実行状況をリアルタイムで確認できます。</p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 1px solid #eee;">
+                <th style="padding: 0.5rem;">ID</th>
+                <th style="padding: 0.5rem;">Workflow</th>
+                <th style="padding: 0.5rem;">Status</th>
+                <th style="padding: 0.5rem;">Time (ms)</th>
+                <th style="padding: 0.5rem;">Created</th>
+            </tr>
+        </thead>
+        <tbody id="workflowRows">
+            {% for execution in executions %}
+            <tr style="border-bottom: 1px solid #f3f3f3; cursor: pointer;" onclick="loadDetails({{ execution.id }})">
+                <td style="padding: 0.5rem;">{{ execution.id }}</td>
+                <td style="padding: 0.5rem;">{{ execution.workflow_type }}</td>
+                <td style="padding: 0.5rem;">{{ execution.status }}</td>
+                <td style="padding: 0.5rem;">{{ execution.execution_time_ms or '-' }}</td>
+                <td style="padding: 0.5rem;">{{ execution.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card" id="executionDetails" style="display: none;">
+    <h3 style="color: var(--color-primary); margin-bottom: 1rem;">実行詳細</h3>
+    <div id="executionMeta" style="margin-bottom: 1rem;"></div>
+    <div id="subagentLogs"></div>
+    <div id="hookLogs"></div>
+</div>
+
+<script>
+let selectedExecutionId = null;
+
+async function refreshExecutions() {
+    const response = await fetch('/api/workflows/recent');
+    const data = await response.json();
+    renderExecutions(data);
+
+    if (selectedExecutionId) {
+        loadDetails(selectedExecutionId);
+    }
+}
+
+function renderExecutions(executions) {
+    const tbody = document.getElementById('workflowRows');
+    tbody.innerHTML = '';
+    executions.forEach(execution => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #f3f3f3';
+        row.style.cursor = 'pointer';
+        row.onclick = () => loadDetails(execution.id);
+        row.innerHTML = `
+            <td style="padding: 0.5rem;">${execution.id}</td>
+            <td style="padding: 0.5rem;">${execution.workflow_type}</td>
+            <td style="padding: 0.5rem;">${execution.status}</td>
+            <td style="padding: 0.5rem;">${execution.execution_time_ms || '-'}</td>
+            <td style="padding: 0.5rem;">${execution.created_at}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function loadDetails(executionId) {
+    selectedExecutionId = executionId;
+    const response = await fetch(`/api/workflows/${executionId}`);
+    const data = await response.json();
+
+    if (data.error) {
+        showToast('詳細情報の取得に失敗しました', 'error');
+        return;
+    }
+
+    document.getElementById('executionDetails').style.display = 'block';
+    document.getElementById('executionMeta').innerHTML = `
+        <div><strong>ID:</strong> ${data.execution.id}</div>
+        <div><strong>Workflow:</strong> ${data.execution.workflow_type}</div>
+        <div><strong>Status:</strong> ${data.execution.status}</div>
+        <div><strong>Execution Time:</strong> ${data.execution.execution_time_ms || '-'} ms</div>
+        <div><strong>SubAgents:</strong> ${(data.execution.subagents_used || []).join(', ')}</div>
+        <div><strong>Hooks:</strong> ${(data.execution.hooks_triggered || []).join(', ')}</div>
+    `;
+
+    const subagentLogs = data.subagent_logs || [];
+    const hookLogs = data.hook_logs || [];
+
+    document.getElementById('subagentLogs').innerHTML = buildLogSection('🧩 SubAgent Logs', subagentLogs, ['subagent_name', 'status', 'execution_time_ms']);
+    document.getElementById('hookLogs').innerHTML = buildLogSection('🪝 Hook Logs', hookLogs, ['hook_name', 'result', 'triggered_at']);
+}
+
+function buildLogSection(title, logs, columns) {
+    if (!logs.length) {
+        return `<div style="margin-top: 1rem;"><h4>${title}</h4><p style="color:#777;">ログはありません。</p></div>`;
+    }
+
+    const header = columns.map(col => `<th style="padding:0.5rem;">${col}</th>`).join('');
+    const rows = logs.map(log => {
+        const cells = columns.map(col => `<td style="padding:0.5rem;">${log[col] || '-'}</td>`).join('');
+        return `<tr style="border-bottom:1px solid #f3f3f3;">${cells}</tr>`;
+    }).join('');
+
+    return `
+        <div style="margin-top: 1.5rem;">
+            <h4 style="margin-bottom: 0.5rem;">${title}</h4>
+            <table style="width:100%; border-collapse: collapse;">
+                <thead><tr style="border-bottom:1px solid #eee;">${header}</tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+setInterval(refreshExecutions, 10000);
+</script>
+{% endblock %}

@@ -3,4 +3,6 @@ Claude Code Workflow Studio Integration
 ワークフロースタジオ統合モジュール
 """
 
-__all__ = []
+from .workflow_studio_engine import WorkflowStudioEngine
+
+__all__ = ["WorkflowStudioEngine"]

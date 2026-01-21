@@ -139,6 +139,27 @@ CREATE TABLE IF NOT EXISTS search_history (
     FOREIGN KEY (selected_result_id) REFERENCES knowledge_entries(id) ON DELETE SET NULL
 );
 
+-- 対話セッションテーブル
+CREATE TABLE IF NOT EXISTS conversation_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT UNIQUE NOT NULL,
+    user_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    knowledge_id INTEGER,
+    FOREIGN KEY (knowledge_id) REFERENCES knowledge_entries(id) ON DELETE SET NULL
+);
+
+-- 対話メッセージテーブル
+CREATE TABLE IF NOT EXISTS conversation_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    role TEXT CHECK(role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES conversation_sessions(session_id) ON DELETE CASCADE
+);
+
 -- インデックス作成
 CREATE INDEX IF NOT EXISTS idx_knowledge_itsm_type ON knowledge_entries(itsm_type);
 CREATE INDEX IF NOT EXISTS idx_knowledge_status ON knowledge_entries(status);
@@ -155,6 +176,8 @@ CREATE INDEX IF NOT EXISTS idx_duplicate_score ON duplicate_checks(similarity_sc
 CREATE INDEX IF NOT EXISTS idx_deviation_knowledge ON deviation_checks(knowledge_id);
 CREATE INDEX IF NOT EXISTS idx_deviation_status ON deviation_checks(status);
 CREATE INDEX IF NOT EXISTS idx_search_created ON search_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_session ON conversation_sessions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_message ON conversation_messages(session_id, created_at DESC);
 
 -- 全文検索用仮想テーブル（FTS5）
 CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(

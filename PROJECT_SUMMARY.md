@@ -10,12 +10,13 @@
 - [x] ITSM自動分類器（5タイプ対応）
 - [x] データベースクライアント（MCP統合）
 
-#### 2. SubAgents（6/6実装完了）
+#### 2. SubAgents（7/7実装完了）
 - [x] Architect - 設計整合性チェック
 - [x] KnowledgeCurator - タグ・カテゴリ分類
 - [x] ITSMExpert - ITSM妥当性・逸脱検知
 - [x] DevOps - 技術分析・自動化提案
 - [x] QA - 品質保証・重複検知
+- [x] Coordinator - 全体調整・抜け漏れ確認
 - [x] Documenter - 要約生成・フォーマット
 
 #### 3. Hooks（5/5実装完了）
@@ -90,7 +91,7 @@
 ### データフロー
 1. **入力正規化**: タイトル・内容を受け取り
 2. **ITSM分類**: AIによる自動タイプ判定
-3. **並列処理**: 6つのSubAgentが同時に分析
+3. **並列処理**: 7つのSubAgentが同時に分析
 4. **品質保証**: Hooksによる自動チェック
 5. **永続化**: SQLite + Markdownファイル
 6. **可視化**: WebUIで検索・閲覧
@@ -109,12 +110,13 @@
 - ✅ FR-WF-09: 永続化
 - ✅ FR-WF-10: 再利用支援
 
-### SubAgent定義: 6/6実装
+### SubAgent定義: 7/7実装
 - ✅ Architect（設計整合・判断統制）
 - ✅ KnowledgeCurator（整理・分類）
 - ✅ ITSM-Expert（妥当性・逸脱検知）
 - ✅ DevOps（技術分析・自動化）
 - ✅ QA（品質保証・重複検知）
+- ✅ Coordinator（全体調整・抜け漏れ確認）
 - ✅ Documenter（出力整形・要約）
 
 ### Hooks機能: 5/5実装
@@ -192,7 +194,7 @@ python3 src/webui/app.py
 3. ITSMタイプ選択（または自動）
 4. 作成ボタンクリック
 5. 自動的に以下が実行:
-   - 6つのSubAgentによる分析
+   - 7つのSubAgentによる分析
    - 品質チェック
    - 要約生成
    - データベース保存

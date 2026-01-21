@@ -8,7 +8,7 @@ Claude Code Workflow を中核とした、ITSM（IT Service Management）プロ�
 
 ### 1. Claude Code Workflow 中心設計
 - **自動ナレッジ生成**: 入力された情報を自動的に分析・分類・要約
-- **並列SubAgent処理**: 6つの専門SubAgentが役割分担して高品質なナレッジを生成
+- **並列SubAgent処理**: 7つの専門SubAgentが役割分担して高品質なナレッジを生成
 - **品質保証Hooks**: 自動的な重複検知、ITSM原則準拠チェック
 
 ### 2. ITSM プロセス統合
@@ -27,7 +27,7 @@ Claude Code Workflow を中核とした、ITSM（IT Service Management）プロ�
 Mirai-IT-Knowledge-Systems/
 ├── src/
 │   ├── core/              # コアワークフローエンジン
-│   ├── subagents/         # 6つのSubAgent（Claude Skills）
+│   ├── subagents/         # 7つのSubAgent（Claude Skills）
 │   ├── hooks/             # 品質保証・並列制御Hooks
 │   ├── mcp/               # MCP統合（SQLite, GitHub等）
 │   └── webui/             # Flask WebUI
@@ -91,12 +91,13 @@ python3 src/webui/app.py
 システムが自動的に以下を実行します：
 
 - ✅ 入力検証（Pre-Task Hook）
-- ✅ 6つのSubAgentによる並列分析
+- ✅ 7つのSubAgentによる並列分析
   - Architect: 設計整合性チェック
   - KnowledgeCurator: タグ・カテゴリ分類
   - ITSMExpert: ITSM妥当性チェック
   - DevOps: 技術分析・自動化提案
   - QA: 品質保証・重複検知
+  - Coordinator: 調整ポイント・抜け漏れ確認
   - Documenter: 要約生成・フォーマット
 - ✅ 品質チェック（Hooks）
   - 重複検知
@@ -139,6 +140,7 @@ if result['success']:
 | **ITSMExpert** | ITSM妥当性・逸脱検知 | ITSM原則チェック、逸脱検知、ベストプラクティス評価 |
 | **DevOps** | 技術分析・自動化視点 | 技術要素抽出、自動化可能性評価、リスク分析、改善提案 |
 | **QA** | 品質保証・重複検知 | 完全性チェック、重複検知、品質スコア算出 |
+| **Coordinator** | 全体調整・抜け漏れ確認 | 影響範囲/担当/タイムラインの調整ポイント確認 |
 | **Documenter** | 出力整形・要約 | 技術者/非技術者向け要約、3行要約、Markdown/HTML生成 |
 
 ## 🔧 Hooks 機能
