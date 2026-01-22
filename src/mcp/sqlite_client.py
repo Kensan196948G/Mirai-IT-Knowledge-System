@@ -568,6 +568,10 @@ class SQLiteClient:
             row = cursor.fetchone()
             return self._row_to_dict(row) if row else None
 
+    def get_knowledge(self, knowledge_id: int) -> Optional[Dict[str, Any]]:
+        """IDでナレッジを取得（エイリアス）"""
+        return self.get_knowledge_by_id(knowledge_id)
+
     def get_all_knowledge(self, limit: int = 100) -> List[Dict[str, Any]]:
         """全ナレッジを取得"""
         return self.search_knowledge(limit=limit)
