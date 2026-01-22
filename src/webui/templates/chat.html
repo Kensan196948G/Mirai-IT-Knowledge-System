@@ -519,7 +519,14 @@ function addMessage(role, content) {
     `;
 
     messagesDiv.appendChild(messageDiv);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // スムーズな自動スクロール（DOM更新後に実行）
+    requestAnimationFrame(() => {
+        messagesDiv.scrollTo({
+            top: messagesDiv.scrollHeight,
+            behavior: 'smooth'
+        });
+    });
 
     conversationHistory.push({ role, content, timestamp: now });
 }
