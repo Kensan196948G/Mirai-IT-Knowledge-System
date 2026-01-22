@@ -1,0 +1,37 @@
+[Unit]
+Description=Mirai IT Knowledge System - Development Environment
+Documentation=https://github.com/Kensan196948G/Mirai-IT-Knowledge-System
+After=network.target
+
+[Service]
+Type=simple
+User=kensan
+Group=kensan
+WorkingDirectory=/mnt/LinuxHDD/Mirai-IT-Knowledge-System
+
+# 環境変数
+Environment="ENVIRONMENT=development"
+Environment="FLASK_ENV=development"
+Environment="FLASK_APP=src/webui/app.py"
+Environment="PYTHONPATH=/mnt/LinuxHDD/Mirai-IT-Knowledge-System"
+
+# 起動コマンド
+ExecStart=/usr/bin/python3 /mnt/LinuxHDD/Mirai-IT-Knowledge-System/src/webui/app.py
+
+# 再起動設定
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# ログ設定
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mirai-knowledge-dev
+
+# セキュリティ設定
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
