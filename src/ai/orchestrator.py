@@ -12,12 +12,144 @@ AI Orchestrator - マルチAI役割分担オーケストレーター
 import os
 import asyncio
 import logging
+import hashlib
+import time
 from enum import Enum
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass, field
 import json
+from functools import lru_cache
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# キャッシュ設定
+# ============================================================
+# FAQ回答は長期キャッシュ（安定したコンテンツ）
+FAQ_CACHE_TTL = 86400  # 24時間
+
+# 調査結果は短期キャッシュ（時間に敏感な情報）
+INVESTIGATION_CACHE_TTL = 3600  # 1時間
+
+# 根拠情報は中期キャッシュ
+EVIDENCE_CACHE_TTL = 7200  # 2時間
+
+# 一般クエリは中期キャッシュ
+GENERAL_CACHE_TTL = 3600  # 1時間
+
+
+@dataclass
+class CacheEntry:
+    """キャッシュエントリ"""
+    value: Any
+    expires_at: float
+    hit_count: int = 0
+
+
+class ResponseCache:
+    """
+    AI応答キャッシュ
+
+    TTL付きのインメモリキャッシュ。
+    本番環境ではRedisへの移行を推奨。
+    """
+
+    def __init__(self, max_size: int = 1000):
+        self._cache: Dict[str, CacheEntry] = {}
+        self._max_size = max_size
+        self._stats = {"hits": 0, "misses": 0}
+
+    def _make_key(self, query: str, query_type: str, context: Optional[Dict] = None) -> str:
+        """キャッシュキーを生成"""
+        # クエリとタイプをハッシュ化
+        key_data = f"{query.lower().strip()}:{query_type}"
+        if context:
+            key_data += f":{json.dumps(context, sort_keys=True)}"
+        return hashlib.sha256(key_data.encode()).hexdigest()[:32]
+
+    def get(self, query: str, query_type: str, context: Optional[Dict] = None) -> Optional[Any]:
+        """キャッシュから取得"""
+        key = self._make_key(query, query_type, context)
+        entry = self._cache.get(key)
+
+        if entry is None:
+            self._stats["misses"] += 1
+            return None
+
+        # TTLチェック
+        if time.time() > entry.expires_at:
+            del self._cache[key]
+            self._stats["misses"] += 1
+            return None
+
+        entry.hit_count += 1
+        self._stats["hits"] += 1
+        logger.info(f"キャッシュヒット: {key[:8]}... (hit_count={entry.hit_count})")
+        return entry.value
+
+    def set(self, query: str, query_type: str, value: Any, ttl: int, context: Optional[Dict] = None) -> None:
+        """キャッシュに保存"""
+        # サイズ制限チェック
+        if len(self._cache) >= self._max_size:
+            self._evict_expired()
+            if len(self._cache) >= self._max_size:
+                self._evict_lru()
+
+        key = self._make_key(query, query_type, context)
+        self._cache[key] = CacheEntry(
+            value=value,
+            expires_at=time.time() + ttl
+        )
+        logger.info(f"キャッシュ保存: {key[:8]}... (ttl={ttl}s)")
+
+    def _evict_expired(self) -> None:
+        """期限切れエントリを削除"""
+        now = time.time()
+        expired_keys = [k for k, v in self._cache.items() if v.expires_at < now]
+        for key in expired_keys:
+            del self._cache[key]
+        if expired_keys:
+            logger.info(f"期限切れキャッシュ削除: {len(expired_keys)}件")
+
+    def _evict_lru(self) -> None:
+        """LRUエントリを削除"""
+        if not self._cache:
+            return
+        # ヒット数が最も少ないエントリを削除
+        lru_key = min(self._cache.keys(), key=lambda k: self._cache[k].hit_count)
+        del self._cache[lru_key]
+        logger.info("LRUキャッシュ削除")
+
+    def get_stats(self) -> Dict[str, Any]:
+        """キャッシュ統計を取得"""
+        total = self._stats["hits"] + self._stats["misses"]
+        hit_rate = self._stats["hits"] / total if total > 0 else 0
+        return {
+            "size": len(self._cache),
+            "max_size": self._max_size,
+            "hits": self._stats["hits"],
+            "misses": self._stats["misses"],
+            "hit_rate": round(hit_rate * 100, 2)
+        }
+
+    def clear(self) -> None:
+        """キャッシュをクリア"""
+        self._cache.clear()
+        self._stats = {"hits": 0, "misses": 0}
+        logger.info("キャッシュクリア完了")
+
+
+# グローバルキャッシュインスタンス
+_response_cache: Optional[ResponseCache] = None
+
+
+def get_cache() -> ResponseCache:
+    """キャッシュのシングルトンを取得"""
+    global _response_cache
+    if _response_cache is None:
+        _response_cache = ResponseCache()
+    return _response_cache
 
 
 class QueryType(Enum):
@@ -156,25 +288,53 @@ class AIOrchestrator:
 
         return QueryType.GENERAL
 
-    async def process(self, query: str, context: Optional[Dict[str, Any]] = None) -> OrchestratedResponse:
+    def _get_cache_ttl(self, query_type: QueryType) -> int:
+        """クエリタイプに応じたキャッシュTTLを取得"""
+        ttl_map = {
+            QueryType.FAQ: FAQ_CACHE_TTL,
+            QueryType.INVESTIGATION: INVESTIGATION_CACHE_TTL,
+            QueryType.EVIDENCE: EVIDENCE_CACHE_TTL,
+            QueryType.GENERAL: GENERAL_CACHE_TTL,
+        }
+        return ttl_map.get(query_type, GENERAL_CACHE_TTL)
+
+    async def process(self, query: str, context: Optional[Dict[str, Any]] = None, use_cache: bool = True) -> OrchestratedResponse:
         """
         問い合わせを処理
 
         Args:
             query: ユーザーの問い合わせ
             context: 追加コンテキスト
+            use_cache: キャッシュを使用するか（デフォルト: True）
 
         Returns:
             OrchestratedResponse
         """
-        import time
         start_time = time.time()
 
         # 1. 問い合わせタイプ判定
         query_type = self.classify_query(query)
         logger.info(f"問い合わせタイプ: {query_type.value}")
 
-        # 2. 並列処理タスク準備（Claude + Gemini + Perplexity構成）
+        # 2. キャッシュチェック
+        cache = get_cache()
+        if use_cache:
+            cached = cache.get(query, query_type.value, context)
+            if cached:
+                # キャッシュヒット - 処理時間を短縮
+                processing_time = int((time.time() - start_time) * 1000)
+                logger.info(f"キャッシュヒット: 処理時間 {processing_time}ms")
+                return OrchestratedResponse(
+                    answer=cached.get('answer', ''),
+                    evidence=cached.get('evidence', []),
+                    sources=cached.get('sources', []),
+                    confidence=cached.get('confidence', 0.0),
+                    query_type=query_type,
+                    ai_used=cached.get('ai_used', ['cached']),
+                    processing_time_ms=processing_time
+                )
+
+        # 3. 並列処理タスク準備（Claude + Gemini + Perplexity構成）
         tasks = []
         ai_used = []
 
@@ -188,17 +348,29 @@ class AIOrchestrator:
             tasks.append(self._perplexity_evidence(query))
             ai_used.append("perplexity")
 
-        # 3. 並列実行
+        # 4. 並列実行
         results = []
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             results = [r for r in results if isinstance(r, AIResult) and r.success]
 
-        # 4. Claude（Anthropic）で統合
+        # 5. Claude（Anthropic）で統合
         final_response = await self._codex_integrate(query, query_type, results)
         ai_used.append("claude")
 
         processing_time = int((time.time() - start_time) * 1000)
+
+        # 6. キャッシュに保存
+        if use_cache:
+            cache_data = {
+                'answer': final_response.get('answer', ''),
+                'evidence': final_response.get('evidence', []),
+                'sources': final_response.get('sources', []),
+                'confidence': final_response.get('confidence', 0.0),
+                'ai_used': ai_used
+            }
+            ttl = self._get_cache_ttl(query_type)
+            cache.set(query, query_type.value, cache_data, ttl, context)
 
         return OrchestratedResponse(
             answer=final_response.get('answer', ''),
@@ -517,7 +689,19 @@ def get_orchestrator() -> AIOrchestrator:
 
 
 # 同期ラッパー
-def process_query(query: str, context: Optional[Dict[str, Any]] = None) -> OrchestratedResponse:
+def process_query(query: str, context: Optional[Dict[str, Any]] = None, use_cache: bool = True) -> OrchestratedResponse:
     """同期的に問い合わせを処理"""
     orchestrator = get_orchestrator()
-    return asyncio.run(orchestrator.process(query, context))
+    return asyncio.run(orchestrator.process(query, context, use_cache))
+
+
+def get_cache_stats() -> Dict[str, Any]:
+    """キャッシュ統計を取得"""
+    cache = get_cache()
+    return cache.get_stats()
+
+
+def clear_cache() -> None:
+    """キャッシュをクリア"""
+    cache = get_cache()
+    cache.clear()
