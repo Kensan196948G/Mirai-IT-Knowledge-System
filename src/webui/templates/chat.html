@@ -199,6 +199,113 @@
             order: -1;
         }
     }
+
+    /* AI回答スタイル */
+    .ai-answer-box {
+        background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+
+    .ai-answer-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        color: #1565c0;
+        font-weight: 600;
+    }
+
+    .ai-answer-content {
+        background: white;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+        line-height: 1.8;
+    }
+
+    .ai-evidence-section {
+        background: #fff8e1;
+        border-left: 3px solid #ffc107;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        border-radius: 0 4px 4px 0;
+        font-size: 0.9rem;
+    }
+
+    .ai-evidence-item {
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        background: white;
+        border-radius: 4px;
+    }
+
+    .ai-evidence-source {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .ai-evidence-url {
+        font-size: 0.85rem;
+        color: #1976d2;
+        word-break: break-all;
+    }
+
+    .ai-meta {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .ai-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .confidence-high { color: #4caf50; }
+    .confidence-medium { color: #ff9800; }
+    .confidence-low { color: #f44336; }
+
+    .ai-question-input {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .ai-question-input input {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .ai-question-btn {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+
+    .ai-question-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    .ai-question-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
@@ -285,6 +392,17 @@
                 📝 通常作成に切り替え
             </button>
         </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid #e0e0e0;">
+            <h4 style="color: #1565c0; margin-bottom: 0.75rem; font-size: 0.9rem;">🤖 AIに質問</h4>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">
+                ITに関する質問をAIが回答します
+            </p>
+            <div class="ai-question-input">
+                <input type="text" id="aiQuestionInput" placeholder="質問を入力..." onkeydown="if(event.key==='Enter')askAI()">
+                <button class="ai-question-btn" onclick="askAI()" id="askAiBtn">質問</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -324,6 +442,21 @@ socket.on('chat_generated', (data) => {
 socket.on('chat_error', (data) => {
     setSendState(false);
     addMessage('assistant', `エラーが発生しました: ${data.error || 'unknown error'}`);
+});
+
+// AI回答イベント
+socket.on('ai_answer', (data) => {
+    setAiState(false);
+    if (data.success) {
+        displayAiAnswer(data);
+    } else {
+        addMessage('assistant', `AI回答エラー: ${data.error || '回答を生成できませんでした'}`);
+    }
+});
+
+socket.on('ai_error', (data) => {
+    setAiState(false);
+    addMessage('assistant', `AI回答エラー: ${data.error || 'unknown error'}`);
 });
 
 // Enterキーで送信
@@ -523,6 +656,124 @@ function resetChat() {
         updateProgress({ percentage: 0, collected: collectedData });
         document.getElementById('skipBtn').disabled = true;
     }
+}
+
+// ========== AI質問機能 ==========
+
+function setAiState(isAsking) {
+    const btn = document.getElementById('askAiBtn');
+    const input = document.getElementById('aiQuestionInput');
+    btn.disabled = isAsking;
+    btn.textContent = isAsking ? '処理中...' : '質問';
+    input.disabled = isAsking;
+}
+
+async function askAI() {
+    const input = document.getElementById('aiQuestionInput');
+    const question = input.value.trim();
+
+    if (!question) return;
+
+    // ユーザーの質問を表示
+    addMessage('user', `🔍 AI質問: ${question}`);
+    input.value = '';
+
+    setAiState(true);
+
+    // REST API経由でAI回答を取得（より安定）
+    try {
+        const response = await fetch('/api/chat/ai-answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: question,
+                session_id: sessionId
+            })
+        });
+
+        const data = await response.json();
+        setAiState(false);
+
+        if (data.success) {
+            displayAiAnswer(data);
+        } else {
+            addMessage('assistant', `AI回答エラー: ${data.error || '回答を生成できませんでした'}`);
+        }
+    } catch (error) {
+        setAiState(false);
+        addMessage('assistant', `AI回答エラー: ${error.message}`);
+    }
+}
+
+function displayAiAnswer(data) {
+    // 信頼度に応じたクラス
+    let confidenceClass = 'confidence-low';
+    if (data.confidence >= 0.8) confidenceClass = 'confidence-high';
+    else if (data.confidence >= 0.6) confidenceClass = 'confidence-medium';
+
+    // AI使用情報
+    const aiUsedText = data.ai_used ? data.ai_used.join(' → ') : 'AI';
+
+    // 処理時間
+    const processingTime = data.processing_time_ms ? `${(data.processing_time_ms / 1000).toFixed(1)}秒` : '-';
+
+    // 回答HTML構築
+    let answerHtml = `
+        <div class="ai-answer-box">
+            <div class="ai-answer-header">
+                🤖 AI回答（${aiUsedText}）
+            </div>
+            <div class="ai-answer-content">
+                ${data.answer.replace(/\n/g, '<br>')}
+            </div>
+    `;
+
+    // エビデンスがある場合
+    if (data.evidence && data.evidence.length > 0) {
+        answerHtml += `
+            <div class="ai-evidence-section">
+                <strong>📚 根拠・エビデンス</strong>
+        `;
+        data.evidence.forEach(ev => {
+            answerHtml += `
+                <div class="ai-evidence-item">
+                    <div class="ai-evidence-source">${ev.source || 'ソース'}</div>
+                    ${ev.url ? `<div class="ai-evidence-url"><a href="${ev.url}" target="_blank">${ev.url}</a></div>` : ''}
+                    ${ev.snippet ? `<div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">${ev.snippet}</div>` : ''}
+                </div>
+            `;
+        });
+        answerHtml += '</div>';
+    }
+
+    // ソースURLがある場合
+    if (data.sources && data.sources.length > 0) {
+        answerHtml += `
+            <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+                <strong>🔗 参照元:</strong>
+                ${data.sources.map(s => `<a href="${s}" target="_blank" style="margin-left: 0.5rem; color: #1976d2;">${s}</a>`).join('')}
+            </div>
+        `;
+    }
+
+    // メタ情報
+    answerHtml += `
+            <div class="ai-meta">
+                <div class="ai-meta-item">
+                    <span>信頼度:</span>
+                    <span class="${confidenceClass}">${Math.round(data.confidence * 100)}%</span>
+                </div>
+                <div class="ai-meta-item">
+                    <span>処理時間:</span>
+                    <span>${processingTime}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    addMessage('assistant', answerHtml);
 }
 
 // 初期メッセージ

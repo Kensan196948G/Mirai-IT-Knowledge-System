@@ -428,6 +428,100 @@ def chat_save():
     return jsonify(result)
 
 
+@app.route("/api/chat/ai-answer", methods=["POST"])
+def chat_ai_answer():
+    """AI駆動の回答を生成（AIオーケストレーター使用）"""
+    data = request.get_json()
+    question = data.get("question", "")
+    session_id = data.get("session_id")
+
+    if not question:
+        return jsonify({"success": False, "error": "質問が必要です"})
+
+    try:
+        # セッションからワークフローを取得
+        workflow = None
+        if session_id and session_id in chat_sessions:
+            workflow = chat_sessions[session_id].get("workflow")
+
+        if workflow:
+            # ワークフローのAI回答機能を使用
+            result = workflow.get_ai_answer(question)
+        else:
+            # 直接AIオーケストレーターを使用
+            from src.ai.orchestrator import get_orchestrator
+            import asyncio
+
+            orchestrator = get_orchestrator()
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                ai_result = loop.run_until_complete(orchestrator.process(question))
+            finally:
+                loop.close()
+
+            result = {
+                'success': True,
+                'answer': ai_result.answer,
+                'evidence': ai_result.evidence,
+                'sources': ai_result.sources,
+                'confidence': ai_result.confidence,
+                'ai_used': ai_result.ai_used,
+                'processing_time_ms': ai_result.processing_time_ms
+            }
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "answer": "回答を生成できませんでした。"
+        })
+
+
+@socketio.on("ai_question")
+def handle_ai_question(data):
+    """WebSocket経由のAI質問処理"""
+    session_id = data.get("session_id")
+    question = data.get("question", "")
+
+    if not question:
+        emit("ai_error", {"error": "質問が必要です"})
+        return
+
+    try:
+        # AIオーケストレーターで回答生成
+        from src.ai.orchestrator import get_orchestrator
+        import asyncio
+
+        orchestrator = get_orchestrator()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(orchestrator.process(question))
+        finally:
+            loop.close()
+
+        emit("ai_answer", {
+            'success': True,
+            'answer': result.answer,
+            'evidence': result.evidence,
+            'sources': result.sources,
+            'confidence': result.confidence,
+            'ai_used': result.ai_used,
+            'processing_time_ms': result.processing_time_ms
+        }, to=session_id if session_id else request.sid)
+
+    except Exception as e:
+        emit("ai_error", {
+            "success": False,
+            "error": str(e)
+        })
+
+
 @socketio.on("join_chat")
 def handle_join_chat(data):
     """チャットセッション参加"""
