@@ -3,10 +3,15 @@ Intelligent Search Assistant Workflow
 インテリジェント検索アシスタント
 
 自然言語での問い合わせに対して最適なナレッジを提案
+AI駆動による意図理解と根拠分離出力
 """
 
 from typing import Dict, Any, List
 import sys
+import os
+import json
+import asyncio
+import logging
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
@@ -16,14 +21,29 @@ from src.mcp.sqlite_client import SQLiteClient
 from src.mcp.context7_client import Context7Client
 from src.mcp.claude_mem_client import ClaudeMemClient
 
+logger = logging.getLogger(__name__)
+
 
 class IntelligentSearchAssistant:
-    """インテリジェント検索アシスタント"""
+    """インテリジェント検索アシスタント（AI駆動版）"""
 
     def __init__(self):
         self.db_client = SQLiteClient()
         self.context7 = Context7Client()
         self.claude_mem = ClaudeMemClient()
+
+        # AI Orchestrator
+        self._orchestrator = None
+        self._init_orchestrator()
+
+    def _init_orchestrator(self):
+        """AIオーケストレーターを初期化"""
+        try:
+            from src.ai.orchestrator import get_orchestrator
+            self._orchestrator = get_orchestrator()
+            logger.info("AIオーケストレーター初期化完了")
+        except Exception as e:
+            logger.warning(f"AIオーケストレーター初期化失敗: {e}")
 
     def search(self, query: str) -> Dict[str, Any]:
         """
@@ -33,10 +53,10 @@ class IntelligentSearchAssistant:
             query: 自然言語の質問（例: 「データベースが遅い時はどうすればいい？」）
 
         Returns:
-            総合的な回答とナレッジ
+            総合的な回答とナレッジ（根拠分離）
         """
-        # Step 1: 意図理解
-        intent = self._understand_intent(query)
+        # Step 1: 意図理解（AI駆動）
+        intent = self._understand_intent_with_ai(query) if self._orchestrator else self._understand_intent(query)
 
         # Step 2: 関連ナレッジ検索
         knowledge_results = self._search_knowledge(query, intent)
@@ -44,17 +64,137 @@ class IntelligentSearchAssistant:
         # Step 3: MCP連携で補強
         enrichments = self._enrich_with_mcp(query, intent)
 
-        # Step 4: 回答生成
-        answer = self._generate_answer(query, knowledge_results, enrichments)
+        # Step 4: AI統合回答生成（根拠分離）
+        if self._orchestrator:
+            answer = self._generate_answer_with_ai(query, knowledge_results, enrichments)
+        else:
+            answer = self._generate_answer(query, knowledge_results, enrichments)
 
         return {
             'query': query,
             'intent': intent,
-            'answer': answer,
+            'answer': answer['text'],
+            'evidence': answer.get('evidence', []),  # 根拠分離
+            'sources': answer.get('sources', []),    # ソース分離
+            'confidence': answer.get('confidence', 0.5),
             'knowledge': knowledge_results,
             'enrichments': enrichments,
-            'suggestions': self._generate_suggestions(intent)
+            'suggestions': self._generate_suggestions(intent),
+            'ai_used': answer.get('ai_used', [])
         }
+
+    def _understand_intent_with_ai(self, query: str) -> Dict[str, Any]:
+        """AIを使って意図を理解"""
+        try:
+            # AIオーケストレーターのクエリ分類を使用
+            query_type = self._orchestrator.classify_query(query)
+
+            # 詳細な意図分析
+            intent_type = 'general'
+            if query_type.value == 'faq':
+                intent_type = 'how_to'
+            elif query_type.value == 'evidence':
+                intent_type = 'why'
+            elif query_type.value == 'investigation':
+                intent_type = 'troubleshoot'
+
+            # 技術要素の抽出（キーワードベース + 拡張）
+            technologies = self._extract_technologies(query)
+
+            # 問題の種類
+            problem_type = self._classify_problem_type(query)
+
+            return {
+                'type': intent_type,
+                'query_type': query_type.value,
+                'technologies': technologies,
+                'problem_type': problem_type,
+                'ai_classified': True
+            }
+        except Exception as e:
+            logger.error(f"AI意図理解エラー: {e}")
+            return self._understand_intent(query)
+
+    def _extract_technologies(self, query: str) -> List[str]:
+        """技術要素を抽出"""
+        query_lower = query.lower()
+        technologies = []
+        tech_keywords = {
+            'database': ['データベース', 'db', 'mysql', 'postgresql', 'sql', 'oracle', 'sqlite'],
+            'web': ['web', 'ウェブ', 'apache', 'nginx', 'http', 'https', 'html', 'css'],
+            'network': ['ネットワーク', 'network', 'lan', 'vpn', 'wifi', 'dns', 'dhcp'],
+            'server': ['サーバー', 'server', 'サーバ', 'linux', 'windows', 'ubuntu'],
+            'security': ['セキュリティ', 'security', '認証', 'auth', 'ssl', 'tls', '暗号'],
+            'cloud': ['クラウド', 'cloud', 'aws', 'azure', 'gcp', 'docker', 'kubernetes'],
+            'application': ['アプリ', 'application', 'ソフトウェア', 'software', 'システム']
+        }
+
+        for tech, keywords in tech_keywords.items():
+            if any(kw in query_lower for kw in keywords):
+                technologies.append(tech)
+
+        return technologies
+
+    def _classify_problem_type(self, query: str) -> str:
+        """問題の種類を分類"""
+        query_lower = query.lower()
+
+        if any(word in query_lower for word in ['遅い', 'slow', 'パフォーマンス', '重い', 'タイムアウト']):
+            return 'performance'
+        elif any(word in query_lower for word in ['エラー', 'error', '障害', 'ダウン', '停止', 'クラッシュ']):
+            return 'error'
+        elif any(word in query_lower for word in ['設定', 'config', '変更', 'セットアップ', 'インストール']):
+            return 'configuration'
+        elif any(word in query_lower for word in ['セキュリティ', '脆弱性', '攻撃', '不正', 'マルウェア']):
+            return 'security'
+        elif any(word in query_lower for word in ['なぜ', '理由', '原因', 'どうして']):
+            return 'investigation'
+        else:
+            return 'general'
+
+    def _generate_answer_with_ai(
+        self,
+        query: str,
+        knowledge: List[Dict[str, Any]],
+        enrichments: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """AIを使って根拠分離された回答を生成"""
+        try:
+            # オーケストレーターで処理
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    self._orchestrator.process(query, context={
+                        'knowledge': knowledge,
+                        'enrichments': enrichments
+                    })
+                )
+            finally:
+                loop.close()
+
+            return {
+                'text': result.answer,
+                'evidence': result.evidence,
+                'sources': result.sources,
+                'confidence': result.confidence,
+                'ai_used': result.ai_used,
+                'knowledge_count': len(knowledge),
+                'has_enrichments': bool(enrichments.get('technical_docs') or enrichments.get('memories'))
+            }
+        except Exception as e:
+            logger.error(f"AI回答生成エラー: {e}")
+            # フォールバック
+            fallback = self._generate_answer(query, knowledge, enrichments)
+            return {
+                'text': fallback['text'],
+                'evidence': [],
+                'sources': [],
+                'confidence': 0.5,
+                'ai_used': ['fallback'],
+                'knowledge_count': fallback['knowledge_count'],
+                'has_enrichments': fallback['has_enrichments']
+            }
 
     def _understand_intent(self, query: str) -> Dict[str, Any]:
         """クエリの意図を理解"""

@@ -3,11 +3,15 @@ Interactive Knowledge Creation Workflow
 対話的ナレッジ生成ワークフロー
 
 Claude Code Workflow Studio を活用した対話型インターフェース
+AI駆動による自然言語理解と情報抽出
 """
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import sys
+import os
+import json
+import logging
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
@@ -17,9 +21,11 @@ from src.core.workflow import WorkflowEngine
 from src.core.itsm_classifier import ITSMClassifier
 from src.mcp.sqlite_client import SQLiteClient
 
+logger = logging.getLogger(__name__)
+
 
 class InteractiveKnowledgeCreationWorkflow:
-    """対話的ナレッジ生成ワークフロー"""
+    """対話的ナレッジ生成ワークフロー（AI駆動版）"""
 
     def __init__(self):
         self.conversation_history = []
@@ -35,6 +41,36 @@ class InteractiveKnowledgeCreationWorkflow:
         }
         self.db_client = SQLiteClient()
         self.itsm_classifier = ITSMClassifier()
+
+        # AI クライアント初期化
+        self._ai_client = None
+        self._init_ai_client()
+
+    def _init_ai_client(self):
+        """AIクライアントを初期化（Anthropicをプライマリとして使用）"""
+        # プライマリ: Anthropic（Claude）- クォータ問題が少ない
+        anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+        if anthropic_key:
+            try:
+                import anthropic
+                self._ai_client = anthropic.Anthropic(api_key=anthropic_key)
+                self._ai_provider = 'anthropic'
+                logger.info("対話AI（Anthropic）初期化完了")
+                return
+            except Exception as e:
+                logger.warning(f"Anthropic初期化失敗: {e}")
+
+        # フォールバック: OpenAI
+        openai_key = os.getenv('OPENAI_API_KEY')
+        if openai_key:
+            try:
+                from openai import OpenAI
+                self._ai_client = OpenAI(api_key=openai_key)
+                self._ai_provider = 'openai'
+                logger.info("対話AI（OpenAI）初期化完了")
+            except Exception as e:
+                logger.warning(f"OpenAI初期化失敗: {e}")
+                self._ai_provider = None
 
     def start_conversation(self, initial_input: str) -> Dict[str, Any]:
         """
@@ -110,12 +146,102 @@ class InteractiveKnowledgeCreationWorkflow:
             return self._generate_knowledge()
 
     def _extract_info_from_input(self, text: str):
-        """入力テキストから情報を抽出（簡易版）"""
+        """入力テキストから情報を抽出（AI駆動版）"""
+        # AIが利用可能な場合はAI抽出を使用
+        if self._ai_client:
+            self._extract_info_with_ai(text)
+        else:
+            # フォールバック: キーワードベース
+            self._extract_info_keyword_based(text)
+
+    def _extract_info_with_ai(self, text: str):
+        """AIを使って情報を抽出"""
+        try:
+            # 現在の会話履歴を整形
+            context = "\n".join([
+                f"{msg['role']}: {msg['content']}"
+                for msg in self.conversation_history[-5:]  # 直近5件
+            ])
+
+            # 現在の収集状況
+            current_info = json.dumps({
+                k: v for k, v in self.collected_info.items() if v
+            }, ensure_ascii=False, indent=2)
+
+            prompt = f"""あなたはITサポートの情報抽出アシスタントです。
+ユーザーの入力からインシデント/ナレッジに必要な情報を抽出してください。
+
+【会話履歴】
+{context}
+
+【最新の入力】
+{text}
+
+【現在の収集済み情報】
+{current_info if current_info != '{{}}' else 'なし'}
+
+以下のフィールドについて、入力から抽出できる情報をJSON形式で返してください。
+抽出できない場合はnullを設定してください。既に収集済みのフィールドは上書きしないでください。
+
+フィールド:
+- title: 問題のタイトル（簡潔に）
+- when: いつ発生したか（日時）
+- system: どのシステム/サービスで発生したか（※任意のシステム名を認識してください。例: Windows11, AresStandard2025, 社内ポータルなど）
+- symptom: 具体的な症状やエラー内容
+- impact: 影響範囲
+- response: 実施した対応内容
+- cause: 原因（判明している場合）
+- measures: 今後の対策
+
+JSON形式で回答してください（説明文は不要）:"""
+
+            # プロバイダーに応じたAPI呼び出し
+            if getattr(self, '_ai_provider', None) == 'anthropic':
+                # Anthropic API
+                response = self._ai_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                content = response.content[0].text
+            else:
+                # OpenAI API
+                response = self._ai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "あなたはITサポートの情報抽出アシスタントです。JSON形式で回答してください。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=1000,
+                    temperature=0.3
+                )
+                content = response.choices[0].message.content
+
+            # JSON抽出
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+
+            extracted = json.loads(content.strip())
+
+            # 抽出した情報をマージ（既存情報は上書きしない）
+            for key, value in extracted.items():
+                if key in self.collected_info and value and not self.collected_info[key]:
+                    self.collected_info[key] = value
+                    logger.info(f"AI抽出: {key} = {value[:50]}..." if len(str(value)) > 50 else f"AI抽出: {key} = {value}")
+
+        except Exception as e:
+            logger.error(f"AI情報抽出エラー: {e}")
+            # フォールバック
+            self._extract_info_keyword_based(text)
+
+    def _extract_info_keyword_based(self, text: str):
+        """キーワードベースの情報抽出（フォールバック）"""
         text_lower = text.lower()
 
         # タイトル推定
         if not self.collected_info['title']:
-            # 最初の文をタイトルとして使用
             first_sentence = text.split('。')[0].split('\n')[0]
             if len(first_sentence) > 10:
                 self.collected_info['title'] = first_sentence[:100]
@@ -125,11 +251,18 @@ class InteractiveKnowledgeCreationWorkflow:
             if not self.collected_info['when']:
                 self.collected_info['when'] = text[:200]
 
-        # システム情報
+        # システム情報（任意のシステム名も受け入れる）
         systems = ['web', 'db', 'データベース', 'サーバー', 'ネットワーク', 'メール']
         if any(sys in text_lower for sys in systems):
             if not self.collected_info['system']:
                 self.collected_info['system'] = text[:200]
+        # キーワードがなくても、システムに関する質問への回答として扱う
+        elif not self.collected_info['system'] and len(text) > 2:
+            # 直前の質問がシステムについてだった場合、回答をシステムとして記録
+            if self.conversation_history:
+                last_msg = self.conversation_history[-1]
+                if last_msg['role'] == 'assistant' and 'システム' in last_msg['content']:
+                    self.collected_info['system'] = text[:200]
 
         # 症状
         if any(word in text_lower for word in ['エラー', '障害', '遅い', '停止', 'ダウン']):
