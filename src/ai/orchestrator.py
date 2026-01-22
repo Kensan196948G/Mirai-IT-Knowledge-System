@@ -2,11 +2,25 @@
 """
 AI Orchestrator - マルチAI役割分担オーケストレーター
 
+情シス担当者の業務効率化と24時間対応可能なITサポート体制の構築
+
+設計原則:
+- クロスプラットフォーム対応: Ubuntu Linux / Windows 11
+- APIモデル: Claude、Gemini、Perplexity
+- CLI中心設計: GUI依存なし
+- 根拠分離: 回答本文とエビデンスの分離出力
+
 役割分担:
-- Codex (GPT-4o): 最終回答生成・統合
-- GPT (GPT-4o-mini): 定型整形・FAQ処理
-- Gemini: 情報収集・調査
-- Perplexity: 根拠生成・エビデンス収集
+- Codex（一次判断）: クエリ分類・ルーティング（FAQ/調査/根拠の振り分け）
+- Claude: 最終統合・定型回答（高品質な回答生成、JSON構造化出力）
+- Gemini: 情報収集・調査（技術情報の収集・整理）
+- Perplexity: 根拠・エビデンス収集（Web検索による最新情報・参照元取得）
+
+処理フロー:
+1. 一次判断（Codex）: 問い合わせをFAQ/調査/根拠に分類
+2. 並列処理: 分類に応じた専門AIが同時に処理
+3. 統合（Claude）: 収集情報を統合し最終回答を生成
+4. 根拠分離出力: 回答本文とエビデンスを分離して出力
 """
 
 import os
@@ -271,21 +285,35 @@ class AIOrchestrator:
                 logger.warning(f"Perplexity 初期化失敗: {e}")
 
     def classify_query(self, query: str) -> QueryType:
-        """問い合わせを分類"""
-        query_lower = query.lower()
+        """
+        Codex一次判断: 問い合わせをFAQ/調査/根拠に分類
 
-        # FAQチェック
+        アーキテクチャ上の役割:
+        - ユーザー問い合わせを受け取り、処理タイプを判定
+        - 判定結果に基づいて適切なAIへルーティング
+
+        Returns:
+            QueryType: FAQ/INVESTIGATION/EVIDENCE/GENERAL
+        """
+        query_lower = query.lower()
+        logger.info(f"[Codex] 一次判断開始: {query[:50]}...")
+
+        # FAQチェック（定型回答→Claude）
         if any(p in query_lower for p in self.faq_patterns):
+            logger.info("[Codex] 判定結果: FAQ → Claude定型回答")
             return QueryType.FAQ
 
-        # 根拠要求チェック
+        # 根拠要求チェック（エビデンス→Perplexity）
         if any(p in query_lower for p in self.evidence_patterns):
+            logger.info("[Codex] 判定結果: EVIDENCE → Perplexity根拠収集")
             return QueryType.EVIDENCE
 
-        # 調査チェック
+        # 調査チェック（情報収集→Gemini）
         if any(p in query_lower for p in self.investigation_patterns):
+            logger.info("[Codex] 判定結果: INVESTIGATION → Gemini情報収集")
             return QueryType.INVESTIGATION
 
+        logger.info("[Codex] 判定結果: GENERAL → 並列処理")
         return QueryType.GENERAL
 
     def _get_cache_ttl(self, query_type: QueryType) -> int:
@@ -300,7 +328,13 @@ class AIOrchestrator:
 
     async def process(self, query: str, context: Optional[Dict[str, Any]] = None, use_cache: bool = True) -> OrchestratedResponse:
         """
-        問い合わせを処理
+        マルチAIオーケストレーション処理
+
+        処理フロー:
+        1. Codex一次判断: 問い合わせをFAQ/調査/根拠に分類
+        2. 並列処理: 分類に応じた専門AIが同時に処理
+        3. Claude統合: 収集情報を統合し最終回答を生成
+        4. 根拠分離出力: 回答本文とエビデンスを分離して出力
 
         Args:
             query: ユーザーの問い合わせ
@@ -308,22 +342,23 @@ class AIOrchestrator:
             use_cache: キャッシュを使用するか（デフォルト: True）
 
         Returns:
-            OrchestratedResponse
+            OrchestratedResponse（回答本文 + エビデンス分離）
         """
         start_time = time.time()
+        logger.info("=" * 50)
+        logger.info("[オーケストレーター] 処理開始")
 
-        # 1. 問い合わせタイプ判定
+        # ステップ1: Codex一次判断（クエリ分類・ルーティング）
+        logger.info("[ステップ1] Codex一次判断")
         query_type = self.classify_query(query)
-        logger.info(f"問い合わせタイプ: {query_type.value}")
 
-        # 2. キャッシュチェック
+        # ステップ2: キャッシュチェック
         cache = get_cache()
         if use_cache:
             cached = cache.get(query, query_type.value, context)
             if cached:
-                # キャッシュヒット - 処理時間を短縮
                 processing_time = int((time.time() - start_time) * 1000)
-                logger.info(f"キャッシュヒット: 処理時間 {processing_time}ms")
+                logger.info(f"[キャッシュ] ヒット - 処理時間 {processing_time}ms")
                 return OrchestratedResponse(
                     answer=cached.get('answer', ''),
                     evidence=cached.get('evidence', []),
@@ -334,33 +369,40 @@ class AIOrchestrator:
                     processing_time_ms=processing_time
                 )
 
-        # 3. 並列処理タスク準備（Claude + Gemini + Perplexity構成）
+        # ステップ3: 並列処理タスク準備（Claude + Gemini + Perplexity構成）
+        logger.info("[ステップ2] 並列処理準備")
         tasks = []
         ai_used = []
 
-        # 基本情報収集（Gemini）- 調査・分析
+        # Gemini: 情報収集・調査（技術情報の収集・整理）
         if self._gemini:
+            logger.info("  → Gemini: 情報収集・調査タスク追加")
             tasks.append(self._gemini_investigate(query))
             ai_used.append("gemini")
 
-        # 根拠収集（Perplexity）- 根拠要求時またはFAQ以外
+        # Perplexity: 根拠・エビデンス収集（根拠要求時または調査時）
         if self._perplexity and query_type in [QueryType.EVIDENCE, QueryType.INVESTIGATION]:
+            logger.info("  → Perplexity: 根拠・エビデンス収集タスク追加")
             tasks.append(self._perplexity_evidence(query))
             ai_used.append("perplexity")
 
-        # 4. 並列実行
+        # ステップ4: 並列実行
+        logger.info("[ステップ3] 並列処理実行中...")
         results = []
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             results = [r for r in results if isinstance(r, AIResult) and r.success]
+            logger.info(f"  → 成功結果: {len(results)}件")
 
-        # 5. Claude（Anthropic）で統合
+        # ステップ5: Claude（Anthropic）で最終統合
+        logger.info("[ステップ4] Claude最終統合")
         final_response = await self._codex_integrate(query, query_type, results)
         ai_used.append("claude")
 
         processing_time = int((time.time() - start_time) * 1000)
 
-        # 6. キャッシュに保存
+        # ステップ6: 根拠分離出力（キャッシュ保存）
+        logger.info("[ステップ5] 根拠分離出力")
         if use_cache:
             cache_data = {
                 'answer': final_response.get('answer', ''),
@@ -371,6 +413,9 @@ class AIOrchestrator:
             }
             ttl = self._get_cache_ttl(query_type)
             cache.set(query, query_type.value, cache_data, ttl, context)
+
+        logger.info(f"[完了] 処理時間: {processing_time}ms | AI使用: {' → '.join(ai_used)}")
+        logger.info("=" * 50)
 
         return OrchestratedResponse(
             answer=final_response.get('answer', ''),
@@ -506,9 +551,22 @@ class AIOrchestrator:
         query_type: QueryType,
         results: List[AIResult]
     ) -> Dict[str, Any]:
-        """Claude（Anthropic）で統合（プライマリ）"""
-        # Anthropicが利用不可の場合
+        """
+        Claude最終統合: 収集情報を統合し最終回答を生成
+
+        アーキテクチャ上の役割:
+        - Gemini/Perplexityからの収集情報を受け取り
+        - 高品質な回答を生成（JSON構造化出力）
+        - 根拠分離: 回答本文とエビデンスを分離して出力
+
+        Returns:
+            Dict containing: answer, evidence, sources, confidence
+        """
+        logger.info("  → Claude: 最終統合処理")
+
+        # Anthropicが利用不可の場合（フォールバック）
         if not self._anthropic:
+            logger.warning("  → Claude利用不可: フォールバック処理")
             combined = "\n\n".join([r.content for r in results if r.content])
             return {
                 "answer": combined or "回答を生成できませんでした。",
@@ -520,6 +578,7 @@ class AIOrchestrator:
         # Anthropic（Claude）で統合
         result = await self._try_anthropic_integrate(query, query_type, results)
         if result:
+            logger.info("  → Claude統合完了: 根拠分離出力準備完了")
             return result
 
         # 失敗時はフォールバック
