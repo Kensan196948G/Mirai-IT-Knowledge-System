@@ -1,18 +1,29 @@
 """
 WebUI Application
 Flask-based Web Interface for Knowledge Management
+
+環境対応版 - Phase 4実装
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room
 from pathlib import Path
 import sys
+import os
+import logging
 from datetime import datetime
 from typing import Dict, Any
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+# 環境設定読み込み
+from src.config.environment import load_environment, get_config
+
+# 環境を決定（環境変数またはデフォルト）
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+env_config = load_environment(ENVIRONMENT)
 
 from src.core.workflow import WorkflowEngine
 from src.core.itsm_classifier import ITSMClassifier
@@ -24,10 +35,49 @@ from src.workflows.interactive_knowledge_creation import (
 from src.workflows.intelligent_search import IntelligentSearchAssistant
 from src.workflows.workflow_studio_engine import WorkflowStudioEngine
 
+# ログ設定
+log_level = getattr(logging, env_config.get('log_level', 'DEBUG').upper(), logging.DEBUG)
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(
+            env_config.get('log_path', project_root / 'data' / 'logs') / env_config.get('log_file', 'app.log'),
+            encoding='utf-8'
+        ) if Path(env_config.get('log_path', project_root / 'data' / 'logs')).exists() else logging.NullHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "mirai-it-knowledge-systems-secret-key"
+
+# 環境別Flask設定
+app.config["SECRET_KEY"] = env_config.get('secret_key', 'mirai-it-knowledge-systems-secret-key')
+app.config["DEBUG"] = env_config.get('flask_debug', True)
+app.config["ENV"] = env_config.get('flask_env', 'development')
+
+# セッションCookie設定
+app.config["SESSION_COOKIE_SECURE"] = env_config.get('session_cookie_secure', True)
+app.config["SESSION_COOKIE_HTTPONLY"] = env_config.get('session_cookie_httponly', True)
+app.config["SESSION_COOKIE_SAMESITE"] = env_config.get('session_cookie_samesite', 'Lax')
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+# 環境情報をテンプレートに自動注入
+@app.context_processor
+def inject_environment():
+    """テンプレートに環境情報を注入"""
+    return {
+        'environment': ENVIRONMENT,
+        'is_development': ENVIRONMENT == 'development',
+        'is_production': ENVIRONMENT == 'production',
+        'app_version': '3.0.0',
+        'use_sample_data': env_config.get('use_sample_data', True),
+        'base_url': env_config.get('base_url', f"https://{env_config.get('host', 'localhost')}:{env_config.get('port', 8888)}")
+    }
+
+logger.info(f"🚀 アプリケーション起動: 環境={ENVIRONMENT}, ポート={env_config.get('port', 8888)}")
 
 # グローバルインスタンス
 
@@ -558,15 +608,58 @@ def api_settings_save():
 if __name__ == "__main__":
     import socket
 
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
+    # 環境設定から取得
+    HOST = env_config.get('host', '0.0.0.0')
+    PORT = env_config.get('port', 8888)
+    DEBUG = env_config.get('flask_debug', True)
+    SSL_ENABLED = env_config.get('ssl_enabled', False)
+    SSL_CERT = env_config.get('ssl_cert', '')
+    SSL_KEY = env_config.get('ssl_key', '')
 
-    PORT = 8888
+    # 環境バッジ
+    env_badge = "🔧 開発" if ENVIRONMENT == 'development' else "🚀 本番"
+    protocol = "https" if SSL_ENABLED else "http"
 
-    print("🌐 Mirai IT Knowledge Systems - WebUI")
-    print(f"   http://{ip_address}:{PORT}")
-    print(f"   http://localhost:{PORT}")
     print("")
-    print("終了するには Ctrl+C を押してください")
+    print("=" * 60)
+    print(f"🌐 Mirai IT Knowledge Systems - WebUI [{env_badge}]")
+    print("=" * 60)
+    print(f"   環境: {ENVIRONMENT}")
+    print(f"   ポート: {PORT}")
+    print(f"   デバッグ: {DEBUG}")
+    print(f"   SSL/HTTPS: {SSL_ENABLED}")
     print("")
-    socketio.run(app, host="0.0.0.0", port=PORT, debug=False)
+    print(f"   アクセスURL:")
+    print(f"   {protocol}://{HOST}:{PORT}")
+    print(f"   {protocol}://localhost:{PORT}")
+    print("")
+
+    if ENVIRONMENT == 'development':
+        print("   📝 開発環境: サンプルデータが有効です")
+    else:
+        print("   ⚠️  本番環境: サンプルデータは無効です")
+
+    print("")
+    print("   終了するには Ctrl+C を押してください")
+    print("=" * 60)
+    print("")
+
+    # SSL設定
+    ssl_context = None
+    if SSL_ENABLED and Path(SSL_CERT).exists() and Path(SSL_KEY).exists():
+        ssl_context = (SSL_CERT, SSL_KEY)
+        logger.info(f"SSL有効: {SSL_CERT}")
+    elif SSL_ENABLED:
+        logger.warning("SSL証明書が見つかりません。HTTPで起動します。")
+        logger.warning(f"  証明書パス: {SSL_CERT}")
+        logger.warning(f"  キーパス: {SSL_KEY}")
+
+    # Flask-SocketIO起動
+    socketio.run(
+        app,
+        host='0.0.0.0',
+        port=PORT,
+        debug=DEBUG,
+        ssl_context=ssl_context,
+        allow_unsafe_werkzeug=True
+    )

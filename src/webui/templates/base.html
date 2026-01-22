@@ -476,8 +476,19 @@
     <!-- Header -->
     <div class="header">
         <div class="container">
+            <!-- 環境バッジ -->
+            {% if is_development %}
+            <div style="position: absolute; top: 10px; right: 20px; background: #ff9800; color: white; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                🔧 開発環境
+            </div>
+            {% elif is_production %}
+            <div style="position: absolute; top: 10px; right: 20px; background: #4CAF50; color: white; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                🚀 本番環境
+            </div>
+            {% endif %}
+
             <h1>🌸 Mirai IT Knowledge Systems</h1>
-            <p>AI支援型 社内ITナレッジシステム v2.0</p>
+            <p>AI支援型 社内ITナレッジシステム v{{ app_version or '3.0.0' }}</p>
             <p style="font-size: 0.95rem; margin-top: 0.75rem; opacity: 0.95; line-height: 1.6;">
                 システムトラブルや作業記録をAIが自動的に整理・分類します。<br>
                 過去の対応事例を簡単に検索でき、同じ問題の再発防止に役立ちます。
@@ -545,9 +556,17 @@
     <!-- Footer -->
     <div class="footer">
         <div class="container">
-            <p>&copy; 2025 Mirai IT Knowledge Systems | Powered by Claude Code Workflow</p>
+            <p>&copy; 2026 Mirai IT Knowledge Systems | Powered by Claude Code Workflow</p>
             <p style="font-size: 0.85rem; margin-top: 0.5rem;">
                 <a href="https://github.com/Kensan196948G/Mirai-IT-Knowledge-System" style="color: white; opacity: 0.8;">GitHub</a>
+                {% if is_development %}
+                <span style="margin-left: 1rem; opacity: 0.6;">| 開発環境 ({{ base_url }})</span>
+                {% elif is_production %}
+                <span style="margin-left: 1rem; opacity: 0.6;">| 本番環境 ({{ base_url }})</span>
+                {% endif %}
+            </p>
+            <p style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.5;">
+                Version {{ app_version or '3.0.0' }} | SubAgent: 7体 | Hooks: 5種 | MCP: 8種
             </p>
         </div>
     </div>
