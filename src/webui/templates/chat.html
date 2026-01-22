@@ -14,20 +14,28 @@
 
 {% block extra_css %}
 <style>
+    /* チャットコンテナ全体の制御 */
     .chat-container {
         display: grid;
         grid-template-columns: 1fr 400px;
         gap: 1.5rem;
         height: calc(100vh - 400px);
+        overflow: hidden;  /* 子要素のはみ出しを防止 */
     }
 
+    /* メインチャットエリア */
     .chat-main {
         display: flex;
         flex-direction: column;
+        height: 100%;      /* 親の高さに合わせる */
+        max-height: 100%;  /* 親を超えない */
+        overflow: hidden;  /* 子要素のはみ出しを防止 */
     }
 
+    /* メッセージ表示エリア（スクロール可能） */
     .chat-messages {
         flex: 1;
+        min-height: 0;     /* 重要：flexboxでスクロールを有効化 */
         overflow-y: auto;
         background: white;
         border-radius: 8px;
@@ -144,12 +152,37 @@
         cursor: not-allowed;
     }
 
+    /* サイドバー */
     .chat-sidebar {
         background: white;
         border-radius: 8px;
         padding: 1.5rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        height: 100%;      /* 親の高さに合わせる */
+        max-height: 100%;  /* 親を超えない */
         overflow-y: auto;
+        scrollbar-width: thick;
+        scrollbar-color: #7b1fa2 #e0e0e0;
+    }
+
+    /* サイドバーのスクロールバー */
+    .chat-sidebar::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    .chat-sidebar::-webkit-scrollbar-track {
+        background: #e0e0e0;
+        border-radius: 5px;
+    }
+
+    .chat-sidebar::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #9c27b0, #673ab7);
+        border-radius: 5px;
+        border: 2px solid #e0e0e0;
+    }
+
+    .chat-sidebar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #7b1fa2, #512da8);
     }
 
     .progress-bar {
