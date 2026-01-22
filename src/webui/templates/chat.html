@@ -207,8 +207,9 @@
         border-radius: 8px;
         padding: 1rem;
         margin: 0.5rem 0;
-        max-height: 400px;
-        overflow-y: auto;
+        max-height: 350px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden;
     }
 
     .ai-answer-header {
@@ -218,6 +219,11 @@
         margin-bottom: 0.75rem;
         color: #1565c0;
         font-weight: 600;
+        position: sticky;
+        top: 0;
+        background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+        padding-bottom: 0.5rem;
+        z-index: 1;
     }
 
     .ai-answer-content {
@@ -226,8 +232,9 @@
         border-radius: 4px;
         margin-bottom: 0.75rem;
         line-height: 1.8;
-        max-height: 300px;
-        overflow-y: auto;
+        max-height: 200px !important;
+        overflow-y: auto !important;
+        word-wrap: break-word;
     }
 
     .ai-evidence-section {
@@ -770,6 +777,7 @@ function displayAiAnswer(data) {
     }
 
     // メタ情報
+    const answerId = Date.now();
     answerHtml += `
             <div class="ai-meta">
                 <div class="ai-meta-item">
@@ -781,11 +789,87 @@ function displayAiAnswer(data) {
                     <span>${processingTime}</span>
                 </div>
             </div>
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #90caf9;">
+                <button onclick="saveAiAnswerAsKnowledge(${answerId})" class="btn btn-success" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                    💾 ナレッジとして保存
+                </button>
+            </div>
         </div>
     `;
 
+    // AI回答データを保存（後で使用）
+    window.aiAnswers = window.aiAnswers || {};
+    window.aiAnswers[answerId] = {
+        question: document.getElementById('aiQuestionInput').value,
+        answer: data.answer,
+        evidence: data.evidence || [],
+        sources: data.sources || [],
+        confidence: data.confidence,
+        ai_used: data.ai_used
+    };
+
     addMessage('assistant', answerHtml);
 }
+
+// AI回答をナレッジとして保存
+async function saveAiAnswerAsKnowledge(answerId) {
+    const data = window.aiAnswers[answerId];
+    if (!data) {
+        alert('回答データが見つかりません');
+        return;
+    }
+
+    // タイトル生成（質問をベースに）
+    const title = data.question.length > 50
+        ? data.question.substring(0, 50) + '...'
+        : data.question;
+
+    // コンテンツ生成
+    let content = `## 質問\n${data.question}\n\n## 回答\n${data.answer}\n`;
+
+    if (data.evidence && data.evidence.length > 0) {
+        content += `\n## 根拠・エビデンス\n`;
+        data.evidence.forEach(ev => {
+            content += `- **${ev.source || 'ソース'}**: ${ev.snippet || ''}\n`;
+            if (ev.url) content += `  - URL: ${ev.url}\n`;
+        });
+    }
+
+    if (data.sources && data.sources.length > 0) {
+        content += `\n## 参照元\n`;
+        data.sources.forEach(s => {
+            content += `- ${s}\n`;
+        });
+    }
+
+    content += `\n## メタ情報\n- 信頼度: ${Math.round(data.confidence * 100)}%\n- AI使用: ${data.ai_used ? data.ai_used.join(', ') : 'AI'}\n`;
+
+    try {
+        const response = await fetch('/api/chat/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                itsm_type: 'faq',
+                session_id: sessionId
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ ナレッジとして保存しました！');
+            // ボタンを無効化
+            event.target.disabled = true;
+            event.target.textContent = '✅ 保存済み';
+        } else {
+            alert('保存に失敗しました: ' + (result.error || 'unknown error'));
+        }
+    } catch (error) {
+        alert('保存エラー: ' + error.message);
+    }
 
 // 初期メッセージ
 window.addEventListener('load', function() {
