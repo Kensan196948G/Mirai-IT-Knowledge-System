@@ -507,3 +507,67 @@ class SQLiteClient:
                 "by_itsm_type": by_itsm_type,
                 "recent_workflows": recent_workflows,
             }
+
+    def search_knowledge(
+        self,
+        query: Optional[str] = None,
+        itsm_type: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """
+        ナレッジを検索
+
+        Args:
+            query: 検索クエリ（タイトル・内容を検索）
+            itsm_type: ITSMタイプでフィルタ
+            tags: タグでフィルタ
+            limit: 取得件数
+            offset: オフセット
+
+        Returns:
+            マッチしたナレッジのリスト
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            sql = """
+                SELECT * FROM knowledge_entries
+                WHERE status = 'active'
+            """
+            params = []
+
+            if query:
+                sql += " AND (title LIKE ? OR content LIKE ?)"
+                params.extend([f"%{query}%", f"%{query}%"])
+
+            if itsm_type:
+                sql += " AND itsm_type = ?"
+                params.append(itsm_type)
+
+            if tags:
+                for tag in tags:
+                    sql += " AND tags LIKE ?"
+                    params.append(f"%{tag}%")
+
+            sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+
+            cursor.execute(sql, params)
+            return [self._row_to_dict(row) for row in cursor.fetchall()]
+
+    def get_knowledge_by_id(self, knowledge_id: int) -> Optional[Dict[str, Any]]:
+        """IDでナレッジを取得"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM knowledge_entries WHERE id = ?",
+                (knowledge_id,)
+            )
+            row = cursor.fetchone()
+            return self._row_to_dict(row) if row else None
+
+    def get_all_knowledge(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """全ナレッジを取得"""
+        return self.search_knowledge(limit=limit)
