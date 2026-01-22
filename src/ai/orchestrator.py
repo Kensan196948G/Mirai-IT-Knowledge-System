@@ -11,13 +11,13 @@ AI Orchestrator - マルチAI役割分担オーケストレーター
 - 根拠分離: 回答本文とエビデンスの分離出力
 
 役割分担:
-- Codex（一次判断）: クエリ分類・ルーティング（FAQ/調査/根拠の振り分け）
+- Claude（一次判断）: クエリ分類・ルーティング（FAQ/調査/根拠の振り分け）
 - Claude: 最終統合・定型回答（高品質な回答生成、JSON構造化出力）
 - Gemini: 情報収集・調査（技術情報の収集・整理）
 - Perplexity: 根拠・エビデンス収集（Web検索による最新情報・参照元取得）
 
 処理フロー:
-1. 一次判断（Codex）: 問い合わせをFAQ/調査/根拠に分類
+1. 一次判断（Claude）: 問い合わせをFAQ/調査/根拠に分類
 2. 並列処理: 分類に応じた専門AIが同時に処理
 3. 統合（Claude）: 収集情報を統合し最終回答を生成
 4. 根拠分離出力: 回答本文とエビデンスを分離して出力
@@ -205,7 +205,7 @@ class AIOrchestrator:
     1. 問い合わせタイプ判定
     2. 適切なAIへルーティング
     3. 並列処理実行
-    4. Codexで統合
+    4. Claudeで統合
     5. 根拠分離出力
     """
 
@@ -286,7 +286,7 @@ class AIOrchestrator:
 
     def classify_query(self, query: str) -> QueryType:
         """
-        Codex一次判断: 問い合わせをFAQ/調査/根拠に分類
+        Claude一次判断: 問い合わせをFAQ/調査/根拠に分類
 
         アーキテクチャ上の役割:
         - ユーザー問い合わせを受け取り、処理タイプを判定
@@ -296,24 +296,24 @@ class AIOrchestrator:
             QueryType: FAQ/INVESTIGATION/EVIDENCE/GENERAL
         """
         query_lower = query.lower()
-        logger.info(f"[Codex] 一次判断開始: {query[:50]}...")
+        logger.info(f"[Claude] 一次判断開始: {query[:50]}...")
 
         # FAQチェック（定型回答→Claude）
         if any(p in query_lower for p in self.faq_patterns):
-            logger.info("[Codex] 判定結果: FAQ → Claude定型回答")
+            logger.info("[Claude] 判定結果: FAQ → Claude定型回答")
             return QueryType.FAQ
 
         # 根拠要求チェック（エビデンス→Perplexity）
         if any(p in query_lower for p in self.evidence_patterns):
-            logger.info("[Codex] 判定結果: EVIDENCE → Perplexity根拠収集")
+            logger.info("[Claude] 判定結果: EVIDENCE → Perplexity根拠収集")
             return QueryType.EVIDENCE
 
         # 調査チェック（情報収集→Gemini）
         if any(p in query_lower for p in self.investigation_patterns):
-            logger.info("[Codex] 判定結果: INVESTIGATION → Gemini情報収集")
+            logger.info("[Claude] 判定結果: INVESTIGATION → Gemini情報収集")
             return QueryType.INVESTIGATION
 
-        logger.info("[Codex] 判定結果: GENERAL → 並列処理")
+        logger.info("[Claude] 判定結果: GENERAL → 並列処理")
         return QueryType.GENERAL
 
     def _get_cache_ttl(self, query_type: QueryType) -> int:
@@ -331,7 +331,7 @@ class AIOrchestrator:
         マルチAIオーケストレーション処理
 
         処理フロー:
-        1. Codex一次判断: 問い合わせをFAQ/調査/根拠に分類
+        1. Claude一次判断: 問い合わせをFAQ/調査/根拠に分類
         2. 並列処理: 分類に応じた専門AIが同時に処理
         3. Claude統合: 収集情報を統合し最終回答を生成
         4. 根拠分離出力: 回答本文とエビデンスを分離して出力
@@ -348,8 +348,8 @@ class AIOrchestrator:
         logger.info("=" * 50)
         logger.info("[オーケストレーター] 処理開始")
 
-        # ステップ1: Codex一次判断（クエリ分類・ルーティング）
-        logger.info("[ステップ1] Codex一次判断")
+        # ステップ1: Claude一次判断（クエリ分類・ルーティング）
+        logger.info("[ステップ1] Claude一次判断")
         query_type = self.classify_query(query)
 
         # ステップ2: キャッシュチェック
