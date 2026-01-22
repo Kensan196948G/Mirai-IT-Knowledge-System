@@ -314,7 +314,114 @@ JSON形式で回答してください（説明文は不要）:"""
         }
 
     def _generate_knowledge(self) -> Dict[str, Any]:
-        """収集した情報からナレッジを生成"""
+        """収集した情報からナレッジを生成（AI強化版）"""
+        # AI駆動でナレッジコンテンツを生成
+        if self._ai_client:
+            return self._generate_knowledge_with_ai()
+        else:
+            return self._generate_knowledge_basic()
+
+    def _generate_knowledge_with_ai(self) -> Dict[str, Any]:
+        """AIを使ってナレッジを生成"""
+        try:
+            # 収集情報をJSON形式で整形
+            collected_json = json.dumps(self.collected_info, ensure_ascii=False, indent=2)
+
+            # 会話履歴を整形
+            conversation_context = "\n".join([
+                f"{msg['role']}: {msg['content']}"
+                for msg in self.conversation_history
+            ])
+
+            prompt = f"""あなたはITサポートのナレッジ作成エキスパートです。
+以下の情報から、情シス担当者が活用できる高品質なナレッジ記事を生成してください。
+
+【収集した情報】
+{collected_json}
+
+【対話履歴】
+{conversation_context}
+
+以下のJSON形式で回答してください：
+{{
+  "title": "簡潔で分かりやすいタイトル（50文字以内）",
+  "content": "Markdown形式のナレッジ本文（## セクション見出しを使用）",
+  "summary": "要約（100文字以内）",
+  "tags": ["タグ1", "タグ2", "タグ3"],
+  "recommended_actions": ["推奨アクション1", "推奨アクション2"],
+  "prevention_tips": ["再発防止策1", "再発防止策2"]
+}}
+
+ナレッジ本文には以下のセクションを含めてください：
+- ## 概要
+- ## 発生状況
+- ## 影響範囲
+- ## 対応手順
+- ## 原因分析
+- ## 再発防止策
+- ## 参考情報（該当する場合）
+
+JSON形式で回答してください（説明文は不要）:"""
+
+            # API呼び出し
+            if getattr(self, '_ai_provider', None) == 'anthropic':
+                response = self._ai_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                content = response.content[0].text
+            else:
+                response = self._ai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "あなたはITナレッジ作成のエキスパートです。JSON形式で回答してください。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=2000,
+                    temperature=0.5
+                )
+                content = response.choices[0].message.content
+
+            # JSON抽出
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+
+            ai_result = json.loads(content.strip())
+            logger.info("AI駆動ナレッジ生成完了")
+
+            # ITSM分類
+            title = ai_result.get('title', self.collected_info.get('title', '新規ナレッジ'))
+            knowledge_content = ai_result.get('content', '')
+            classification = self.itsm_classifier.classify(title, knowledge_content)
+
+            # 類似ナレッジ検索
+            similar_knowledge = self.db_client.search_knowledge(query=title, limit=5)
+
+            return {
+                'type': 'knowledge_generated',
+                'title': title,
+                'content': knowledge_content,
+                'summary': ai_result.get('summary', ''),
+                'tags': ai_result.get('tags', []),
+                'recommended_actions': ai_result.get('recommended_actions', []),
+                'prevention_tips': ai_result.get('prevention_tips', []),
+                'itsm_type': classification['itsm_type'],
+                'confidence': classification['confidence'],
+                'similar_knowledge': similar_knowledge,
+                'conversation_history': self.conversation_history,
+                'ai_generated': True,
+                'action': 'review_or_save'
+            }
+
+        except Exception as e:
+            logger.error(f"AI駆動ナレッジ生成エラー: {e}")
+            return self._generate_knowledge_basic()
+
+    def _generate_knowledge_basic(self) -> Dict[str, Any]:
+        """基本的なナレッジ生成（フォールバック）"""
         # 構造化された内容を生成
         content_parts = []
 
@@ -367,8 +474,60 @@ JSON形式で回答してください（説明文は不要）:"""
             'confidence': classification['confidence'],
             'similar_knowledge': similar_knowledge,
             'conversation_history': self.conversation_history,
+            'ai_generated': False,
             'action': 'review_or_save'
         }
+
+    def get_ai_answer(self, question: str) -> Dict[str, Any]:
+        """
+        AIを使って質問に回答（AIオーケストレーター連携）
+
+        Args:
+            question: ユーザーの質問
+
+        Returns:
+            AI生成の回答と根拠
+        """
+        try:
+            # AIオーケストレーターを使用
+            from src.ai.orchestrator import get_orchestrator
+            import asyncio
+
+            orchestrator = get_orchestrator()
+
+            # 現在の会話コンテキストを追加
+            context = {
+                'conversation_history': self.conversation_history[-5:],
+                'collected_info': {k: v for k, v in self.collected_info.items() if v}
+            }
+
+            # 非同期処理を実行
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    orchestrator.process(question, context)
+                )
+            finally:
+                loop.close()
+
+            return {
+                'success': True,
+                'answer': result.answer,
+                'evidence': result.evidence,
+                'sources': result.sources,
+                'confidence': result.confidence,
+                'ai_used': result.ai_used,
+                'processing_time_ms': result.processing_time_ms
+            }
+
+        except Exception as e:
+            logger.error(f"AI回答生成エラー: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'answer': '回答を生成できませんでした。'
+            }
 
     def save_knowledge(self, title: str, content: str, itsm_type: str, created_by: str = 'interactive_workflow') -> Dict[str, Any]:
         """ナレッジを保存"""

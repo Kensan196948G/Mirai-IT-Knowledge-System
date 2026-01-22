@@ -571,3 +571,40 @@ class SQLiteClient:
     def get_all_knowledge(self, limit: int = 100) -> List[Dict[str, Any]]:
         """全ナレッジを取得"""
         return self.search_knowledge(limit=limit)
+
+    def update_knowledge(self, knowledge_id: int, **kwargs) -> bool:
+        """
+        ナレッジを更新
+
+        Args:
+            knowledge_id: ナレッジID
+            **kwargs: 更新するフィールド（title, content, itsm_type, markdown_path, status, tags等）
+
+        Returns:
+            更新成功かどうか
+        """
+        if not kwargs:
+            return False
+
+        allowed_fields = {'title', 'content', 'itsm_type', 'markdown_path', 'status', 'tags', 'updated_at'}
+        update_fields = {k: v for k, v in kwargs.items() if k in allowed_fields}
+
+        if not update_fields:
+            return False
+
+        # 自動的にupdated_atを更新
+        if 'updated_at' not in update_fields:
+            from datetime import datetime
+            update_fields['updated_at'] = datetime.now().isoformat()
+
+        set_clause = ', '.join([f'{k} = ?' for k in update_fields.keys()])
+        values = list(update_fields.values()) + [knowledge_id]
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"UPDATE knowledge SET {set_clause} WHERE id = ?",
+                values
+            )
+            conn.commit()
+            return cursor.rowcount > 0
