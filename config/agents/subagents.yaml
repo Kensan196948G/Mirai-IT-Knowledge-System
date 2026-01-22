@@ -1,0 +1,138 @@
+# SubAgent Configuration
+# Mirai IT Knowledge System - SubAgent定義
+
+subagents:
+  architect:
+    name: "Architect"
+    description: "システム設計・アーキテクチャ分析担当"
+    capabilities:
+      - system_design
+      - architecture_review
+      - technical_documentation
+    prompts:
+      analyze: |
+        ITSMナレッジシステムのアーキテクチャ観点から分析してください。
+        - システム構成の適切性
+        - スケーラビリティ
+        - 保守性・拡張性
+    priority: high
+    model: "claude-opus-4-5-20251101"
+
+  knowledge_curator:
+    name: "KnowledgeCurator"
+    description: "ナレッジ品質管理・キュレーション担当"
+    capabilities:
+      - content_quality_check
+      - knowledge_organization
+      - tagging_optimization
+    prompts:
+      curate: |
+        ナレッジの品質を以下の観点で評価・改善してください：
+        - 正確性・完全性
+        - 読みやすさ・構造
+        - タグ・分類の適切性
+        - 重複・矛盾のチェック
+    priority: high
+    model: "claude-sonnet-4-20250514"
+
+  itsm_expert:
+    name: "ITSMExpert"
+    description: "ITSM/ITIL専門知識担当"
+    capabilities:
+      - itsm_classification
+      - itil_compliance_check
+      - process_recommendation
+    prompts:
+      classify: |
+        ITSMプロセスに基づいて分類してください：
+        - Incident: 障害・インシデント対応
+        - Problem: 問題管理・根本原因分析
+        - Change: 変更管理
+        - Release: リリース管理
+        - Service Request: サービス要求
+    itsm_types:
+      - Incident
+      - Problem
+      - Change
+      - Release
+      - Service Request
+    priority: critical
+    model: "claude-sonnet-4-20250514"
+
+  devops:
+    name: "DevOps"
+    description: "CI/CD・インフラ・自動化担当"
+    capabilities:
+      - deployment_automation
+      - infrastructure_management
+      - monitoring_setup
+    prompts:
+      deploy: |
+        デプロイメント・インフラ観点で確認してください：
+        - 環境設定の一貫性
+        - 自動化の適用可否
+        - 監視・ログ設定
+    priority: medium
+    model: "claude-sonnet-4-20250514"
+
+  qa:
+    name: "QA"
+    description: "品質保証・テスト担当"
+    capabilities:
+      - test_planning
+      - quality_validation
+      - regression_check
+    prompts:
+      validate: |
+        品質保証の観点から検証してください：
+        - テストカバレッジ
+        - エッジケースの考慮
+        - 回帰テストの必要性
+    priority: high
+    model: "claude-sonnet-4-20250514"
+
+  coordinator:
+    name: "Coordinator"
+    description: "タスク調整・ワークフロー管理担当"
+    capabilities:
+      - task_orchestration
+      - workflow_management
+      - dependency_tracking
+    prompts:
+      coordinate: |
+        タスクの調整・優先順位付けを行ってください：
+        - 依存関係の確認
+        - 並列実行可能なタスクの特定
+        - リソース配分の最適化
+    priority: medium
+    model: "claude-haiku-4-20250514"
+
+  documenter:
+    name: "Documenter"
+    description: "ドキュメント生成・更新担当"
+    capabilities:
+      - documentation_generation
+      - readme_updates
+      - api_documentation
+    prompts:
+      document: |
+        ドキュメントを生成・更新してください：
+        - 明確で簡潔な記述
+        - 例示の追加
+        - 構造化されたフォーマット
+    priority: low
+    model: "claude-haiku-4-20250514"
+
+# 実行設定
+execution:
+  parallel_enabled: true
+  max_concurrent: 3
+  timeout_seconds: 300
+  retry_count: 2
+
+# 優先度定義
+priority_levels:
+  critical: 1
+  high: 2
+  medium: 3
+  low: 4

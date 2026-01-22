@@ -2,6 +2,8 @@
 Description=Mirai IT Knowledge System - Development Environment
 Documentation=https://github.com/Kensan196948G/Mirai-IT-Knowledge-System
 After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -21,8 +23,6 @@ ExecStart=/usr/bin/python3 /mnt/LinuxHDD/Mirai-IT-Knowledge-System/src/webui/app
 # 再起動設定
 Restart=always
 RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
 
 # ログ設定
 StandardOutput=journal
