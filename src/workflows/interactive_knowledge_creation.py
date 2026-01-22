@@ -119,6 +119,14 @@ class InteractiveKnowledgeCreationWorkflow:
         Returns:
             次の質問またはナレッジ生成結果
         """
+        # 直前の質問を保存（フォールバック用）
+        previous_question = None
+        if len(self.conversation_history) >= 1:
+            for msg in reversed(self.conversation_history):
+                if msg['role'] == 'assistant':
+                    previous_question = msg['content']
+                    break
+
         self.conversation_history.append({
             'role': 'user',
             'content': answer,
@@ -127,6 +135,9 @@ class InteractiveKnowledgeCreationWorkflow:
 
         # 回答から情報を抽出
         self._extract_info_from_input(answer)
+
+        # AI抽出が失敗した場合、直前の質問に基づいてフィールドを埋める
+        self._fallback_save_answer(answer, previous_question)
 
         # 次の質問
         next_question = self._get_next_question()
@@ -235,6 +246,45 @@ JSON形式で回答してください（説明文は不要）:"""
             logger.error(f"AI情報抽出エラー: {e}")
             # フォールバック
             self._extract_info_keyword_based(text)
+
+    def _fallback_save_answer(self, answer: str, previous_question: Optional[str]):
+        """
+        直前の質問に基づいて回答を保存（フォールバック）
+
+        AI抽出が失敗した場合や、抽出結果が空の場合に、
+        直前の質問内容からフィールドを特定して回答を保存する
+        """
+        if not previous_question or not answer or len(answer.strip()) < 2:
+            return
+
+        # 質問とフィールドのマッピング
+        question_field_map = {
+            'いつ': 'when',
+            '日時': 'when',
+            '発生': 'when',
+            'システム': 'system',
+            'サービス': 'system',
+            '症状': 'symptom',
+            'エラー': 'symptom',
+            '影響': 'impact',
+            '範囲': 'impact',
+            '対応': 'response',
+            '原因': 'cause',
+            '対策': 'measures',
+            '防止': 'measures'
+        }
+
+        # 直前の質問からフィールドを特定
+        target_field = None
+        for keyword, field in question_field_map.items():
+            if keyword in previous_question:
+                target_field = field
+                break
+
+        # フィールドが特定でき、まだ値が設定されていない場合は保存
+        if target_field and not self.collected_info.get(target_field):
+            self.collected_info[target_field] = answer.strip()
+            logger.info(f"フォールバック保存: {target_field} = {answer[:50]}...")
 
     def _extract_info_keyword_based(self, text: str):
         """キーワードベースの情報抽出（フォールバック）"""
@@ -501,15 +551,25 @@ JSON形式で回答してください（説明文は不要）:"""
                 'collected_info': {k: v for k, v in self.collected_info.items() if v}
             }
 
-            # 非同期処理を実行
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # 非同期処理を実行（既存ループがあれば使用）
             try:
-                result = loop.run_until_complete(
-                    orchestrator.process(question, context)
-                )
-            finally:
-                loop.close()
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # Flask/Gunicornなど既存ループ内で実行中の場合
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run,
+                            orchestrator.process(question, context)
+                        )
+                        result = future.result(timeout=30)
+                else:
+                    result = loop.run_until_complete(
+                        orchestrator.process(question, context)
+                    )
+            except RuntimeError:
+                # ループがない場合は新規作成
+                result = asyncio.run(orchestrator.process(question, context))
 
             return {
                 'success': True,
@@ -522,11 +582,85 @@ JSON形式で回答してください（説明文は不要）:"""
             }
 
         except Exception as e:
-            logger.error(f"AI回答生成エラー: {e}")
+            logger.error(f"AI回答生成エラー（オーケストレーター）: {e}")
+
+            # フォールバック: 直接Anthropic APIを使用
+            return self._get_ai_answer_direct(question)
+
+    def _get_ai_answer_direct(self, question: str) -> Dict[str, Any]:
+        """
+        AIに直接質問（フォールバック）
+
+        オーケストレーターが失敗した場合のフォールバック
+        """
+        try:
+            if not self._ai_client:
+                return {
+                    'success': False,
+                    'error': 'AIクライアントが初期化されていません',
+                    'answer': 'AIサービスに接続できませんでした。'
+                }
+
+            # コンテキスト情報を整形
+            context_info = ""
+            if any(self.collected_info.values()):
+                context_info = "\n【関連情報】\n" + "\n".join([
+                    f"- {k}: {v}" for k, v in self.collected_info.items() if v
+                ])
+
+            prompt = f"""あなたはIT情シスの専門家です。以下の質問に対して、実用的で分かりやすい回答を提供してください。
+
+【質問】
+{question}
+{context_info}
+
+以下の形式で回答してください：
+1. 回答本文（簡潔に）
+2. 推奨アクション（あれば）
+3. 注意点（あれば）
+
+日本語で回答してください。"""
+
+            import time
+            start_time = time.time()
+
+            if getattr(self, '_ai_provider', None) == 'anthropic':
+                response = self._ai_client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=1500,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                answer = response.content[0].text
+            else:
+                response = self._ai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "あなたはIT情シスの専門家です。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=1500,
+                    temperature=0.5
+                )
+                answer = response.choices[0].message.content
+
+            processing_time = int((time.time() - start_time) * 1000)
+
+            return {
+                'success': True,
+                'answer': answer,
+                'evidence': [],
+                'sources': [],
+                'confidence': 0.7,
+                'ai_used': [self._ai_provider or 'unknown'],
+                'processing_time_ms': processing_time
+            }
+
+        except Exception as e:
+            logger.error(f"AI直接回答エラー: {e}")
             return {
                 'success': False,
                 'error': str(e),
-                'answer': '回答を生成できませんでした。'
+                'answer': 'AI回答の生成中にエラーが発生しました。しばらくしてからお試しください。'
             }
 
     def save_knowledge(self, title: str, content: str, itsm_type: str, created_by: str = 'interactive_workflow') -> Dict[str, Any]:

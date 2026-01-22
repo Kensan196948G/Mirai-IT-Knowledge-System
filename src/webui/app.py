@@ -428,6 +428,30 @@ def chat_save():
     return jsonify(result)
 
 
+def _run_async_orchestrator(orchestrator, question, context=None):
+    """非同期オーケストレーターを同期的に実行するヘルパー"""
+    import asyncio
+    import concurrent.futures
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Flaskなど既存ループ内で実行中の場合
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run,
+                    orchestrator.process(question, context)
+                )
+                return future.result(timeout=30)
+        else:
+            return loop.run_until_complete(
+                orchestrator.process(question, context)
+            )
+    except RuntimeError:
+        # ループがない場合は新規作成
+        return asyncio.run(orchestrator.process(question, context))
+
+
 @app.route("/api/chat/ai-answer", methods=["POST"])
 def chat_ai_answer():
     """AI駆動の回答を生成（AIオーケストレーター使用）"""
@@ -450,16 +474,9 @@ def chat_ai_answer():
         else:
             # 直接AIオーケストレーターを使用
             from src.ai.orchestrator import get_orchestrator
-            import asyncio
 
             orchestrator = get_orchestrator()
-
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                ai_result = loop.run_until_complete(orchestrator.process(question))
-            finally:
-                loop.close()
+            ai_result = _run_async_orchestrator(orchestrator, question)
 
             result = {
                 'success': True,
@@ -474,10 +491,11 @@ def chat_ai_answer():
         return jsonify(result)
 
     except Exception as e:
+        logger.error(f"AI回答生成エラー: {e}")
         return jsonify({
             "success": False,
             "error": str(e),
-            "answer": "回答を生成できませんでした。"
+            "answer": "回答を生成できませんでした。しばらくしてからお試しください。"
         })
 
 
@@ -494,16 +512,9 @@ def handle_ai_question(data):
     try:
         # AIオーケストレーターで回答生成
         from src.ai.orchestrator import get_orchestrator
-        import asyncio
 
         orchestrator = get_orchestrator()
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(orchestrator.process(question))
-        finally:
-            loop.close()
+        result = _run_async_orchestrator(orchestrator, question)
 
         emit("ai_answer", {
             'success': True,
@@ -516,9 +527,11 @@ def handle_ai_question(data):
         }, to=session_id if session_id else request.sid)
 
     except Exception as e:
+        logger.error(f"AI質問処理エラー: {e}")
         emit("ai_error", {
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "message": "AI回答の生成中にエラーが発生しました。"
         })
 
 
