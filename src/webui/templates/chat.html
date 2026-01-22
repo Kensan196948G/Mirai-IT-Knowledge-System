@@ -34,6 +34,28 @@
         padding: 1.5rem;
         margin-bottom: 1rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        scrollbar-width: thick;
+        scrollbar-color: #1976d2 #e0e0e0;
+    }
+
+    /* チャットメッセージエリアのスクロールバー */
+    .chat-messages::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+        background: #e0e0e0;
+        border-radius: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #4CAF50, #2196F3);
+        border-radius: 6px;
+        border: 2px solid #e0e0e0;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #388E3C, #1976D2);
     }
 
     .message {
@@ -201,15 +223,27 @@
     }
 
     /* AI回答スタイル */
-    .ai-answer-box {
+    .ai-answer-wrapper {
         background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
         border: 1px solid #90caf9;
         border-radius: 8px;
         padding: 1rem;
         margin: 0.5rem 0;
-        max-height: 350px !important;
+    }
+
+    .ai-answer-box {
+        max-height: 300px !important;
         overflow-y: auto !important;
         overflow-x: hidden;
+        padding-right: 0.5rem;
+    }
+
+    .ai-answer-actions {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #90caf9;
+        display: flex;
+        gap: 0.5rem;
     }
 
     /* スクロールバーを目立たせる */
@@ -768,61 +802,67 @@ function displayAiAnswer(data) {
     // 処理時間
     const processingTime = data.processing_time_ms ? `${(data.processing_time_ms / 1000).toFixed(1)}秒` : '-';
 
-    // 回答HTML構築
+    // 回答HTML構築（ラッパー構造：スクロール領域 + 固定ボタン）
+    const answerId = Date.now();
     let answerHtml = `
-        <div class="ai-answer-box">
-            <div class="ai-answer-header">
-                🤖 AI回答（${aiUsedText}）
-            </div>
-            <div class="ai-answer-content">
-                ${data.answer.replace(/\n/g, '<br>')}
-            </div>
+        <div class="ai-answer-wrapper">
+            <div class="ai-answer-box">
+                <div class="ai-answer-header">
+                    🤖 AI回答（${aiUsedText}）
+                </div>
+                <div class="ai-answer-content">
+                    ${data.answer.replace(/\n/g, '<br>')}
+                </div>
     `;
 
     // エビデンスがある場合
     if (data.evidence && data.evidence.length > 0) {
         answerHtml += `
-            <div class="ai-evidence-section">
-                <strong>📚 根拠・エビデンス</strong>
+                <div class="ai-evidence-section">
+                    <strong>📚 根拠・エビデンス</strong>
         `;
         data.evidence.forEach(ev => {
             answerHtml += `
-                <div class="ai-evidence-item">
-                    <div class="ai-evidence-source">${ev.source || 'ソース'}</div>
-                    ${ev.url ? `<div class="ai-evidence-url"><a href="${ev.url}" target="_blank">${ev.url}</a></div>` : ''}
-                    ${ev.snippet ? `<div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">${ev.snippet}</div>` : ''}
-                </div>
+                    <div class="ai-evidence-item">
+                        <div class="ai-evidence-source">${ev.source || 'ソース'}</div>
+                        ${ev.url ? `<div class="ai-evidence-url"><a href="${ev.url}" target="_blank">${ev.url}</a></div>` : ''}
+                        ${ev.snippet ? `<div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">${ev.snippet}</div>` : ''}
+                    </div>
             `;
         });
-        answerHtml += '</div>';
+        answerHtml += '        </div>';
     }
 
     // ソースURLがある場合
     if (data.sources && data.sources.length > 0) {
         answerHtml += `
-            <div style="margin-top: 0.5rem; font-size: 0.85rem;">
-                <strong>🔗 参照元:</strong>
-                ${data.sources.map(s => `<a href="${s}" target="_blank" style="margin-left: 0.5rem; color: #1976d2;">${s}</a>`).join('')}
-            </div>
+                <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+                    <strong>🔗 参照元:</strong>
+                    ${data.sources.map(s => `<a href="${s}" target="_blank" style="margin-left: 0.5rem; color: #1976d2;">${s}</a>`).join('')}
+                </div>
         `;
     }
 
-    // メタ情報
-    const answerId = Date.now();
+    // メタ情報（スクロール領域内）
     answerHtml += `
-            <div class="ai-meta">
-                <div class="ai-meta-item">
-                    <span>信頼度:</span>
-                    <span class="${confidenceClass}">${Math.round(data.confidence * 100)}%</span>
-                </div>
-                <div class="ai-meta-item">
-                    <span>処理時間:</span>
-                    <span>${processingTime}</span>
+                <div class="ai-meta">
+                    <div class="ai-meta-item">
+                        <span>信頼度:</span>
+                        <span class="${confidenceClass}">${Math.round(data.confidence * 100)}%</span>
+                    </div>
+                    <div class="ai-meta-item">
+                        <span>処理時間:</span>
+                        <span>${processingTime}</span>
+                    </div>
                 </div>
             </div>
-            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #90caf9;">
+            <!-- 固定アクションボタン（スクロール領域外） -->
+            <div class="ai-answer-actions">
                 <button onclick="saveAiAnswerAsKnowledge(${answerId})" class="btn btn-success" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                     💾 ナレッジとして保存
+                </button>
+                <button onclick="editAiAnswer(${answerId})" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                    ✏️ 編集して保存
                 </button>
             </div>
         </div>
@@ -901,6 +941,43 @@ async function saveAiAnswerAsKnowledge(answerId) {
     } catch (error) {
         alert('保存エラー: ' + error.message);
     }
+}
+
+// AI回答を編集して保存（編集モーダル表示）
+function editAiAnswer(answerId) {
+    const data = window.aiAnswers[answerId];
+    if (!data) {
+        alert('回答データが見つかりません');
+        return;
+    }
+
+    // タイトル生成
+    const defaultTitle = data.question.length > 50
+        ? data.question.substring(0, 50) + '...'
+        : data.question;
+
+    // コンテンツ生成
+    let content = `## 質問\n${data.question}\n\n## 回答\n${data.answer}\n`;
+
+    if (data.evidence && data.evidence.length > 0) {
+        content += `\n## 根拠・エビデンス\n`;
+        data.evidence.forEach(ev => {
+            content += `- **${ev.source || 'ソース'}**: ${ev.snippet || ''}\n`;
+            if (ev.url) content += `  - URL: ${ev.url}\n`;
+        });
+    }
+
+    // 編集用データを設定
+    window.generatedKnowledge = {
+        title: defaultTitle,
+        content: content,
+        itsm_type: 'faq',
+        ai_generated: true
+    };
+
+    // 編集モードで表示
+    showGeneratedKnowledge(window.generatedKnowledge);
+}
 
 // 初期メッセージ
 window.addEventListener('load', function() {
