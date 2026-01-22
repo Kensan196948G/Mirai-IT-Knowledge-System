@@ -212,6 +212,37 @@
         overflow-x: hidden;
     }
 
+    /* スクロールバーを目立たせる */
+    .ai-answer-box::-webkit-scrollbar,
+    .ai-answer-content::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    .ai-answer-box::-webkit-scrollbar-track,
+    .ai-answer-content::-webkit-scrollbar-track {
+        background: #e0e0e0;
+        border-radius: 6px;
+    }
+
+    .ai-answer-box::-webkit-scrollbar-thumb,
+    .ai-answer-content::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #1976d2, #7b1fa2);
+        border-radius: 6px;
+        border: 2px solid #e0e0e0;
+    }
+
+    .ai-answer-box::-webkit-scrollbar-thumb:hover,
+    .ai-answer-content::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #1565c0, #6a1b9a);
+    }
+
+    /* Firefox用 */
+    .ai-answer-box,
+    .ai-answer-content {
+        scrollbar-width: thick;
+        scrollbar-color: #1976d2 #e0e0e0;
+    }
+
     .ai-answer-header {
         display: flex;
         align-items: center;
