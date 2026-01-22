@@ -288,7 +288,7 @@
     </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js" crossorigin="anonymous"></script>
 <script>
 let sessionId = 'session_' + Date.now();
 let conversationHistory = [];
@@ -302,7 +302,11 @@ let collectedData = {
     measures: null
 };
 
-const socket = io();
+// Socket.IO接続（ポーリングモード）
+const socket = io({
+    transports: ['polling'],
+    upgrade: false
+});
 
 socket.on('connect', () => {
     socket.emit('join_chat', { session_id: sessionId });
