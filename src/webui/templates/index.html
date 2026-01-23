@@ -121,10 +121,12 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 // URLパラメータでフィルタリング処理
-const urlParams = new URLSearchParams(window.location.search);
+// urlParams は base.html で既に宣言されているため、再利用
 const itsmFilter = urlParams.get('itsm_type');
 
 if (itsmFilter) {
