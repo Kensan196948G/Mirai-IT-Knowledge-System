@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="新規ナレッジ作成 - Mirai IT Knowledge Systems">
+    <title>新規ナレッジ作成 - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="index.html" class="btn" aria-label="ダッシュボードに戻る">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span aria-hidden="true">✍️</span> 新規ナレッジ作成
+                </h1>
+                <p class="page-description">
+                    ITナレッジを記録し、チーム全体で共有しましょう
+                </p>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+            <!-- Create Form -->
+            <div class="card">
+                <form id="createForm" onsubmit="submitKnowledge(event)">
+                    <!-- Title -->
+                    <div class="form-group">
+                        <label for="title" class="form-label">
+                            タイトル <span style="color: var(--color-error);">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="title"
+                            name="title"
+                            class="form-input"
+                            required
+                            placeholder="例: Webサーバーの503エラー発生時の対応手順"
+                            aria-required="true"
+                            aria-describedby="titleHelp"
+                        >
+                        <small id="titleHelp" class="form-help">
+                            簡潔でわかりやすいタイトルをつけてください
+                        </small>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="form-group">
+                        <label for="content" class="form-label">
+                            内容 <span style="color: var(--color-error);">*</span>
+                        </label>
+                        <textarea
+                            id="content"
+                            name="content"
+                            class="form-textarea"
+                            required
+                            placeholder="## 発生事象&#10;&#10;## 対応内容&#10;&#10;## 原因&#10;&#10;## 対策"
+                            style="min-height: 300px;"
+                            aria-required="true"
+                            aria-describedby="contentHelp"
+                        ></textarea>
+                        <small id="contentHelp" class="form-help">
+                            Markdown形式で記述できます。見出し、リスト、コードブロックなどが使用可能です
+                        </small>
+                    </div>
+
+                    <!-- ITSM Type -->
+                    <div class="form-group">
+                        <label for="itsmType" class="form-label">
+                            ITSMタイプ
+                        </label>
+                        <select id="itsmType" name="itsmType" class="form-select" aria-describedby="itsmTypeHelp">
+                            <option value="auto">自動判定（推奨）</option>
+                            <option value="Incident">Incident - インシデント管理</option>
+                            <option value="Problem">Problem - 問題管理</option>
+                            <option value="Change">Change - 変更管理</option>
+                            <option value="Release">Release - リリース管理</option>
+                            <option value="Request">Request - サービスリクエスト</option>
+                            <option value="Other">Other - その他</option>
+                        </select>
+                        <small id="itsmTypeHelp" class="form-help">
+                            「自動判定」を選択すると、AIがタイトルと内容からITSMタイプを自動的に分類します
+                        </small>
+                        <div id="itsmSuggestion" class="alert alert-info" style="display: none; margin-top: 0.5rem;">
+                            <strong>AI推奨:</strong> <span id="suggestedType"></span>
+                            <span id="suggestionConfidence" style="margin-left: 0.5rem;"></span>
+                        </div>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="form-group">
+                        <label for="tags" class="form-label">
+                            タグ
+                        </label>
+                        <input
+                            type="text"
+                            id="tags"
+                            name="tags"
+                            class="form-input"
+                            placeholder="例: Apache, エラー対応, 障害"
+                            aria-describedby="tagsHelp"
+                        >
+                        <small id="tagsHelp" class="form-help">
+                            カンマ区切りで複数のタグを入力できます
+                        </small>
+                        <div id="tagSuggestions" style="margin-top: 0.5rem;"></div>
+                    </div>
+
+                    <!-- Created By -->
+                    <div class="form-group">
+                        <label for="createdBy" class="form-label">
+                            作成者
+                        </label>
+                        <input
+                            type="text"
+                            id="createdBy"
+                            name="createdBy"
+                            class="form-input"
+                            value="webui_user"
+                            placeholder="ユーザー名"
+                            aria-describedby="createdByHelp"
+                        >
+                        <small id="createdByHelp" class="form-help">
+                            作成者の名前またはユーザーIDを入力してください
+                        </small>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <span aria-hidden="true">✅</span> ナレッジを作成
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="previewKnowledge()">
+                            <span aria-hidden="true">👁️</span> プレビュー
+                        </button>
+                        <a href="index.html" class="btn btn-outline">
+                            <span aria-hidden="true">❌</span> キャンセル
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Creation Tips -->
+            <section class="section">
+                <div class="card" style="background: #fffbf0; border-left: 4px solid #ffa726;">
+                    <h3 style="color: #f57c00; margin-bottom: 1rem;">
+                        <span aria-hidden="true">💡</span> ナレッジ作成のヒント
+                    </h3>
+                    <ul style="line-height: 2; color: #666;">
+                        <li>タイトルは簡潔でわかりやすいものにしてください</li>
+                        <li>内容はMarkdown形式で記述できます（見出し、リスト、コードブロックなど）</li>
+                        <li>発生日時、影響範囲、対応手順、原因、対策などを含めると品質が向上します</li>
+                        <li>技術的な用語（コマンド、エラーメッセージなど）を含めると自動分析がより正確になります</li>
+                        <li>作成後、AIによる品質チェックと重複検知が自動的に行われます</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Markdown Guide -->
+            <section class="section">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">
+                        <span aria-hidden="true">📝</span> Markdown記法ガイド
+                    </h3>
+                    <div class="grid grid-2">
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">見出し</h4>
+                            <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto;">## 大見出し
+### 中見出し
+#### 小見出し</pre>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">リスト</h4>
+                            <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto;">- 箇条書き項目1
+- 箇条書き項目2
+  - ネストされた項目</pre>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">コードブロック</h4>
+                            <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto;">```bash
+systemctl restart apache2
+```</pre>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">強調</h4>
+                            <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto;">**太字**
+*斜体*
+`インラインコード`</pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal" role="dialog" aria-labelledby="previewModalTitle" aria-modal="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="previewModalTitle" class="modal-title">プレビュー</h2>
+                <button class="modal-close" onclick="closePreview()" aria-label="閉じる">&times;</button>
+            </div>
+            <div id="previewContent"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="search.html">検索</a></p>
+                    <p><a href="create.html">ナレッジ作成</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // ITSM Type Auto-suggestion
+        let suggestionTimeout;
+
+        function suggestITSMType() {
+            clearTimeout(suggestionTimeout);
+            suggestionTimeout = setTimeout(async () => {
+                const title = document.getElementById('title').value;
+                const content = document.getElementById('content').value;
+
+                if (!title || !content) return;
+
+                // Simulate AI classification (in production, this would be an API call)
+                const classification = simulateClassification(title, content);
+
+                if (classification) {
+                    const suggestionDiv = document.getElementById('itsmSuggestion');
+                    const suggestedType = document.getElementById('suggestedType');
+                    const suggestionConfidence = document.getElementById('suggestionConfidence');
+
+                    suggestedType.textContent = classification.type;
+                    suggestionConfidence.textContent = `(信頼度: ${(classification.confidence * 100).toFixed(0)}%)`;
+                    suggestionDiv.style.display = 'block';
+
+                    // Suggest tags
+                    suggestTags(title, content);
+                }
+            }, 1000);
+        }
+
+        function simulateClassification(title, content) {
+            const text = (title + ' ' + content).toLowerCase();
+
+            if (text.includes('エラー') || text.includes('障害') || text.includes('503') || text.includes('500')) {
+                return { type: 'Incident', confidence: 0.85 };
+            } else if (text.includes('根本原因') || text.includes('問題') || text.includes('恒久')) {
+                return { type: 'Problem', confidence: 0.82 };
+            } else if (text.includes('変更') || text.includes('更新') || text.includes('ssl')) {
+                return { type: 'Change', confidence: 0.78 };
+            } else if (text.includes('リリース') || text.includes('デプロイ')) {
+                return { type: 'Release', confidence: 0.80 };
+            } else if (text.includes('設定') || text.includes('vpn') || text.includes('アクセス')) {
+                return { type: 'Request', confidence: 0.75 };
+            }
+
+            return null;
+        }
+
+        function suggestTags(title, content) {
+            const text = (title + ' ' + content).toLowerCase();
+            const tags = [];
+
+            const keywords = {
+                'apache': 'Apache',
+                'mysql': 'MySQL',
+                'ssl': 'SSL',
+                'エラー': 'エラー対応',
+                'パフォーマンス': 'パフォーマンス',
+                'セキュリティ': 'セキュリティ',
+                'vpn': 'VPN',
+                'smtp': 'メール',
+            };
+
+            for (const [keyword, tag] of Object.entries(keywords)) {
+                if (text.includes(keyword)) {
+                    tags.push(tag);
+                }
+            }
+
+            if (tags.length > 0) {
+                const tagSuggestionsDiv = document.getElementById('tagSuggestions');
+                tagSuggestionsDiv.innerHTML = `
+                    <small style="color: var(--color-text-secondary);">推奨タグ: </small>
+                    ${tags.map(tag => `<button type="button" class="tag" onclick="addTag('${tag}')">${tag}</button>`).join(' ')}
+                `;
+            }
+        }
+
+        function addTag(tag) {
+            const tagsInput = document.getElementById('tags');
+            const currentTags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+
+            if (!currentTags.includes(tag)) {
+                currentTags.push(tag);
+                tagsInput.value = currentTags.join(', ');
+            }
+        }
+
+        // Event listeners for auto-suggestion
+        document.getElementById('title').addEventListener('input', suggestITSMType);
+        document.getElementById('content').addEventListener('input', suggestITSMType);
+
+        // Form submission
+        function submitKnowledge(event) {
+            event.preventDefault();
+
+            const formData = {
+                title: document.getElementById('title').value,
+                content: document.getElementById('content').value,
+                itsmType: document.getElementById('itsmType').value,
+                tags: document.getElementById('tags').value,
+                createdBy: document.getElementById('createdBy').value,
+            };
+
+            // Disable submit button
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span aria-hidden="true">⏳</span> 作成中...';
+
+            // Simulate API call
+            setTimeout(() => {
+                showAlert('success', 'ナレッジが正常に作成されました！');
+
+                // Redirect to detail page after 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = 'detail.html?id=new';
+                }, 1500);
+            }, 1000);
+
+            console.log('Creating knowledge:', formData);
+        }
+
+        // Preview functionality
+        function previewKnowledge() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const itsmType = document.getElementById('itsmType').value;
+
+            const previewContent = document.getElementById('previewContent');
+            previewContent.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <h3>${title || '（タイトル未入力）'}</h3>
+                    <span class="badge badge-${itsmType.toLowerCase()}">${itsmType === 'auto' ? '自動判定' : itsmType}</span>
+                </div>
+                <div style="border-top: 1px solid var(--color-border); padding-top: 1rem;">
+                    <pre style="white-space: pre-wrap; font-family: var(--font-family); line-height: 1.8;">${content || '（内容未入力）'}</pre>
+                </div>
+            `;
+
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+
+        // Close modal on outside click
+        document.getElementById('previewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePreview();
+            }
+        });
+
+        // Alert helper
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        // Auto-save to localStorage
+        let autoSaveTimeout;
+        function autoSave() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                const draft = {
+                    title: document.getElementById('title').value,
+                    content: document.getElementById('content').value,
+                    itsmType: document.getElementById('itsmType').value,
+                    tags: document.getElementById('tags').value,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('knowledgeDraft', JSON.stringify(draft));
+                console.log('Draft auto-saved');
+            }, 2000);
+        }
+
+        // Load draft on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const draft = localStorage.getItem('knowledgeDraft');
+            if (draft) {
+                const data = JSON.parse(draft);
+                if (confirm('保存された下書きがあります。復元しますか？')) {
+                    document.getElementById('title').value = data.title || '';
+                    document.getElementById('content').value = data.content || '';
+                    document.getElementById('itsmType').value = data.itsmType || 'auto';
+                    document.getElementById('tags').value = data.tags || '';
+                }
+            }
+
+            // Add auto-save listeners
+            ['title', 'content', 'itsmType', 'tags'].forEach(id => {
+                document.getElementById(id).addEventListener('input', autoSave);
+            });
+        });
+    </script>
+</body>
+</html>

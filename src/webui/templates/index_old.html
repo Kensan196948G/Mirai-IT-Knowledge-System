@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="stats">
+    <div class="stat-card">
+        <h3>{{ stats.total_knowledge }}</h3>
+        <p>総ナレッジ数</p>
+    </div>
+    {% for itsm_type, count in stats.by_itsm_type.items() %}
+    <div class="stat-card">
+        <h3>{{ count }}</h3>
+        <p>{{ itsm_type }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2>📚 最近のナレッジ</h2>
+    {% if recent_knowledge %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #eee;">
+                <th style="text-align: left; padding: 0.75rem;">タイトル</th>
+                <th style="text-align: left; padding: 0.75rem;">タイプ</th>
+                <th style="text-align: left; padding: 0.75rem;">作成日時</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for knowledge in recent_knowledge %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.75rem;">
+                    <a href="/knowledge/{{ knowledge.id }}" style="color: #667eea; text-decoration: none;">
+                        {{ knowledge.title }}
+                    </a>
+                </td>
+                <td style="padding: 0.75rem;">
+                    <span class="badge badge-{{ knowledge.itsm_type.lower() }}">
+                        {{ knowledge.itsm_type }}
+                    </span>
+                </td>
+                <td style="padding: 0.75rem;">{{ knowledge.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #666; padding: 2rem; text-align: center;">まだナレッジがありません</p>
+    {% endif %}
+</div>
+
+<div style="text-align: center; margin: 2rem 0;">
+    <a href="/knowledge/create" class="btn">新しいナレッジを作成</a>
+    <a href="/knowledge/search" class="btn btn-secondary" style="margin-left: 1rem;">ナレッジを検索</a>
+</div>
+{% endblock %}

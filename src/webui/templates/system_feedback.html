@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}システムフィードバック - Mirai IT Knowledge Systems{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <div class="breadcrumb-content">
+        <a href="/">ホーム</a>
+        <span class="breadcrumb-separator">›</span>
+        <span>システムフィードバック</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>💬 システムフィードバック</h2>
+    <p style="color: #666; margin-bottom: 1.5rem;">
+        システムの改善提案、バグ報告、機能リクエストなどをお寄せください。
+    </p>
+
+    <form method="POST" action="/feedback">
+        <div class="form-group">
+            <label for="category">カテゴリ *</label>
+            <select id="category" name="category" required>
+                <option value="">選択してください</option>
+                <option value="ui">🎨 UI改善</option>
+                <option value="search">🔍 検索機能</option>
+                <option value="quality">✨ ナレッジ品質</option>
+                <option value="performance">⚡ パフォーマンス</option>
+                <option value="feature_request">💡 機能リクエスト</option>
+                <option value="bug">🐛 バグ報告</option>
+                <option value="other">📝 その他</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="title">タイトル *</label>
+            <input type="text" id="title" name="title" required placeholder="例: 検索結果の表示を改善してほしい">
+        </div>
+
+        <div class="form-group">
+            <label for="description">詳細説明 *</label>
+            <textarea id="description" name="description" required placeholder="できるだけ具体的に説明してください..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="priority">優先度</label>
+            <select id="priority" name="priority">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+                <option value="critical">緊急</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="user_id">ユーザー名（オプション）</label>
+            <input type="text" id="user_id" name="user_id" placeholder="匿名">
+        </div>
+
+        <button type="submit" class="btn">フィードバックを送信</button>
+        <a href="/" class="btn btn-secondary" style="margin-left: 1rem;">キャンセル</a>
+    </form>
+</div>
+
+<!-- Feedback List -->
+<div class="card">
+    <h3 style="margin-bottom: 1rem;">📋 最近のフィードバック</h3>
+
+    {% if feedbacks %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 80px;">状態</th>
+                <th>タイトル</th>
+                <th style="width: 120px;">カテゴリ</th>
+                <th style="width: 80px;">優先度</th>
+                <th style="width: 150px;">作成日時</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for feedback in feedbacks %}
+            <tr>
+                <td>
+                    {% if feedback.status == 'new' %}
+                    <span class="badge" style="background: #e3f2fd; color: #1976d2;">新規</span>
+                    {% elif feedback.status == 'reviewing' %}
+                    <span class="badge" style="background: #fff3e0; color: #f57c00;">確認中</span>
+                    {% elif feedback.status == 'planned' %}
+                    <span class="badge" style="background: #f3e5f5; color: #7b1fa2;">計画中</span>
+                    {% elif feedback.status == 'in_progress' %}
+                    <span class="badge" style="background: #e8f5e9; color: #388e3c;">対応中</span>
+                    {% elif feedback.status == 'completed' %}
+                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">完了</span>
+                    {% elif feedback.status == 'rejected' %}
+                    <span class="badge" style="background: #ffebee; color: #c62828;">却下</span>
+                    {% else %}
+                    <span class="badge" style="background: #e0e0e0; color: #616161;">{{ feedback.status }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ feedback.title }}</strong>
+                    <br>
+                    <small style="color: #666;">{{ feedback.description[:100] }}{% if feedback.description|length > 100 %}...{% endif %}</small>
+                </td>
+                <td>
+                    <span style="font-size: 0.9rem;">
+                        {% if feedback.feedback_category == 'ui' %}🎨 UI
+                        {% elif feedback.feedback_category == 'search' %}🔍 検索
+                        {% elif feedback.feedback_category == 'quality' %}✨ 品質
+                        {% elif feedback.feedback_category == 'performance' %}⚡ 性能
+                        {% elif feedback.feedback_category == 'feature_request' %}💡 機能
+                        {% elif feedback.feedback_category == 'bug' %}🐛 バグ
+                        {% else %}📝 その他{% endif %}
+                    </span>
+                </td>
+                <td style="text-align: center;">
+                    {% if feedback.priority == 'critical' %}
+                    <span style="color: #c62828; font-weight: bold;">!!!</span>
+                    {% elif feedback.priority == 'high' %}
+                    <span style="color: #f57c00; font-weight: bold;">!!</span>
+                    {% elif feedback.priority == 'medium' %}
+                    <span style="color: #ffa726;">!</span>
+                    {% else %}
+                    <span style="color: #999;">-</span>
+                    {% endif %}
+                </td>
+                <td style="color: #666; font-size: 0.9rem;">
+                    {{ feedback.created_at[:16] }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">💬</div>
+        <p>まだフィードバックがありません</p>
+        <small style="color: #999;">上のフォームから最初のフィードバックを送信してください</small>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tips -->
+<div class="card" style="background: #e8f5e9; border-left: 4px solid #4CAF50;">
+    <h4 style="color: #388e3c; margin-bottom: 0.5rem;">💡 フィードバックのヒント</h4>
+    <ul style="line-height: 1.8; color: #666; margin-left: 1.5rem;">
+        <li>具体的な改善案を含めると、対応がスムーズになります</li>
+        <li>スクリーンショットやエラーメッセージがあれば、説明に含めてください</li>
+        <li>バグ報告の場合は、再現手順を詳しく記載してください</li>
+        <li>機能リクエストの場合は、なぜその機能が必要かも説明してください</li>
+    </ul>
+</div>
+{% endblock %}

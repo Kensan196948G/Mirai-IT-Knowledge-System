@@ -1,0 +1,22 @@
+# Documenter SubAgent Definition
+
+name: Documenter
+role: formatting
+priority: medium
+
+description: |
+  出力整形と要約生成を担当
+  技術者向け・非技術者向けの2つの要約を生成
+
+capabilities:
+  - 技術者向け要約
+  - 非技術者向け要約
+  - 3行要約
+  - Markdown生成
+  - HTML生成
+
+mcp_dependencies: []
+
+implementation:
+  python_class: src.subagents.documenter.DocumenterSubAgent
+  method: process

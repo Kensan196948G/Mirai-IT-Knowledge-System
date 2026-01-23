@@ -1,0 +1,132 @@
+# Hooks Configuration
+# Mirai IT Knowledge System - Hooks定義
+
+hooks:
+  pre_task:
+    name: "PreTask"
+    description: "タスク実行前の事前チェック"
+    trigger: "before_task"
+    enabled: true
+    actions:
+      - validate_input
+      - check_dependencies
+      - load_context
+    prompts:
+      check: |
+        タスク実行前に以下を確認してください：
+        - 入力データの妥当性
+        - 必要なリソースの可用性
+        - 前提条件の充足
+    timeout_seconds: 30
+
+  post_task:
+    name: "PostTask"
+    description: "タスク実行後の事後処理"
+    trigger: "after_task"
+    enabled: true
+    actions:
+      - save_results
+      - update_statistics
+      - cleanup_resources
+    prompts:
+      process: |
+        タスク完了後の処理を行ってください：
+        - 結果の保存
+        - 統計情報の更新
+        - リソースのクリーンアップ
+    timeout_seconds: 30
+
+  duplicate_check:
+    name: "DuplicateCheck"
+    description: "重複ナレッジの検出"
+    trigger: "before_knowledge_create"
+    enabled: true
+    actions:
+      - similarity_search
+      - content_comparison
+      - merge_suggestion
+    prompts:
+      check: |
+        新規ナレッジの重複チェックを行ってください：
+        - タイトルの類似性（80%以上で警告）
+        - 内容の重複（70%以上で警告）
+        - 関連ナレッジの提案
+    thresholds:
+      title_similarity: 0.8
+      content_similarity: 0.7
+    timeout_seconds: 60
+
+  deviation_check:
+    name: "DeviationCheck"
+    description: "ITSM標準からの逸脱検出"
+    trigger: "before_knowledge_save"
+    enabled: true
+    actions:
+      - itsm_compliance_check
+      - format_validation
+      - tag_validation
+    prompts:
+      validate: |
+        ITSMガイドラインへの準拠を確認してください：
+        - ITSM分類の正確性
+        - 必須フィールドの充足
+        - タグ・キーワードの適切性
+    required_fields:
+      - title
+      - content
+      - itsm_type
+    valid_itsm_types:
+      - Incident
+      - Problem
+      - Change
+      - Release
+      - Service Request
+      - Other
+    timeout_seconds: 45
+
+  auto_summary:
+    name: "AutoSummary"
+    description: "ナレッジの自動要約生成"
+    trigger: "after_knowledge_create"
+    enabled: true
+    actions:
+      - generate_summary
+      - extract_keywords
+      - suggest_related
+    prompts:
+      summarize: |
+        ナレッジの自動要約を生成してください：
+        - 100文字以内の要約
+        - 主要キーワードの抽出（5個以内）
+        - 関連ナレッジIDの提案
+    max_summary_length: 100
+    max_keywords: 5
+    timeout_seconds: 45
+
+# グローバル設定
+global_settings:
+  parallel_execution: true
+  max_parallel_hooks: 2
+  log_level: "INFO"
+  retry_on_failure: true
+  max_retries: 2
+
+# イベントトリガー定義
+event_triggers:
+  before_task:
+    - pre_task
+  after_task:
+    - post_task
+  before_knowledge_create:
+    - duplicate_check
+  before_knowledge_save:
+    - deviation_check
+  after_knowledge_create:
+    - auto_summary
+
+# ログ設定
+logging:
+  enabled: true
+  log_path: "logs/hooks/"
+  retention_days: 30
+  log_format: "%(asctime)s - %(hook_name)s - %(levelname)s - %(message)s"

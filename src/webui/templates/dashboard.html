@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}ダッシュボード - Mirai IT Knowledge Systems{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">📊 ダッシュボード</h2>
+
+<div class="stats">
+    <div class="stat-card">
+        <h3>{{ stats.total_knowledge }}</h3>
+        <p>総ナレッジ数</p>
+    </div>
+    {% for itsm_type, count in stats.by_itsm_type.items() %}
+    <div class="stat-card">
+        <h3>{{ count }}</h3>
+        <p>{{ itsm_type }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h3>⚡ ワークフロー実行履歴（最新10件）</h3>
+    {% if workflow_history %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #eee;">
+                <th style="text-align: left; padding: 0.75rem;">ID</th>
+                <th style="text-align: left; padding: 0.75rem;">タイプ</th>
+                <th style="text-align: left; padding: 0.75rem;">ステータス</th>
+                <th style="text-align: left; padding: 0.75rem;">実行時間</th>
+                <th style="text-align: left; padding: 0.75rem;">作成日時</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for workflow in workflow_history %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.75rem;">#{{ workflow.id }}</td>
+                <td style="padding: 0.75rem;">{{ workflow.workflow_type }}</td>
+                <td style="padding: 0.75rem;">
+                    {% if workflow.status == 'completed' %}
+                    <span class="badge" style="background: #e8f5e9; color: #388e3c;">完了</span>
+                    {% elif workflow.status == 'failed' %}
+                    <span class="badge" style="background: #ffebee; color: #c62828;">失敗</span>
+                    {% elif workflow.status == 'running' %}
+                    <span class="badge" style="background: #e3f2fd; color: #1976d2;">実行中</span>
+                    {% else %}
+                    <span class="badge" style="background: #e0e0e0; color: #616161;">{{ workflow.status }}</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem;">
+                    {% if workflow.execution_time_ms %}
+                    {{ workflow.execution_time_ms }}ms
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem;">{{ workflow.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #666; padding: 2rem; text-align: center;">ワークフロー実行履歴がありません</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>📈 システム情報</h3>
+    <div style="line-height: 2;">
+        <p><strong>バージョン:</strong> 1.0.0</p>
+        <p><strong>アーキテクチャ:</strong> Claude Code Workflow</p>
+        <p><strong>サブエージェント数:</strong> 6個</p>
+        <p><strong>フック数:</strong> 5個</p>
+        <p><strong>データベース:</strong> SQLite</p>
+    </div>
+</div>
+{% endblock %}

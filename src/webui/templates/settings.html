@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block title %}設定 - Mirai IT Knowledge Systems{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <div class="breadcrumb-content">
+        <a href="/">ホーム</a>
+        <span class="breadcrumb-separator">›</span>
+        <span>設定</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .settings-section h3 {
+        color: var(--color-primary);
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #eee;
+    }
+
+    .setting-item {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .setting-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .setting-label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    .setting-description {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 0.75rem;
+    }
+
+    .auth-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .auth-modal.show {
+        display: flex;
+    }
+
+    .auth-modal-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .password-field {
+        position: relative;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid var(--color-primary);">
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <h2>⚙️ システム設定</h2>
+            <p style="color: #666;">
+                システムの動作を設定できます。設定の保存には管理者権限（ユーザー名・パスワード）が必要です。
+            </p>
+        </div>
+        <div style="text-align: right; font-size: 0.85rem; color: #999;">
+            <div>最終更新: 2025年12月31日</div>
+            <div>モデル: 2025年12月最新版</div>
+        </div>
+    </div>
+</div>
+
+<form id="settingsForm" onsubmit="saveSettings(event)">
+    <!-- AI設定 -->
+    <div class="settings-section">
+        <h3>🤖 AI設定</h3>
+
+        <div class="setting-item">
+            <label class="setting-label">AI APIプロバイダー</label>
+            <div class="setting-description">
+                AI対話・AI検索で使用するAPIを選択します。「なし」の場合はルールベースで動作します。
+            </div>
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_provider">
+                <option value="none" selected>なし（ルールベース）</option>
+                <option value="anthropic">Anthropic Claude（推奨）</option>
+                <option value="openrouter">OpenRouter（複数モデル対応）</option>
+                <option value="openai">OpenAI GPT</option>
+                <option value="deepseek">DeepSeek（低コスト）</option>
+            </select>
+        </div>
+
+        <div class="setting-item" id="apiKeySettings" style="display: none;">
+            <label class="setting-label">API キー</label>
+            <div class="setting-description">
+                選択したプロバイダーのAPIキーを入力してください。
+            </div>
+            <div class="password-field">
+                <input type="password" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="api_key" placeholder="sk-...">
+                <span class="password-toggle" onclick="togglePassword(this)">👁️</span>
+            </div>
+        </div>
+
+        <div class="setting-item" id="chatModelSettings" style="display: none;">
+            <label class="setting-label">AI対話用モデル</label>
+            <div class="setting-description">
+                AI対話ナレッジ作成で使用するモデル
+            </div>
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_chat" id="chatModelSelect">
+                <!-- Anthropic用 -->
+                <optgroup label="Anthropic Claude" data-provider="anthropic">
+                    <option value="anthropic/claude-opus-4.5">Claude Opus 4.5（2025年11月・最高性能）</option>
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（2025年9月・最高コーディング）</option>
+                </optgroup>
+                <!-- OpenAI用 -->
+                <optgroup label="OpenAI GPT" data-provider="openai">
+                    <option value="openai/gpt-5.2-pro">GPT-5.2 Pro（2025年12月・最新）</option>
+                    <option value="openai/gpt-5.2-thinking">GPT-5.2 Thinking（推論特化）</option>
+                    <option value="openai/gpt-5.2-instant">GPT-5.2 Instant（高速）</option>
+                </optgroup>
+                <!-- DeepSeek用 -->
+                <optgroup label="DeepSeek" data-provider="deepseek">
+                    <option value="deepseek/deepseek-v3.2-speciale">DeepSeek V3.2 Speciale（2025年12月・推論最強）</option>
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（2025年12月・超低コスト）</option>
+                </optgroup>
+                <!-- OpenRouter用（全て） -->
+                <optgroup label="OpenRouter - Anthropic" data-provider="openrouter">
+                    <option value="anthropic/claude-opus-4.5">Claude Opus 4.5（最高性能）</option>
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（コーディング最強）</option>
+                </optgroup>
+                <optgroup label="OpenRouter - OpenAI" data-provider="openrouter">
+                    <option value="openai/gpt-5.2-pro">GPT-5.2 Pro（最新）</option>
+                    <option value="openai/gpt-5.2-thinking">GPT-5.2 Thinking</option>
+                    <option value="openai/gpt-5.2-instant">GPT-5.2 Instant</option>
+                </optgroup>
+                <optgroup label="OpenRouter - DeepSeek" data-provider="openrouter">
+                    <option value="deepseek/deepseek-v3.2-speciale">DeepSeek V3.2 Speciale（推論最強）</option>
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（超低コスト）</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="setting-item" id="searchModelSettings" style="display: none;">
+            <label class="setting-label">AI検索用モデル</label>
+            <div class="setting-description">
+                インテリジェント検索で使用するモデル（高速なモデルを推奨）
+            </div>
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="ai_model_search" id="searchModelSelect">
+                <!-- Anthropic用 -->
+                <optgroup label="Anthropic Claude" data-provider="anthropic">
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（2025年9月・推奨）</option>
+                    <option value="anthropic/claude-opus-4.5">Claude Opus 4.5（2025年11月・最高性能）</option>
+                </optgroup>
+                <!-- OpenAI用 -->
+                <optgroup label="OpenAI GPT" data-provider="openai">
+                    <option value="openai/gpt-5.2-instant">GPT-5.2 Instant（2025年12月・高速・推奨）</option>
+                    <option value="openai/gpt-5.2-thinking">GPT-5.2 Thinking（推論特化）</option>
+                    <option value="openai/gpt-5.2-pro">GPT-5.2 Pro（最高品質）</option>
+                </optgroup>
+                <!-- DeepSeek用 -->
+                <optgroup label="DeepSeek" data-provider="deepseek">
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（2025年12月・超低コスト・推奨）</option>
+                    <option value="deepseek/deepseek-v3.2-speciale">DeepSeek V3.2 Speciale（推論最強）</option>
+                </optgroup>
+                <!-- OpenRouter用（全て） -->
+                <optgroup label="OpenRouter - Anthropic" data-provider="openrouter">
+                    <option value="anthropic/claude-sonnet-4.5">Claude Sonnet 4.5（推奨・高速）</option>
+                    <option value="anthropic/claude-opus-4.5">Claude Opus 4.5（最高性能）</option>
+                </optgroup>
+                <optgroup label="OpenRouter - OpenAI" data-provider="openrouter">
+                    <option value="openai/gpt-5.2-instant">GPT-5.2 Instant（高速・推奨）</option>
+                    <option value="openai/gpt-5.2-thinking">GPT-5.2 Thinking</option>
+                    <option value="openai/gpt-5.2-pro">GPT-5.2 Pro</option>
+                </optgroup>
+                <optgroup label="OpenRouter - DeepSeek" data-provider="openrouter">
+                    <option value="deepseek/deepseek-v3.2">DeepSeek V3.2（超低コスト・推奨）</option>
+                    <option value="deepseek/deepseek-v3.2-speciale">DeepSeek V3.2 Speciale</option>
+                </optgroup>
+            </select>
+        </div>
+    </div>
+
+    <!-- システム設定 -->
+    <div class="settings-section">
+        <h3>🔧 システム設定</h3>
+
+        <div class="setting-item">
+            <label class="setting-label">1ページあたりの表示件数</label>
+            <div class="setting-description">
+                検索結果やナレッジ一覧の1ページあたりの表示件数
+            </div>
+            <input type="number" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="items_per_page" value="50" min="10" max="100">
+        </div>
+
+        <div class="setting-item">
+            <label class="setting-label">自動バックアップ</label>
+            <div class="setting-description">
+                毎日自動的にデータベースをバックアップします
+            </div>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="auto_backup_enabled" checked>
+                <span>自動バックアップを有効化</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- UI設定 -->
+    <div class="settings-section">
+        <h3>🎨 UI設定</h3>
+
+        <div class="setting-item">
+            <label class="setting-label">テーマ</label>
+            <div class="setting-description">
+                画面の配色テーマ（ダークモードは今後実装予定）
+            </div>
+            <select style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="theme">
+                <option value="light" selected>ライト</option>
+                <option value="dark" disabled>ダーク（準備中）</option>
+            </select>
+        </div>
+
+        <div class="setting-item">
+            <label class="setting-label">メニュー説明</label>
+            <div class="setting-description">
+                メニュー下部の説明バーを表示するかどうか
+            </div>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="show_menu_descriptions" checked>
+                <span>メニュー説明を表示</span>
+            </label>
+        </div>
+
+        <div class="setting-item">
+            <label class="setting-label">キーボードショートカット</label>
+            <div class="setting-description">
+                キーボードショートカット（/, n, ? など）を有効化
+            </div>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="keyboard_shortcuts_enabled" checked>
+                <span>キーボードショートカットを有効化</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- セキュリティ設定 -->
+    <div class="settings-section">
+        <h3>🔐 セキュリティ設定</h3>
+
+        <div class="setting-item">
+            <label class="setting-label">ナレッジ作成の認証</label>
+            <div class="setting-description">
+                ナレッジ作成時にユーザー認証を必須とするかどうか
+            </div>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" name="require_auth_for_create">
+                <span>ナレッジ作成に認証を必須とする</span>
+            </label>
+        </div>
+
+        <div class="setting-item">
+            <label class="setting-label">セッションタイムアウト</label>
+            <div class="setting-description">
+                ログインセッションの有効期限（分）
+            </div>
+            <input type="number" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" name="session_timeout_minutes" value="60" min="5" max="1440">
+        </div>
+    </div>
+
+    <!-- 保存ボタン -->
+    <div style="text-align: center; padding: 2rem 0;">
+        <button type="submit" class="btn" style="padding: 1rem 3rem; font-size: 1.1rem;">
+            💾 設定を保存
+        </button>
+        <a href="/" class="btn btn-secondary" style="margin-left: 1rem; padding: 1rem 2rem;">
+            キャンセル
+        </a>
+    </div>
+</form>
+
+<!-- 認証モーダル -->
+<div id="authModal" class="auth-modal">
+    <div class="auth-modal-content">
+        <h3 style="color: var(--color-primary); margin-bottom: 1.5rem;">🔐 認証が必要です</h3>
+        <p style="color: #666; margin-bottom: 1.5rem; font-size: 0.9rem;">
+            設定を保存するには、管理者のユーザー名とパスワードを入力してください。
+        </p>
+
+        <form id="authForm" onsubmit="authenticate(event)">
+            <div class="form-group">
+                <label>ユーザー名</label>
+                <input type="text" id="authUsername" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" required placeholder="admin">
+            </div>
+
+            <div class="form-group">
+                <label>パスワード</label>
+                <div class="password-field">
+                    <input type="password" id="authPassword" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;" required placeholder="パスワード">
+                    <span class="password-toggle" onclick="togglePassword(this)">👁️</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn" style="flex: 1;">認証して保存</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAuthModal()" style="flex: 1;">キャンセル</button>
+            </div>
+        </form>
+
+        <div id="authError" style="color: #f44336; margin-top: 1rem; display: none; font-size: 0.9rem;"></div>
+    </div>
+</div>
+
+<!-- ヒント -->
+<div class="card" style="background: #fffbf0; border-left: 4px solid #ffa726;">
+    <h4 style="color: #f57c00; margin-bottom: 1rem;">💡 設定のヒント</h4>
+    <ul style="line-height: 2; color: #666; margin-left: 1.5rem;">
+        <li><strong>AI API不要</strong>: 「なし」を選択すれば、APIキーなしで基本機能が使えます</li>
+        <li><strong>推奨API</strong>: OpenRouter + Claude & DeepSeek の組み合わせがコスパ最高</li>
+        <li><strong>デフォルト管理者</strong>: ユーザー名「admin」/ パスワード「admin123」（変更推奨）</li>
+        <li><strong>セキュリティ</strong>: 本番環境では必ず管理者パスワードを変更してください</li>
+        <li><strong>設定変更履歴</strong>: 全ての変更は自動的に記録されます</li>
+    </ul>
+</div>
+
+<script>
+// AI provider選択時にAPIキー入力欄とモデル選択を表示/非表示
+document.querySelector('select[name="ai_provider"]').addEventListener('change', function(e) {
+    const provider = e.target.value;
+    const apiKeySettings = document.getElementById('apiKeySettings');
+    const chatModelSettings = document.getElementById('chatModelSettings');
+    const searchModelSettings = document.getElementById('searchModelSettings');
+
+    if (provider === 'none') {
+        apiKeySettings.style.display = 'none';
+        chatModelSettings.style.display = 'none';
+        searchModelSettings.style.display = 'none';
+    } else {
+        apiKeySettings.style.display = 'block';
+        chatModelSettings.style.display = 'block';
+        searchModelSettings.style.display = 'block';
+
+        // プロバイダーに応じてモデル選択肢をフィルタ
+        filterModelOptions('chatModelSelect', provider);
+        filterModelOptions('searchModelSelect', provider);
+    }
+});
+
+// プロバイダーに応じてモデル選択肢をフィルタ
+function filterModelOptions(selectId, provider) {
+    const select = document.getElementById(selectId);
+    const optgroups = select.querySelectorAll('optgroup');
+
+    optgroups.forEach(optgroup => {
+        const groupProvider = optgroup.getAttribute('data-provider');
+
+        if (provider === 'openrouter') {
+            // OpenRouterの場合は全て表示
+            optgroup.style.display = '';
+        } else if (groupProvider === provider) {
+            // 選択されたプロバイダーのみ表示
+            optgroup.style.display = '';
+        } else {
+            // 他のプロバイダーは非表示
+            optgroup.style.display = 'none';
+        }
+    });
+
+    // 最初の表示されているオプションを自動選択
+    const firstVisibleOption = select.querySelector('optgroup:not([style*="display: none"]) option');
+    if (firstVisibleOption) {
+        select.value = firstVisibleOption.value;
+    }
+}
+
+// パスワード表示切り替え
+function togglePassword(element) {
+    const input = element.previousElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        element.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        element.textContent = '👁️';
+    }
+}
+
+// 設定保存（認証モーダル表示）
+function saveSettings(event) {
+    event.preventDefault();
+    document.getElementById('authModal').classList.add('show');
+}
+
+// 認証処理
+async function authenticate(event) {
+    event.preventDefault();
+
+    const username = document.getElementById('authUsername').value;
+    const password = document.getElementById('authPassword').value;
+    const authError = document.getElementById('authError');
+
+    authError.style.display = 'none';
+
+    try {
+        // 認証API呼び出し
+        const authResponse = await fetch('/api/settings/authenticate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
+
+        const authData = await authResponse.json();
+
+        if (authData.success) {
+            // 認証成功 → 設定を保存
+            await saveSettingsToServer(authData.token);
+        } else {
+            authError.textContent = '❌ ユーザー名またはパスワードが正しくありません';
+            authError.style.display = 'block';
+        }
+    } catch (error) {
+        authError.textContent = '❌ エラーが発生しました: ' + error.message;
+        authError.style.display = 'block';
+    }
+}
+
+// 実際の設定保存
+async function saveSettingsToServer(authToken) {
+    const formData = new FormData(document.getElementById('settingsForm'));
+    const settings = {};
+
+    for (let [key, value] of formData.entries()) {
+        settings[key] = value;
+    }
+
+    try {
+        const response = await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken
+            },
+            body: JSON.stringify({ settings })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeAuthModal();
+            showToast('設定を保存しました', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.error || '保存に失敗しました');
+        }
+    } catch (error) {
+        document.getElementById('authError').textContent = '❌ ' + error.message;
+        document.getElementById('authError').style.display = 'block';
+    }
+}
+
+function closeAuthModal() {
+    document.getElementById('authModal').classList.remove('show');
+    document.getElementById('authUsername').value = '';
+    document.getElementById('authPassword').value = '';
+    document.getElementById('authError').style.display = 'none';
+}
+
+// モーダル外クリックで閉じる
+document.getElementById('authModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAuthModal();
+    }
+});
+</script>
+{% endblock %}

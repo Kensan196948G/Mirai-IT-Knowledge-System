@@ -1,0 +1,35 @@
+name: Knowledge Base Backup
+
+on:
+  schedule:
+    # 毎日午前2時（JST）にバックアップ
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install flask
+
+      - name: Backup database
+        run: |
+          mkdir -p backups
+          cp db/knowledge.db backups/knowledge-$(date +%Y%m%d).db
+
+      - name: Commit and push backup
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add backups/
+          git commit -m "🔄 Automated backup $(date +%Y-%m-%d)" || echo "No changes"
+          git push

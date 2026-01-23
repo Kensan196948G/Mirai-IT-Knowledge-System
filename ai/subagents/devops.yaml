@@ -1,0 +1,22 @@
+# DevOps SubAgent Definition
+
+name: DevOps
+role: technical_analysis
+priority: medium
+
+description: |
+  技術分析と自動化提案を担当
+  自動化可能性評価、リスク分析、改善提案
+
+capabilities:
+  - 技術要素抽出
+  - 自動化可能性評価
+  - リスク分析
+  - 改善提案
+
+mcp_dependencies:
+  - Context7
+
+implementation:
+  python_class: src.subagents.devops.DevOpsSubAgent
+  method: process

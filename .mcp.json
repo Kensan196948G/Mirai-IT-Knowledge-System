@@ -1,0 +1,83 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "sqlite-dev": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-sqlite", "--db-path", "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/db/knowledge_dev.db"],
+      "description": "開発環境データベース"
+    },
+    "sqlite-prod": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-sqlite", "--db-path", "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/db/knowledge.db"],
+      "description": "本番環境データベース"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "description": "ライブラリドキュメント取得"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-playwright"],
+      "description": "ブラウザ自動化テスト"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_FILE_PATH": "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/.memory/project-memory.json"
+      },
+      "description": "プロジェクト固有の永続メモリ"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "複雑な問題の段階的思考"
+    }
+  },
+  "projectConfig": {
+    "name": "Mirai-IT-Knowledge-System",
+    "description": "ITSM対応AIナレッジシステム",
+    "environments": {
+      "development": {
+        "database": "db/knowledge_dev.db",
+        "port": 8888,
+        "host": "192.168.0.187"
+      },
+      "production": {
+        "database": "db/knowledge.db",
+        "port": 5000,
+        "host": "192.168.0.187"
+      }
+    },
+    "subagents": [
+      "Architect",
+      "KnowledgeCurator",
+      "ITSMExpert",
+      "DevOps",
+      "QA",
+      "Coordinator",
+      "Documenter"
+    ],
+    "hooks": [
+      "PreTask",
+      "PostTask",
+      "DuplicateCheck",
+      "DeviationCheck",
+      "AutoSummary"
+    ]
+  }
+}

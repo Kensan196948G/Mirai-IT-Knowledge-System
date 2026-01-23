@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block breadcrumb %}{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards with Icons and Colors -->
+<div class="stats">
+    <div class="stat-card total" data-itsm-type="">
+        <div class="stat-card-icon">📚</div>
+        <h3>{{ stats.total_knowledge }}</h3>
+        <p>総ナレッジ数</p>
+    </div>
+    {% for itsm_type, count in stats.by_itsm_type.items() %}
+    <div class="stat-card clickable {{ itsm_type.lower() }}" data-itsm-type="{{ itsm_type }}">
+        <div class="stat-card-icon">
+            {% if itsm_type == 'Incident' %}🚨
+            {% elif itsm_type == 'Problem' %}🔍
+            {% elif itsm_type == 'Change' %}🔧
+            {% elif itsm_type == 'Release' %}🚀
+            {% elif itsm_type == 'Request' %}📝
+            {% else %}📄{% endif %}
+        </div>
+        <h3>{{ count }}</h3>
+        <p>{{ itsm_type }}</p>
+        <small style="color: #999; font-size: 0.75rem;">クリックして絞り込み</small>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Quick Actions -->
+<div class="card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid var(--color-primary);">
+    <h2>⚡ クイックアクション</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <a href="/knowledge/create" class="btn" style="text-align: center; padding: 1rem;">
+            ✍️ 新しいナレッジを作成
+        </a>
+        <a href="/knowledge/search" class="btn btn-secondary" style="text-align: center; padding: 1rem;">
+            🔍 ナレッジを検索
+        </a>
+        <a href="/analytics" class="btn btn-secondary" style="text-align: center; padding: 1rem;">
+            📊 分析を見る
+        </a>
+    </div>
+</div>
+
+<!-- Recent Knowledge -->
+<div class="card">
+    <h2>📚 最近のナレッジ</h2>
+    {% if recent_knowledge %}
+    <table>
+        <thead>
+            <tr>
+                <th>タイトル</th>
+                <th style="width: 120px;">タイプ</th>
+                <th style="width: 150px;">作成日時</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for knowledge in recent_knowledge %}
+            <tr onclick="window.location.href='/knowledge/{{ knowledge.id }}'" style="cursor: pointer;">
+                <td>
+                    <a href="/knowledge/{{ knowledge.id }}" style="color: var(--color-primary); text-decoration: none; font-weight: 500;">
+                        {{ knowledge.title }}
+                    </a>
+                    {% if knowledge.summary_non_technical %}
+                    <br>
+                    <small style="color: #666;">{{ knowledge.summary_non_technical[:80] }}{% if knowledge.summary_non_technical|length > 80 %}...{% endif %}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-{{ knowledge.itsm_type.lower() }}">
+                        {% if knowledge.itsm_type == 'Incident' %}🚨
+                        {% elif knowledge.itsm_type == 'Problem' %}🔍
+                        {% elif knowledge.itsm_type == 'Change' %}🔧
+                        {% elif knowledge.itsm_type == 'Release' %}🚀
+                        {% elif knowledge.itsm_type == 'Request' %}📝
+                        {% else %}📄{% endif %}
+                        {{ knowledge.itsm_type }}
+                    </span>
+                </td>
+                <td style="color: #666; font-size: 0.9rem;">
+                    {{ knowledge.created_at[:16] }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <h3>まだナレッジがありません</h3>
+        <p style="margin-bottom: 1rem;">最初のナレッジを作成してみましょう</p>
+        <a href="/knowledge/create" class="btn">新しいナレッジを作成</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick Tips -->
+<div class="card" style="background: #fffbf0; border-left: 4px solid #ffa726;">
+    <h3 style="color: #f57c00; margin-bottom: 1rem;">💡 クイックガイド</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+        <div>
+            <h4 style="color: #555; margin-bottom: 0.5rem;">⌨️ キーボードショートカット</h4>
+            <ul style="color: #666; line-height: 1.8; margin-left: 1.5rem;">
+                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">/</kbd> - 検索ページへ</li>
+                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">n</kbd> - 新規作成ページへ</li>
+                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">?</kbd> - ヘルプを表示</li>
+            </ul>
+        </div>
+        <div>
+            <h4 style="color: #555; margin-bottom: 0.5rem;">🎯 統計カードの使い方</h4>
+            <p style="color: #666; line-height: 1.8;">
+                各ITSMタイプのカードをクリックすると、そのタイプでフィルタされたナレッジ一覧が表示されます。
+            </p>
+        </div>
+        <div>
+            <h4 style="color: #555; margin-bottom: 0.5rem;">🔍 検索のコツ</h4>
+            <p style="color: #666; line-height: 1.8;">
+                自然な言葉で検索できます。例: 「データベース 接続エラー」「Webサーバー 証明書」
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// URLパラメータでフィルタリング処理
+const urlParams = new URLSearchParams(window.location.search);
+const itsmFilter = urlParams.get('itsm_type');
+
+if (itsmFilter) {
+    // フィルタが適用されている場合は該当カードをハイライト
+    document.querySelectorAll('.stat-card').forEach(card => {
+        if (card.dataset.itsmType === itsmFilter) {
+            card.style.background = '#f0f7ff';
+            card.style.borderTopWidth = '6px';
+        }
+    });
+}
+</script>
+{% endblock %}

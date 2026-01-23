@@ -1,0 +1,73 @@
+version: 1
+
+features:
+  standard: true
+
+  subagents:
+    enabled: true
+    directory: ai/subagents
+    agents:
+      - name: Architect
+        file: ai/subagents/architect.yaml
+      - name: KnowledgeCurator
+        file: ai/subagents/knowledge_curator.yaml
+      - name: ITSMExpert
+        file: ai/subagents/itsm_expert.yaml
+      - name: DevOps
+        file: ai/subagents/devops.yaml
+      - name: QA
+        file: ai/subagents/qa.yaml
+      - name: Documenter
+        file: ai/subagents/documenter.yaml
+      - name: Coordinator
+        file: ai/subagents/coordinator.yaml
+
+  hooks:
+    enabled: true
+    parallel_execution: true
+    conflict_prevention: true
+    templates_dir: config/hooks_templates
+    implementations_dir: src/hooks
+    types:
+      - pre-task
+      - on-change
+      - post-task
+      - duplicate-check
+      - deviation-check
+      - auto-summary
+
+  git_worktree:
+    enabled: true
+    manage_worktrees: true
+    agent_assisted: true
+    parallel_development: true
+    code_review: true
+    default_branch: auto
+    use_cases:
+      - large_refactor
+      - cross_cutting_change
+      - feature_parallelization
+    flow:
+      naming: "wt/<type>-<short-desc>-<yyyymmdd>"
+      review_steps:
+        - create_worktree_from_main
+        - implement_feature_and_tests
+        - run_targeted_tests
+        - request_peer_review
+        - merge_after_approval
+      cleanup:
+        - remove_worktree_on_merge
+        - prune_worktree_branches
+
+  mcp:
+    enabled: true
+    providers:
+      - brave-search
+      - claude-in-chrome
+      - context7
+      - github
+      - memory
+      - playwright
+      - plugin:claude-mem:mem-search
+      - sequential-thinking
+    integration_module: src/mcp/mcp_integration.py
