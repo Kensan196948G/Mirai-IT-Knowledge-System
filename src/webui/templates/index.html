@@ -1,142 +1,172 @@
 {% extends "base.html" %}
 
-{% block breadcrumb %}{% endblock %}
+{% block title %}ダッシュボード - Mirai IT Knowledge Systems{% endblock %}
 
 {% block content %}
-<!-- Statistics Cards with Icons and Colors -->
-<div class="stats">
-    <div class="stat-card total" data-itsm-type="">
-        <div class="stat-card-icon">📚</div>
-        <h3>{{ stats.total_knowledge }}</h3>
-        <p>総ナレッジ数</p>
-    </div>
-    {% for itsm_type, count in stats.by_itsm_type.items() %}
-    <div class="stat-card clickable {{ itsm_type.lower() }}" data-itsm-type="{{ itsm_type }}">
-        <div class="stat-card-icon">
-            {% if itsm_type == 'Incident' %}🚨
-            {% elif itsm_type == 'Problem' %}🔍
-            {% elif itsm_type == 'Change' %}🔧
-            {% elif itsm_type == 'Release' %}🚀
-            {% elif itsm_type == 'Request' %}📝
-            {% else %}📄{% endif %}
-        </div>
-        <h3>{{ count }}</h3>
-        <p>{{ itsm_type }}</p>
-        <small style="color: #999; font-size: 0.75rem;">クリックして絞り込み</small>
-    </div>
-    {% endfor %}
-</div>
+{% set counts = stats.by_itsm_type or {} %}
+{% set incident = counts.get('Incident', 0) %}
+{% set problem = counts.get('Problem', 0) %}
+{% set change = counts.get('Change', 0) %}
+{% set release = counts.get('Release', 0) %}
+{% set request = counts.get('Request', 0) %}
 
-<!-- Quick Actions -->
-<div class="card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid var(--color-primary);">
-    <h2>⚡ クイックアクション</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
-        <a href="/knowledge/create" class="btn" style="text-align: center; padding: 1rem;">
-            ✍️ 新しいナレッジを作成
-        </a>
-        <a href="/knowledge/search" class="btn btn-secondary" style="text-align: center; padding: 1rem;">
-            🔍 ナレッジを検索
-        </a>
-        <a href="/analytics" class="btn btn-secondary" style="text-align: center; padding: 1rem;">
-            📊 分析を見る
-        </a>
+<section class="section" aria-labelledby="stats-heading">
+    <h2 id="stats-heading" style="position: absolute; left: -9999px;">統計情報</h2>
+    <div class="dashboard-grid">
+        <div class="stats-card" role="article">
+            <div class="stats-icon" aria-hidden="true">📚</div>
+            <div class="stats-value">{{ stats.total_knowledge }}</div>
+            <div class="stats-label">総ナレッジ数</div>
+        </div>
+        <div class="stats-card" role="article" style="background: linear-gradient(135deg, #f44336 0%, #c62828 100%);" data-type="Incident">
+            <div class="stats-icon" aria-hidden="true">🚨</div>
+            <div class="stats-value">{{ incident }}</div>
+            <div class="stats-label">インシデント</div>
+        </div>
+        <div class="stats-card" role="article" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);" data-type="Problem">
+            <div class="stats-icon" aria-hidden="true">🔍</div>
+            <div class="stats-value">{{ problem }}</div>
+            <div class="stats-label">問題管理</div>
+        </div>
+        <div class="stats-card" role="article" style="background: linear-gradient(135deg, #2196F3 0%, #1565c0 100%);" data-type="Change">
+            <div class="stats-icon" aria-hidden="true">🔧</div>
+            <div class="stats-value">{{ change }}</div>
+            <div class="stats-label">変更管理</div>
+        </div>
+        <div class="stats-card" role="article" style="background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);" data-type="Release">
+            <div class="stats-icon" aria-hidden="true">🚀</div>
+            <div class="stats-value">{{ release }}</div>
+            <div class="stats-label">リリース管理</div>
+        </div>
+        <div class="stats-card" role="article" style="background: linear-gradient(135deg, #9C27B0 0%, #6a1b9a 100%);" data-type="Request">
+            <div class="stats-icon" aria-hidden="true">📝</div>
+            <div class="stats-value">{{ request }}</div>
+            <div class="stats-label">サービスリクエスト</div>
+        </div>
     </div>
-</div>
+</section>
 
-<!-- Recent Knowledge -->
-<div class="card">
-    <h2>📚 最近のナレッジ</h2>
-    {% if recent_knowledge %}
-    <table>
-        <thead>
-            <tr>
-                <th>タイトル</th>
-                <th style="width: 120px;">タイプ</th>
-                <th style="width: 150px;">作成日時</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for knowledge in recent_knowledge %}
-            <tr onclick="window.location.href='/knowledge/{{ knowledge.id }}'" style="cursor: pointer;">
-                <td>
-                    <a href="/knowledge/{{ knowledge.id }}" style="color: var(--color-primary); text-decoration: none; font-weight: 500;">
-                        {{ knowledge.title }}
-                    </a>
-                    {% if knowledge.summary_non_technical %}
-                    <br>
-                    <small style="color: #666;">{{ knowledge.summary_non_technical[:80] }}{% if knowledge.summary_non_technical|length > 80 %}...{% endif %}</small>
-                    {% endif %}
-                </td>
-                <td>
-                    <span class="badge badge-{{ knowledge.itsm_type.lower() }}">
-                        {% if knowledge.itsm_type == 'Incident' %}🚨
-                        {% elif knowledge.itsm_type == 'Problem' %}🔍
-                        {% elif knowledge.itsm_type == 'Change' %}🔧
-                        {% elif knowledge.itsm_type == 'Release' %}🚀
-                        {% elif knowledge.itsm_type == 'Request' %}📝
-                        {% else %}📄{% endif %}
-                        {{ knowledge.itsm_type }}
-                    </span>
-                </td>
-                <td style="color: #666; font-size: 0.9rem;">
-                    {{ knowledge.created_at[:16] }}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <h3>まだナレッジがありません</h3>
-        <p style="margin-bottom: 1rem;">最初のナレッジを作成してみましょう</p>
-        <a href="/knowledge/create" class="btn">新しいナレッジを作成</a>
+<section class="section" aria-labelledby="modules-heading">
+    <div class="section-header">
+        <h2 id="modules-heading" class="section-title">
+            <span aria-hidden="true">🧭</span> 運用メニュー
+        </h2>
+        <a href="/knowledge/search" class="btn btn-sm btn-outline">一覧を開く</a>
     </div>
-    {% endif %}
-</div>
+    <div class="grid grid-3">
+        <a href="/knowledge/search" class="module-card" role="article">
+            <div class="module-icon">📚</div>
+            <h3 class="module-title">社内ITナレッジ一覧</h3>
+            <p class="module-meta">最新化状況・レビュー対象を可視化</p>
+            <span class="chip">{{ stats.total_knowledge }}件</span>
+        </a>
+        <a href="/knowledge/create" class="module-card" role="article">
+            <div class="module-icon">✍️</div>
+            <h3 class="module-title">作成</h3>
+            <p class="module-meta">インシデントからナレッジを即時登録</p>
+            <span class="chip">平均 6分</span>
+        </a>
+        <a href="/knowledge/search" class="module-card" role="article">
+            <div class="module-icon">🔍</div>
+            <h3 class="module-title">社内ナレッジ検索</h3>
+            <p class="module-meta">タグ・ITSMタイプで横断検索</p>
+            <span class="chip">高速検索</span>
+        </a>
+        <a href="/search/intelligent" class="module-card" role="article">
+            <div class="module-icon">🧠</div>
+            <h3 class="module-title">AI検索</h3>
+            <p class="module-meta">Claude/Gemini/Perplexityの検索プロセスを可視化</p>
+            <span class="chip chip-strong">統合回答</span>
+        </a>
+        <a href="/serverfault" class="module-card" role="article">
+            <div class="module-icon">💬</div>
+            <h3 class="module-title">Server Fault質問</h3>
+            <p class="module-meta">外部Q&Aを取り込みナレッジ化</p>
+            <span class="chip">最新</span>
+        </a>
+        <div class="module-card" role="article">
+            <div class="module-icon">📊</div>
+            <h3 class="module-title">ダッシュボード</h3>
+            <p class="module-meta">全体 KPI と直近の実行状況</p>
+            <span class="chip chip-warning">更新 5分前</span>
+        </div>
+    </div>
+</section>
 
-<!-- Quick Tips -->
-<div class="card" style="background: #fffbf0; border-left: 4px solid #ffa726;">
-    <h3 style="color: #f57c00; margin-bottom: 1rem;">💡 クイックガイド</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-        <div>
-            <h4 style="color: #555; margin-bottom: 0.5rem;">⌨️ キーボードショートカット</h4>
-            <ul style="color: #666; line-height: 1.8; margin-left: 1.5rem;">
-                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">/</kbd> - 検索ページへ</li>
-                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">n</kbd> - 新規作成ページへ</li>
-                <li><kbd style="background: #eee; padding: 2px 6px; border-radius: 3px;">?</kbd> - ヘルプを表示</li>
-            </ul>
-        </div>
-        <div>
-            <h4 style="color: #555; margin-bottom: 0.5rem;">🎯 統計カードの使い方</h4>
-            <p style="color: #666; line-height: 1.8;">
-                各ITSMタイプのカードをクリックすると、そのタイプでフィルタされたナレッジ一覧が表示されます。
-            </p>
-        </div>
-        <div>
-            <h4 style="color: #555; margin-bottom: 0.5rem;">🔍 検索のコツ</h4>
-            <p style="color: #666; line-height: 1.8;">
-                自然な言葉で検索できます。例: 「データベース 接続エラー」「Webサーバー 証明書」
-            </p>
+<section class="section" aria-labelledby="quick-actions-heading">
+    <div class="card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid var(--color-primary);">
+        <h2 id="quick-actions-heading" style="margin-bottom: 1rem;">
+            <span aria-hidden="true">⚡</span> クイックアクション
+        </h2>
+        <div class="grid grid-3">
+            <a href="/knowledge/create" class="btn btn-primary" style="text-align: center; padding: 1rem;">
+                <span aria-hidden="true">✍️</span> ナレッジを作成
+            </a>
+            <a href="/knowledge/search" class="btn btn-outline" style="text-align: center; padding: 1rem;">
+                <span aria-hidden="true">🔍</span> 社内検索
+            </a>
+            <a href="/search/intelligent" class="btn btn-outline" style="text-align: center; padding: 1rem;">
+                <span aria-hidden="true">🧠</span> AI検索を実行
+            </a>
         </div>
     </div>
-</div>
+</section>
+
+<section class="section" aria-labelledby="recent-heading">
+    <div class="card">
+        <div class="card-header">
+            <h2 id="recent-heading" class="card-title">
+                <span aria-hidden="true">📚</span> 社内ITナレッジ一覧（最新）
+            </h2>
+            <a href="/knowledge/search" class="btn btn-sm">すべて表示</a>
+        </div>
+        <div class="card-body">
+            <div class="content-grid" id="recent-knowledge-list">
+                {% if recent_knowledge %}
+                    {% for knowledge in recent_knowledge[:3] %}
+                    <article class="knowledge-card {{ knowledge.itsm_type|lower }}" tabindex="0" role="button" onclick="location.href='/knowledge/{{ knowledge.id }}'">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ knowledge.title }}</h3>
+                            <span class="badge badge-{{ knowledge.itsm_type|lower }}" role="status">
+                                {% if knowledge.itsm_type == 'Incident' %}インシデント
+                                {% elif knowledge.itsm_type == 'Problem' %}問題管理
+                                {% elif knowledge.itsm_type == 'Change' %}変更管理
+                                {% elif knowledge.itsm_type == 'Release' %}リリース管理
+                                {% elif knowledge.itsm_type == 'Request' %}サービスリクエスト
+                                {% else %}その他{% endif %}
+                            </span>
+                        </div>
+                        <p class="card-summary">
+                            {{ knowledge.summary_non_technical or knowledge.content[:90] }}{% if (knowledge.summary_non_technical or knowledge.content)|length > 90 %}...{% endif %}
+                        </p>
+                        <div class="card-footer">
+                            <span><span aria-hidden="true">🏷️</span> {{ (knowledge.tags or [])|join(', ') }}</span>
+                            <time datetime="{{ knowledge.created_at[:10] }}">{{ knowledge.created_at[:10] }}</time>
+                        </div>
+                    </article>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>まだナレッジがありません</h3>
+                        <p style="margin-bottom: 1rem;">最初のナレッジを作成してみましょう</p>
+                        <a href="/knowledge/create" class="btn">新しいナレッジを作成</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// URLパラメータでフィルタリング処理
-// urlParams は base.html で既に宣言されているため、再利用
-const itsmFilter = urlParams.get('itsm_type');
-
-if (itsmFilter) {
-    // フィルタが適用されている場合は該当カードをハイライト
-    document.querySelectorAll('.stat-card').forEach(card => {
-        if (card.dataset.itsmType === itsmFilter) {
-            card.style.background = '#f0f7ff';
-            card.style.borderTopWidth = '6px';
-        }
+    document.querySelectorAll('.stats-card[data-type]').forEach(card => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', function() {
+            const type = this.dataset.type;
+            window.location.href = `/knowledge/search?itsm_type=${type}`;
+        });
     });
-}
 </script>
 {% endblock %}

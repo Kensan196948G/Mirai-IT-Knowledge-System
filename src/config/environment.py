@@ -95,6 +95,18 @@ class EnvironmentConfig:
             'mcp_brave_search_enabled': self.get_bool_env('MCP_BRAVE_SEARCH_ENABLED', True),
             'mcp_playwright_enabled': self.get_bool_env('MCP_PLAYWRIGHT_ENABLED', True),
 
+            # DeepL / Server Fault 設定
+            'deepl_api_key': self.get_env('DEEPL_API_KEY', ''),
+            'deepl_api_url': self.get_env('DEEPL_API_URL', 'https://api.deepl.com/v2/translate'),
+            'deepl_target_lang': self.get_env('DEEPL_TARGET_LANG', 'JA'),
+            'serverfault_api_base': self.get_env('SERVERFAULT_API_BASE', 'https://api.stackexchange.com/2.3'),
+
+            # Codexモード設定
+            'codex_mode': self.get_env(
+                'CODEX_MODE',
+                'prod' if self.environment == 'production' else 'dev'
+            ),
+
             # セキュリティ設定
             'secret_key': self.get_env('SECRET_KEY', 'dev-secret-key'),
             'session_cookie_secure': self.get_bool_env('SESSION_COOKIE_SECURE', True),

@@ -12,6 +12,11 @@ import sys
 import os
 import logging
 from datetime import datetime
+import json
+import html as html_lib
+import re
+import urllib.parse
+import urllib.request
 from typing import Dict, Any
 
 # プロジェクトルートをパスに追加
@@ -52,6 +57,141 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Server Fault / DeepL helpers
+_TRANSLATION_CACHE = {}
+
+
+def _strip_html(raw_html: str) -> str:
+    if not raw_html:
+        return ''
+    text = re.sub(r'<[^>]+>', ' ', raw_html)
+    text = html_lib.unescape(text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _truncate(text: str, limit: int = 240) -> str:
+    if not text:
+        return ''
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + '...'
+
+
+def _translate_texts(texts, api_key, target_lang, api_url):
+    if not api_key:
+        return texts, False
+
+    results = list(texts)
+    index_map = []
+    payload_texts = []
+    for idx, text in enumerate(texts):
+        if not text:
+            continue
+        cached = _TRANSLATION_CACHE.get(text)
+        if cached is not None:
+            results[idx] = cached
+            continue
+        index_map.append(idx)
+        payload_texts.append(text)
+
+    if not payload_texts:
+        return results, True
+
+    translated_success = True
+    batch_size = 50
+    for start in range(0, len(payload_texts), batch_size):
+        batch = payload_texts[start:start + batch_size]
+        batch_indices = index_map[start:start + batch_size]
+        try:
+            data = [('auth_key', api_key), ('target_lang', target_lang)]
+            for text in batch:
+                data.append(('text', text))
+            body = urllib.parse.urlencode(data, doseq=True).encode('utf-8')
+            req = urllib.request.Request(api_url, data=body, method='POST')
+            req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                payload = json.loads(resp.read().decode('utf-8'))
+            translations = payload.get('translations', [])
+            if len(translations) != len(batch):
+                raise ValueError('DeepL response count mismatch')
+            for i, item in enumerate(translations):
+                translated_text = item.get('text', batch[i])
+                results[batch_indices[i]] = translated_text
+                _TRANSLATION_CACHE[batch[i]] = translated_text
+        except Exception as exc:
+            logger.warning(f"DeepL翻訳エラー: {exc}")
+            translated_success = False
+            for i, original in enumerate(batch):
+                results[batch_indices[i]] = original
+
+    return results, translated_success
+
+
+def _fetch_serverfault_questions(page, pagesize, sort, order, tagged, api_base):
+    params = {
+        'site': 'serverfault',
+        'page': page,
+        'pagesize': pagesize,
+        'order': order,
+        'sort': sort,
+        'filter': 'withbody'
+    }
+    if tagged:
+        params['tagged'] = tagged
+    query = urllib.parse.urlencode(params, doseq=True)
+    url = f"{api_base}/questions?{query}"
+
+    with urllib.request.urlopen(url, timeout=15) as resp:
+        payload = json.loads(resp.read().decode('utf-8'))
+
+    items = []
+    for item in payload.get('items', []):
+        body_text = _strip_html(item.get('body', ''))
+        items.append({
+            'question_id': item.get('question_id'),
+            'title': item.get('title', ''),
+            'excerpt': _truncate(body_text, 240),
+            'tags': item.get('tags', []),
+            'score': item.get('score', 0),
+            'answer_count': item.get('answer_count', 0),
+            'view_count': item.get('view_count', 0),
+            'is_answered': item.get('is_answered', False),
+            'has_accepted_answer': bool(item.get('accepted_answer_id')),
+            'link': item.get('link', ''),
+            'creation_date': item.get('creation_date')
+        })
+
+    return items, payload
+
+
+def _fetch_serverfault_answers(question_id, sort, order, api_base):
+    params = {
+        'site': 'serverfault',
+        'order': order,
+        'sort': sort,
+        'filter': 'withbody'
+    }
+    query = urllib.parse.urlencode(params, doseq=True)
+    url = f"{api_base}/questions/{question_id}/answers?{query}"
+
+    with urllib.request.urlopen(url, timeout=15) as resp:
+        payload = json.loads(resp.read().decode('utf-8'))
+
+    items = []
+    for item in payload.get('items', []):
+        body_text = _strip_html(item.get('body', ''))
+        items.append({
+            'answer_id': item.get('answer_id'),
+            'question_id': question_id,
+            'score': item.get('score', 0),
+            'is_accepted': item.get('is_accepted', False),
+            'excerpt': _truncate(body_text, 280),
+            'body': body_text
+        })
+
+    return items, payload
+
 # 環境別Flask設定
 app.config["SECRET_KEY"] = env_config.get('secret_key', 'mirai-it-knowledge-systems-secret-key')
 app.config["DEBUG"] = env_config.get('flask_debug', True)
@@ -81,8 +221,8 @@ logger.info(f"🚀 アプリケーション起動: 環境={ENVIRONMENT}, ポー�
 
 # グローバルインスタンス
 
-db_client = SQLiteClient()
-feedback_client = FeedbackClient()
+db_client = SQLiteClient(str(env_config.get('database_path', 'db/knowledge.db')))
+feedback_client = FeedbackClient(str(env_config.get('database_path', 'db/knowledge.db')))
 workflow_engine = WorkflowEngine()
 itsm_classifier = ITSMClassifier()
 intelligent_search = IntelligentSearchAssistant()
@@ -650,6 +790,162 @@ def api_run_workflow():
         workflow_name, inputs, user_id=request.remote_addr
     )
     return jsonify(result)
+
+
+# ========== Server Fault ==========
+
+
+@app.route("/serverfault")
+def serverfault_browser():
+    """Server Fault質問ブラウジングページ"""
+    return render_template("serverfault.html")
+
+
+@app.route("/api/serverfault/questions", methods=["GET"])
+def api_serverfault_questions():
+    """Server Fault質問取得API（日本語翻訳付き）"""
+    page = request.args.get("page", default=1, type=int)
+    pagesize = request.args.get("pagesize", default=20, type=int)
+    sort = request.args.get("sort", default="activity")
+    order = request.args.get("order", default="desc")
+    tagged = request.args.get("tag")
+    translate = request.args.get("translate", default="true").lower() in ("true", "1", "yes", "on")
+
+    api_base = env_config.get('serverfault_api_base', 'https://api.stackexchange.com/2.3')
+    api_base = api_base.rstrip('/')
+
+    try:
+        items, payload = _fetch_serverfault_questions(page, pagesize, sort, order, tagged, api_base)
+    except Exception as exc:
+        logger.error(f"Server Fault取得エラー: {exc}")
+        return jsonify({"success": False, "error": "質問の取得に失敗しました"}), 502
+
+    translated = False
+    if translate:
+        api_key = env_config.get('deepl_api_key', '')
+        target_lang = env_config.get('deepl_target_lang', 'JA')
+        api_url = env_config.get('deepl_api_url', 'https://api.deepl.com/v2/translate')
+
+        jobs = []
+        for idx, item in enumerate(items):
+            item['title_original'] = item.get('title', '')
+            item['excerpt_original'] = item.get('excerpt', '')
+            item['tags_original'] = item.get('tags', [])
+            jobs.append(('title', idx, None, item['title_original']))
+            jobs.append(('excerpt', idx, None, item['excerpt_original']))
+            for tag_index, tag in enumerate(item['tags_original']):
+                jobs.append(('tag', idx, tag_index, tag))
+
+        texts = [job[3] for job in jobs]
+        translated_texts, translated = _translate_texts(texts, api_key, target_lang, api_url)
+
+        for job, translated_text in zip(jobs, translated_texts):
+            kind, item_index, tag_index, _ = job
+            if kind == 'title':
+                items[item_index]['title'] = translated_text
+            elif kind == 'excerpt':
+                items[item_index]['excerpt'] = translated_text
+            elif kind == 'tag':
+                tags = items[item_index].get('tags', [])
+                while len(tags) <= tag_index:
+                    tags.append('')
+                tags[tag_index] = translated_text
+                items[item_index]['tags'] = tags
+
+        for item in items:
+            if 'tags' not in item:
+                item['tags'] = item.get('tags_original', [])
+
+    response = jsonify({
+        "success": True,
+        "items": items,
+        "has_more": payload.get("has_more", False),
+        "quota_remaining": payload.get("quota_remaining"),
+        "translated": translated
+    })
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.route("/api/serverfault/answers", methods=["GET"])
+def api_serverfault_answers():
+    """Server Fault回答取得API（日本語翻訳付き）"""
+    question_id = request.args.get("question_id", type=int)
+    if not question_id:
+        return jsonify({"success": False, "error": "question_idが必要です"}), 400
+
+    sort = request.args.get("sort", default="votes")
+    order = request.args.get("order", default="desc")
+    translate = request.args.get("translate", default="true").lower() in ("true", "1", "yes", "on")
+
+    api_base = env_config.get('serverfault_api_base', 'https://api.stackexchange.com/2.3')
+    api_base = api_base.rstrip('/')
+
+    try:
+        items, payload = _fetch_serverfault_answers(question_id, sort, order, api_base)
+    except Exception as exc:
+        logger.error(f"Server Fault回答取得エラー: {exc}")
+        return jsonify({"success": False, "error": "回答の取得に失敗しました"}), 502
+
+    translated = False
+    if translate:
+        api_key = env_config.get('deepl_api_key', '')
+        target_lang = env_config.get('deepl_target_lang', 'JA')
+        api_url = env_config.get('deepl_api_url', 'https://api.deepl.com/v2/translate')
+
+        jobs = []
+        for idx, item in enumerate(items):
+            item['body_original'] = item.get('body', '')
+            item['excerpt_original'] = item.get('excerpt', '')
+            jobs.append(('body', idx, item['body_original']))
+            jobs.append(('excerpt', idx, item['excerpt_original']))
+
+        texts = [job[2] for job in jobs]
+        translated_texts, translated = _translate_texts(texts, api_key, target_lang, api_url)
+
+        for job, translated_text in zip(jobs, translated_texts):
+            kind, item_index, _ = job
+            if kind == 'body':
+                items[item_index]['body'] = translated_text
+            elif kind == 'excerpt':
+                items[item_index]['excerpt'] = translated_text
+
+    response = jsonify({
+        "success": True,
+        "items": items,
+        "has_more": payload.get("has_more", False),
+        "quota_remaining": payload.get("quota_remaining"),
+        "translated": translated
+    })
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+# ========== Codex Skills ==========
+
+
+@app.route("/api/codex/skill", methods=["POST"])
+def api_codex_skill():
+    """Codex Skills API"""
+    data = request.get_json() or {}
+
+    try:
+        from src.core.codex_skills import SkillRouter
+
+        router = SkillRouter()
+        result = router.execute(data)
+        return jsonify({"success": True, "result": result})
+    except PermissionError as e:
+        return jsonify({"success": False, "error": str(e)}), 403
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Codex skill execution error: {e}")
+        return jsonify({"success": False, "error": "skill execution failed"}), 500
 
 
 # ========== 設定機能 ==========

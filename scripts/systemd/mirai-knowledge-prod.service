@@ -18,7 +18,7 @@ Environment="FLASK_APP=src/webui/app.py"
 Environment="PYTHONPATH=/mnt/LinuxHDD/Mirai-IT-Knowledge-System-production"
 
 # 起動コマンド
-ExecStart=/usr/bin/python3 /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/src/webui/app.py
+ExecStart=/bin/bash /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/scripts/start_backend.sh --env production --non-interactive
 
 # 再起動設定
 Restart=always
