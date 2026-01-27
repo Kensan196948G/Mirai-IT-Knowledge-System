@@ -2,7 +2,7 @@
 
 Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です。
 
-**最終更新日**: 2026-01-20
+**最終更新日**: 2026-01-27
 
 ---
 
@@ -196,11 +196,53 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
+### 11. [分析ダッシュボードロジック(ANALYTICS_LOGIC).md](分析ダッシュボードロジック(ANALYTICS_LOGIC).md)
+**カテゴリ**: 分析ロジック
+**対象読者**: 開発者、運用担当者
+**内容**:
+- 分析画面のデータ取得ロジック
+- フィードバック集計の指標定義
+- 参照テーブル/APIの関係
+
+**こんな時に読む**:
+- 分析画面の集計仕様を確認したい時
+- 追加指標を設計する時
+
+---
+
+### 12. [ワークフロー実行モニタリングロジック(WORKFLOW_MONITOR_LOGIC).md](ワークフロー実行モニタリングロジック(WORKFLOW_MONITOR_LOGIC).md)
+**カテゴリ**: 監視ロジック
+**対象読者**: 開発者、運用担当者
+**内容**:
+- 実行履歴の取得方法
+- サブエージェント/フックログの参照方法
+- API構成
+
+**こんな時に読む**:
+- 監視画面の表示仕様を確認したい時
+- 実行ログの拡張を検討する時
+
+---
+
+### 13. [AIロジック詳細(AI_LOGIC).md](AIロジック詳細(AI_LOGIC).md)
+**カテゴリ**: AIロジック
+**対象読者**: 開発者、PM
+**内容**:
+- AIオーケストレーターの役割分担
+- AI検索/対話型ナレッジ生成の流れ
+- 根拠分離とキャッシュ方針
+
+**こんな時に読む**:
+- AI処理の内部仕様を確認したい時
+- AI連携の拡張を検討する時
+
+---
+
 ## ガイド・チュートリアル
 
 セットアップ、デプロイ、実装のガイド。
 
-### 11. [SETUP_GUIDE.md](../SETUP_GUIDE.md)
+### 14. [SETUP_GUIDE.md](../SETUP_GUIDE.md)
 **カテゴリ**: セットアップガイド
 **対象読者**: 全員
 **内容**:
@@ -216,7 +258,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 12. [デプロイメントガイド(DEPLOYMENT).md](デプロイメントガイド(DEPLOYMENT).md)
+### 15. [デプロイメントガイド(DEPLOYMENT).md](デプロイメントガイド(DEPLOYMENT).md)
 **カテゴリ**: デプロイメント
 **対象読者**: 運用担当者、開発者
 **内容**:
@@ -232,7 +274,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 13. [GitHub設定ガイド(GITHUB_SETUP).md](GitHub設定ガイド(GITHUB_SETUP).md)
+### 16. [GitHub設定ガイド(GITHUB_SETUP).md](GitHub設定ガイド(GITHUB_SETUP).md)
 **カテゴリ**: GitHub設定
 **対象読者**: 開発者
 **内容**:
@@ -247,7 +289,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 14. [実装ロードマップ(IMPLEMENTATION_ROADMAP).md](実装ロードマップ(IMPLEMENTATION_ROADMAP).md)
+### 17. [実装ロードマップ(IMPLEMENTATION_ROADMAP).md](実装ロードマップ(IMPLEMENTATION_ROADMAP).md)
 **カテゴリ**: 実装ロードマップ
 **対象読者**: プロジェクトマネージャー、開発者
 **内容**:
@@ -265,7 +307,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 その他の参考情報。
 
-### 15. [新機能ガイド(NEW_FEATURES).md](新機能ガイド(NEW_FEATURES).md)
+### 18. [新機能ガイド(NEW_FEATURES).md](新機能ガイド(NEW_FEATURES).md)
 **カテゴリ**: 新機能ガイド
 **対象読者**: 全員
 **内容**:
@@ -281,7 +323,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 16. [最終サマリー(FINAL_SUMMARY).md](最終サマリー(FINAL_SUMMARY).md)
+### 19. [最終サマリー(FINAL_SUMMARY).md](最終サマリー(FINAL_SUMMARY).md)
 **カテゴリ**: プロジェクトサマリー
 **対象読者**: 全員
 **内容**:
@@ -295,7 +337,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 17. [RELEASE_NOTES_V2.md](../RELEASE_NOTES_V2.md)
+### 20. [RELEASE_NOTES_V2.md](../RELEASE_NOTES_V2.md)
 **カテゴリ**: リリースノート
 **対象読者**: 全員
 **内容**:
@@ -310,7 +352,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 18. [CONTRIBUTING.md](../CONTRIBUTING.md)
+### 21. [CONTRIBUTING.md](../CONTRIBUTING.md)
 **カテゴリ**: 貢献ガイド
 **対象読者**: 貢献者
 **内容**:

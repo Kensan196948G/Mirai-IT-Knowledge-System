@@ -13,9 +13,60 @@
     .main { padding: 1.5rem 0; }
     .chat-container { margin-top: 1rem; }
     .ai-processing { overflow-x: auto; }
-    .ai-pipeline { flex-wrap: nowrap; }
-    .pipeline-stage { min-width: 170px; }
+    .ai-pipeline { flex-wrap: nowrap; align-items: stretch; }
+    .pipeline-stage { min-width: 170px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.25rem; }
     .pipeline-arrow { white-space: nowrap; }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin: 0.35rem auto 0;
+        background: #c9c9c9;
+        opacity: 0.35;
+    }
+    .pipeline-stage.active .pulse-dot,
+    .pipeline-stage.processing .pulse-dot {
+        background: var(--color-primary);
+        opacity: 1;
+        animation: pulseDot 1s ease-in-out infinite;
+    }
+    .pipeline-stage.completed .pulse-dot {
+        background: #4caf50;
+        opacity: 1;
+    }
+    @keyframes pulseDot {
+        0% { transform: scale(0.8); opacity: 0.4; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(0.8); opacity: 0.4; }
+    }
+    .chat-message-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 8px;
+        background: #f7f7f9;
+        border: 1px solid #e6e6e6;
+        font-size: 0.85rem;
+        flex-wrap: wrap;
+    }
+    .chat-message-actions button {
+        border: none;
+        background: white;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        cursor: pointer;
+        border: 1px solid #ddd;
+    }
+    .chat-message-actions button:hover {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+    }
+    .chat-message-actions .action-status {
+        color: #666;
+        margin-left: auto;
+    }
 </style>
 {% endblock %}
 
@@ -67,6 +118,7 @@
             <div class="ai-pipeline">
                 <div class="pipeline-stage" id="chatStage1">
                     <div class="stage-icon">🧠</div>
+                    <div class="pulse-dot"></div>
                     <div class="stage-info">
                         <span class="stage-name">Claude</span>
                         <span class="stage-desc">初期回答生成</span>
@@ -76,6 +128,7 @@
                 <div class="pipeline-arrow">→</div>
                 <div class="pipeline-stage" id="chatStage2">
                     <div class="stage-icon">🔮</div>
+                    <div class="pulse-dot"></div>
                     <div class="stage-info">
                         <span class="stage-name">Gemini</span>
                         <span class="stage-desc">検証・補完</span>
@@ -85,6 +138,7 @@
                 <div class="pipeline-arrow">→</div>
                 <div class="pipeline-stage" id="chatStage3">
                     <div class="stage-icon">🌐</div>
+                    <div class="pulse-dot"></div>
                     <div class="stage-info">
                         <span class="stage-name">Perplexity</span>
                         <span class="stage-desc">最新情報確認</span>
@@ -115,6 +169,7 @@
 <script>
 let sessionId = 'session_' + Date.now();
 let conversationHistory = [];
+let messageCounter = 0;
 let collectedData = {
     when: null,
     system: null,
@@ -123,6 +178,53 @@ let collectedData = {
     response: null,
     cause: null,
     measures: null
+};
+let chatPending = { handled: false, timer: null };
+const quickAnswerMap = {
+    'VPN接続ができない時の対処方法を教えてください': {
+        title: 'VPN接続トラブルの一次対応',
+        steps: [
+            'インターネット接続（Wi‑Fi/有線）を再確認し、再接続',
+            'VPNクライアントを再起動し、資格情報を再入力',
+            '社内VPNポータルの障害情報・メンテ画面を確認',
+            '端末の時刻同期と証明書の有効期限を確認',
+            '社内DNS/プロキシ設定の変更有無を確認'
+        ],
+        note: '解消しない場合は、エラーメッセージと発生時刻を添えてITへ連絡。'
+    },
+    'メール送信が遅い時の確認手順を教えてください': {
+        title: 'メール遅延時の確認ポイント',
+        steps: [
+            'Outboxの滞留有無と添付ファイルのサイズを確認',
+            'クライアントの送信サーバー設定（SMTP）を再接続',
+            '社内/クラウドの障害情報・遅延アラートを確認',
+            '受信側ドメインのブラックリスト/遅延報告を確認',
+            '再送テスト（小容量・別宛先）で切り分け'
+        ],
+        note: '大容量添付は分割 or 共有リンクに切替推奨。'
+    },
+    '経費精算の手順を教えてください': {
+        title: '経費精算（基本フロー）',
+        steps: [
+            '経費精算システムにログイン',
+            '申請作成 → 明細入力（費目/金額/日付）',
+            '領収書をアップロード（撮影画像でも可）',
+            '上長承認ルートを指定して申請',
+            '承認完了後、支払日に振込'
+        ],
+        note: '領収書は原本保管ルールに従って保管してください。'
+    },
+    '有給休暇の申請方法を教えてください': {
+        title: '有給休暇の申請方法',
+        steps: [
+            '勤怠/人事システムにログイン',
+            '休暇申請 → 有給休暇を選択',
+            '取得日/理由（必要な場合）を入力',
+            '代理対応者/引継ぎ事項を記入',
+            '上長承認 → 反映確認'
+        ],
+        note: '繁忙期は事前相談の上、早めに申請してください。'
+    }
 };
 
 const socket = io({
@@ -144,9 +246,7 @@ socket.on('chat_generated', (data) => {
 });
 
 socket.on('chat_error', (data) => {
-    setSendState(false);
-    hideProcessing();
-    addMessage('assistant', `エラーが発生しました: ${data.error || 'unknown error'}`);
+    handleChatError(data.error || 'unknown error');
 });
 
 const inputEl = document.getElementById('aiChatInput');
@@ -166,6 +266,12 @@ function setSendState(isSending) {
 }
 
 function handleChatResponse(data) {
+    if (chatPending.handled) return;
+    chatPending.handled = true;
+    if (chatPending.timer) {
+        clearTimeout(chatPending.timer);
+        chatPending.timer = null;
+    }
     setSendState(false);
     hideProcessing();
     if (data.type === 'question') {
@@ -174,6 +280,18 @@ function handleChatResponse(data) {
     } else if (data.type === 'knowledge_generated') {
         showGeneratedKnowledge(data);
     }
+}
+
+function handleChatError(message) {
+    if (chatPending.handled) return;
+    chatPending.handled = true;
+    if (chatPending.timer) {
+        clearTimeout(chatPending.timer);
+        chatPending.timer = null;
+    }
+    setSendState(false);
+    hideProcessing();
+    addMessage('assistant', `エラーが発生しました: ${message || 'unknown error'}`);
 }
 
 function sendMessage() {
@@ -186,6 +304,27 @@ function sendMessage() {
     setSendState(true);
     showProcessing('回答を生成しています...');
 
+    chatPending.handled = false;
+    if (chatPending.timer) clearTimeout(chatPending.timer);
+    chatPending.timer = setTimeout(async () => {
+        if (chatPending.handled) return;
+        try {
+            const response = await fetch('/api/chat/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    message: message,
+                    user_id: 'webui_user'
+                })
+            });
+            const data = await response.json();
+            handleChatResponse(data);
+        } catch (error) {
+            handleChatError(error.message);
+        }
+    }, 8000);
+
     socket.emit('chat_message', {
         session_id: sessionId,
         message: message,
@@ -196,25 +335,55 @@ function sendMessage() {
 function addMessage(role, content) {
     const messagesDiv = document.getElementById('aiChatMessages');
     const messageDiv = document.createElement('div');
-    messageDiv.className = role === 'user' ? 'chat-message user-message' : 'chat-message ai-message';
+    messageDiv.className = role === 'user' ? 'chat-message user' : 'chat-message assistant';
+    const messageId = `msg_${Date.now()}_${++messageCounter}`;
+    messageDiv.dataset.messageId = messageId;
 
     const now = new Date().toLocaleTimeString('ja-JP');
     const roleText = role === 'user' ? '👤 あなた' : '🤖 AI アシスタント';
 
     messageDiv.innerHTML = `
-        <div class="message-header">
-            <strong>${roleText}</strong>
-            <span>${now}</span>
+        <div class="message-avatar">${role === 'user' ? '👤' : '🤖'}</div>
+        <div class="message-content">
+            <div class="message-header">
+                <strong>${roleText}</strong>
+                <span>${now}</span>
+            </div>
+            <div class="message-text">${content.replace(/\n/g, '<br>')}</div>
         </div>
-        <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
     `;
+
+    if (role === 'assistant') {
+        const actions = document.createElement('div');
+        actions.className = 'chat-message-actions';
+        actions.innerHTML = `
+            <button type="button" data-action="copy">コピー</button>
+            <button type="button" data-action="export-txt">TXT</button>
+            <button type="button" data-action="export-md">Markdown</button>
+            <button type="button" data-action="like">いいね</button>
+            <button type="button" data-action="dislike">わるいね</button>
+            <span class="action-status" data-action-status> </span>
+        `;
+        actions.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const action = btn.getAttribute('data-action');
+            handleChatAction(messageDiv, action);
+        });
+        const contentBox = messageDiv.querySelector('.message-content');
+        if (contentBox) {
+            contentBox.appendChild(actions);
+        } else {
+            messageDiv.appendChild(actions);
+        }
+    }
 
     messagesDiv.appendChild(messageDiv);
     requestAnimationFrame(() => {
         messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
     });
 
-    conversationHistory.push({ role, content, timestamp: now });
+    conversationHistory.push({ role, content, timestamp: now, message_id: messageId });
 }
 
 function updateProgress(progress) {
@@ -230,6 +399,75 @@ function updateProgress(progress) {
     }
 }
 
+function addHistoryItem(label) {
+    const history = document.getElementById('chatHistoryList');
+    if (!history) return;
+    const item = document.createElement('div');
+    item.className = 'chat-history-item';
+    item.textContent = label;
+    history.prepend(item);
+}
+
+function getMessagePlainText(messageDiv) {
+    const content = messageDiv.querySelector('.message-content');
+    return content ? content.innerText.trim() : '';
+}
+
+function downloadTextFile(filename, text) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+async function handleChatAction(messageDiv, action) {
+    const status = messageDiv.querySelector('[data-action-status]');
+    const messageId = messageDiv.dataset.messageId || '';
+    const text = getMessagePlainText(messageDiv);
+    if (!text) return;
+
+    if (action === 'copy') {
+        await navigator.clipboard.writeText(text);
+        if (status) status.textContent = 'コピーしました';
+        return;
+    }
+
+    if (action === 'export-txt') {
+        downloadTextFile('ai_answer.txt', text);
+        if (status) status.textContent = 'TXTを保存しました';
+        return;
+    }
+
+    if (action === 'export-md') {
+        const md = `# AI回答\n\n${text}\n`;
+        downloadTextFile('ai_answer.md', md);
+        if (status) status.textContent = 'Markdownを保存しました';
+        return;
+    }
+
+    if (action === 'like' || action === 'dislike') {
+        const rating = action === 'like' ? 1 : -1;
+        try {
+            await fetch('/api/chat/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    message_id: messageId,
+                    rating: rating,
+                    user_id: 'webui_user'
+                })
+            });
+            if (status) status.textContent = action === 'like' ? '👍 送信済み' : '👎 送信済み';
+        } catch (e) {
+            if (status) status.textContent = '送信失敗';
+        }
+    }
+}
+
 function attachQuickButtons() {
     const quickButtons = document.querySelectorAll('.quick-btn');
     quickButtons.forEach(btn => {
@@ -238,6 +476,23 @@ function attachQuickButtons() {
             if (question) {
                 inputEl.value = question;
                 inputEl.focus();
+                const canned = quickAnswerMap[question];
+                if (canned) {
+                    addMessage('user', question);
+                    const html = `
+                        <div style="margin-bottom: 0.5rem;"><strong>✅ ${canned.title}</strong></div>
+                        <ol style="margin: 0 0 0.75rem 1.25rem;">
+                            ${canned.steps.map(s => `<li>${s}</li>`).join('')}
+                        </ol>
+                        <div style="background: #f6fbff; border-left: 3px solid var(--color-primary); padding: 0.5rem 0.75rem; border-radius: 4px;">
+                            💡 ${canned.note}
+                        </div>
+                    `;
+                    addMessage('assistant', html);
+                    addHistoryItem(`よくある質問: ${canned.title}`);
+                } else {
+                    sendMessage();
+                }
             }
         });
     });
@@ -271,11 +526,25 @@ function showProcessing(text) {
     if (processingMessage) processingMessage.textContent = text || '処理中...';
     resetStages();
     updateStage(1, 'processing');
+    if (window.__chatStageTimers) {
+        window.__chatStageTimers.forEach(t => clearTimeout(t));
+    }
+    window.__chatStageTimers = [
+        setTimeout(() => updateStage(1, 'completed'), 400),
+        setTimeout(() => updateStage(2, 'processing'), 450),
+        setTimeout(() => updateStage(2, 'completed'), 1100),
+        setTimeout(() => updateStage(3, 'processing'), 1150),
+        setTimeout(() => updateStage(3, 'completed'), 1900),
+    ];
 }
 
 function hideProcessing() {
     const processing = document.getElementById('aiChatProcessing');
     if (!processing) return;
+    if (window.__chatStageTimers) {
+        window.__chatStageTimers.forEach(t => clearTimeout(t));
+        window.__chatStageTimers = null;
+    }
     updateStage(1, 'completed');
     updateStage(2, 'completed');
     updateStage(3, 'completed');
@@ -360,7 +629,7 @@ document.getElementById('newChatBtn').addEventListener('click', () => {
 });
 
 document.getElementById('reloadChatBtn').addEventListener('click', () => {
-    document.getElementById('aiChatMessages').scrollTo({ top: 0, behavior: 'smooth' });
+    window.location.reload();
 });
 </script>
 {% endblock %}

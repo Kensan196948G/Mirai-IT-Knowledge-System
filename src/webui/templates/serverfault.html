@@ -2,6 +2,27 @@
 
 {% block title %}Server Fault質問ブラウジング - Mirai IT Knowledge Systems{% endblock %}
 
+{% block extra_css %}
+<style>
+    .sf-sort {
+        height: 44px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.95rem;
+    }
+    .sf-score-panel {
+        min-width: 78px;
+        padding: 0.4rem 0.25rem;
+        font-size: 0.9rem;
+    }
+    .sf-score-panel .sf-score-item {
+        margin-top: 0.7rem;
+    }
+    .sf-score-panel .sf-score-item:first-child {
+        margin-top: 0.2rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <h2>💬 Server Fault質問ブラウジング</h2>
@@ -31,7 +52,7 @@
         </div>
         <div style="margin-bottom: 1rem;">
             <strong>スコア</strong>
-            <select id="scoreFilter" style="width: 100%; margin-top: 0.5rem;">
+            <select id="scoreFilter" class="sf-sort" style="width: 100%; margin-top: 0.5rem;">
                 <option value="">すべて</option>
                 <option value="10">10以上</option>
                 <option value="50">50以上</option>
@@ -52,7 +73,7 @@
         <div class="card" style="margin-bottom: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0;">質問一覧 <span id="resultCount" style="color: #666; font-size: 0.9rem;"></span></h3>
-                <select id="sortBy" onchange="sortResults()">
+                <select id="sortBy" class="sf-sort" onchange="sortResults()">
                     <option value="score">スコア順</option>
                     <option value="date">新しい順</option>
                     <option value="views">閲覧数順</option>
@@ -99,10 +120,10 @@
             container.insertAdjacentHTML('beforeend', `
                 <div class="card" style="border-left: 4px solid ${statusColor};">
                     <div style="display: flex; gap: 1rem;">
-                        <div style="min-width: 70px; text-align: center; font-size: 0.85rem; color:#666;">
-                            <div><strong style="font-size: 1.4rem; color:${statusColor};">${item.score ?? 0}</strong><br>投票</div>
-                            <div style="margin-top: 0.5rem;"><strong style="font-size: 1.1rem;">${item.answer_count ?? 0}</strong><br>回答</div>
-                            <div style="margin-top: 0.5rem;"><strong>${item.view_count ?? 0}</strong><br>閲覧</div>
+                        <div class="sf-score-panel" style="text-align: center; color:#666;">
+                            <div class="sf-score-item"><strong style="font-size: 1.4rem; color:${statusColor};">${item.score ?? 0}</strong><br>投票</div>
+                            <div class="sf-score-item"><strong style="font-size: 1.1rem;">${item.answer_count ?? 0}</strong><br>回答</div>
+                            <div class="sf-score-item"><strong>${item.view_count ?? 0}</strong><br>閲覧</div>
                         </div>
                         <div style="flex: 1;">
                             <h3 style="margin-bottom: 0.5rem;">
