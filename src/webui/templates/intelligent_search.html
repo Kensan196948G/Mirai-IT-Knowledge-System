@@ -134,6 +134,34 @@
         color: white;
         border-color: var(--color-primary);
     }
+
+    .ai-processing { overflow-x: auto; }
+    .ai-pipeline { flex-wrap: nowrap; align-items: stretch; }
+    .pipeline-stage { min-width: 170px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.25rem; }
+    .pipeline-arrow { white-space: nowrap; }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin: 0.35rem auto 0;
+        background: #c9c9c9;
+        opacity: 0.35;
+    }
+    .pipeline-stage.active .pulse-dot,
+    .pipeline-stage.processing .pulse-dot {
+        background: var(--color-primary);
+        opacity: 1;
+        animation: pulseDot 1s ease-in-out infinite;
+    }
+    .pipeline-stage.completed .pulse-dot {
+        background: #4caf50;
+        opacity: 1;
+    }
+    @keyframes pulseDot {
+        0% { transform: scale(0.8); opacity: 0.4; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(0.8); opacity: 0.4; }
+    }
 </style>
 {% endblock %}
 
@@ -183,10 +211,52 @@
     <p style="color: #666;">AI が最適な回答を検索中...</p>
 </div>
 
+<div class="ai-processing" id="aiSearchProcessing" style="display: none;">
+    <div class="ai-processing-header">
+        <span class="processing-icon">⚡</span>
+        <span>AI処理中...</span>
+    </div>
+    <div class="ai-pipeline">
+        <div class="pipeline-stage" id="searchStage1">
+            <div class="stage-icon">🧠</div>
+            <div class="pulse-dot"></div>
+            <div class="stage-info">
+                <span class="stage-name">Claude</span>
+                <span class="stage-desc">初期回答生成</span>
+            </div>
+            <div class="pipeline-indicator waiting"></div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-stage" id="searchStage2">
+            <div class="stage-icon">🔮</div>
+            <div class="pulse-dot"></div>
+            <div class="stage-info">
+                <span class="stage-name">Gemini</span>
+                <span class="stage-desc">検証・補完</span>
+            </div>
+            <div class="pipeline-indicator waiting"></div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-stage" id="searchStage3">
+            <div class="stage-icon">🌐</div>
+            <div class="pulse-dot"></div>
+            <div class="stage-info">
+                <span class="stage-name">Perplexity</span>
+                <span class="stage-desc">最新情報確認</span>
+            </div>
+            <div class="pipeline-indicator waiting"></div>
+        </div>
+    </div>
+    <div class="processing-message" id="searchProcessingMessage">
+        <p>準備中...</p>
+    </div>
+</div>
+
 <script>
 function fillExample(text) {
     document.getElementById('searchQuery').value = text;
     document.getElementById('searchQuery').focus();
+    performSearch();
 }
 
 async function performSearch(event) {
@@ -198,6 +268,9 @@ async function performSearch(event) {
     // UI更新
     document.getElementById('searchResults').classList.remove('show');
     document.getElementById('loadingSpinner').style.display = 'block';
+    showProcessing('回答を生成しています...');
+    const processingStart = Date.now();
+    await new Promise(requestAnimationFrame);
 
     try {
         const response = await fetch('/api/search/intelligent', {
@@ -217,6 +290,13 @@ async function performSearch(event) {
         showToast('検索エラー: ' + error.message, 'error');
     } finally {
         document.getElementById('loadingSpinner').style.display = 'none';
+        const elapsed = Date.now() - processingStart;
+        const minShowMs = 1500;
+        if (elapsed < minShowMs) {
+            setTimeout(() => hideProcessing(), minShowMs - elapsed);
+        } else {
+            hideProcessing();
+        }
     }
 }
 
@@ -311,6 +391,55 @@ function formatMarkdown(text) {
         .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" style="color: var(--color-primary);">$1</a>')
         .replace(/- (.+)/g, '<li>$1</li>')
         .replace(/\n/g, '<br>');
+}
+
+function resetStages() {
+    ['searchStage1', 'searchStage2', 'searchStage3'].forEach(id => {
+        const stage = document.getElementById(id);
+        if (!stage) return;
+        stage.classList.remove('active', 'completed');
+        const indicator = stage.querySelector('.pipeline-indicator');
+        if (indicator) indicator.className = 'pipeline-indicator waiting';
+    });
+}
+
+function updateStage(step, status) {
+    const stage = document.getElementById(`searchStage${step}`);
+    if (!stage) return;
+    stage.classList.remove('active', 'completed');
+    if (status === 'active') stage.classList.add('active');
+    if (status === 'completed') stage.classList.add('completed');
+    const indicator = stage.querySelector('.pipeline-indicator');
+    if (indicator) indicator.className = `pipeline-indicator ${status}`;
+}
+
+function showProcessing(message) {
+    const processing = document.getElementById('aiSearchProcessing');
+    const messageEl = document.getElementById('searchProcessingMessage');
+    if (messageEl) messageEl.innerHTML = `<p>${message || '処理中...'}</p>`;
+    resetStages();
+    updateStage(1, 'active');
+    if (window.__searchStageTimers) {
+        window.__searchStageTimers.forEach(t => clearTimeout(t));
+    }
+    window.__searchStageTimers = [
+        setTimeout(() => updateStage(1, 'completed'), 400),
+        setTimeout(() => updateStage(2, 'active'), 450),
+        setTimeout(() => updateStage(2, 'completed'), 1100),
+        setTimeout(() => updateStage(3, 'active'), 1150),
+        setTimeout(() => updateStage(3, 'completed'), 1900),
+    ];
+    processing.style.display = 'block';
+}
+
+function hideProcessing() {
+    const processing = document.getElementById('aiSearchProcessing');
+    if (window.__searchStageTimers) {
+        window.__searchStageTimers.forEach(t => clearTimeout(t));
+        window.__searchStageTimers = null;
+    }
+    resetStages();
+    processing.style.display = 'none';
 }
 </script>
 {% endblock %}

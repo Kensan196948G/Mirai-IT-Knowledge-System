@@ -328,25 +328,60 @@ JSON形式で回答してください（説明文は不要）:"""
         """次の質問を生成"""
         # 不足している情報を確認
         if not self.collected_info['when']:
-            return "いつ発生しましたか？（日時を教えてください）"
+            variants = [
+                "いつ頃発生しましたか？（例: 1/27 14:30、昨日の朝など）",
+                "発生した日時は分かりますか？（分からなければ「不明」でOKです）",
+                "発生タイミングを教えてください。（だいたいの時間帯でも可）"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         if not self.collected_info['system']:
-            return "どのシステム・サービスで発生しましたか？"
+            variants = [
+                "どのシステム・サービスで発生しましたか？（例: メール、VPN、社内ポータル、基幹システム など）",
+                "対象のシステム名は分かりますか？（不明なら「不明」や「おそらく〜」でもOK）",
+                "どの画面・機能で起きましたか？（分かる範囲で構いません）"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         if not self.collected_info['symptom']:
-            return "具体的にどんな症状・エラーでしたか？"
+            variants = [
+                "具体的にどんな症状・エラーでしたか？（表示された文言があれば教えてください）",
+                "現象を教えてください。（例: ログイン不可、遅い、エラーコードなど）",
+                "どんな問題が起きましたか？（スクリーンショットがあれば内容だけでOK）"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         if not self.collected_info['impact']:
-            return "影響範囲を教えてください。（ユーザー数、システム範囲など）"
+            variants = [
+                "影響範囲を教えてください。（ユーザー数、部門、システム範囲など）",
+                "誰に影響しましたか？（全員/一部/特定部門 など）",
+                "影響の大きさはどの程度でしたか？（軽微/重大/業務停止 など）"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         if not self.collected_info['response']:
-            return "どのように対応しましたか？"
+            variants = [
+                "どのように対応しましたか？（実施した手順を教えてください）",
+                "対処内容を教えてください。（再起動/設定変更/連絡先 など）",
+                "暫定対応や回避策はありましたか？"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         if not self.collected_info['cause']:
-            return "原因は特定できましたか？（分かる範囲で）"
+            variants = [
+                "原因は特定できましたか？（分かる範囲でOK／不明でも可）",
+                "原因の見当はありますか？（例: 設定変更、負荷増加 など）",
+                "原因が分かれば教えてください。分からなければ「不明」で大丈夫です。"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         if not self.collected_info['measures']:
-            return "今後の対策や再発防止策はありますか？"
+            variants = [
+                "今後の対策や再発防止策はありますか？",
+                "同様の問題を防ぐために考えていることはありますか？",
+                "再発防止のためにやっておきたいことはありますか？"
+            ]
+            return variants[len(self.conversation_history) % len(variants)]
 
         # 全ての情報が揃った
         return None
