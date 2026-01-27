@@ -1,66 +1,89 @@
 {% extends "base.html" %}
 
-{% block title %}検索結果 - Mirai IT Knowledge Systems{% endblock %}
+{% block title %}社内ナレッジ検索 - Mirai IT Knowledge Systems{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>🔍 検索結果</h2>
-    <p style="color: #666; margin-bottom: 1rem;">
-        {% if query %}
-        「<strong>{{ query }}</strong>」の検索結果: {{ results|length }}件
-        {% else %}
-        全ナレッジ: {{ results|length }}件
-        {% endif %}
+<div class="page-header">
+    <h1 class="page-title">
+        <span aria-hidden="true">🔍</span> 社内ナレッジ検索
+    </h1>
+    <p class="page-description">
+        キーワードやITSMタイプ、タグでナレッジを検索できます
     </p>
+</div>
+
+<section class="section">
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <form id="searchForm" method="POST" action="/knowledge/search" role="search">
+            <div class="search-box">
+                <input
+                    type="search"
+                    id="searchInput"
+                    name="query"
+                    placeholder="例: Webサーバー 503エラー"
+                    aria-label="ナレッジを検索"
+                    value="{{ query or '' }}"
+                >
+            </div>
+            <p class="form-help">
+                自然な言葉で検索できます。複数のキーワードを入力すると、すべてを含むナレッジが検索されます。
+            </p>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <select class="form-select" name="itsm_type" aria-label="ITSMタイプ">
+                    <option value="">すべて</option>
+                    <option value="Incident" {% if itsm_type_filter == 'Incident' %}selected{% endif %}>インシデント</option>
+                    <option value="Problem" {% if itsm_type_filter == 'Problem' %}selected{% endif %}>問題管理</option>
+                    <option value="Change" {% if itsm_type_filter == 'Change' %}selected{% endif %}>変更管理</option>
+                    <option value="Release" {% if itsm_type_filter == 'Release' %}selected{% endif %}>リリース管理</option>
+                    <option value="Request" {% if itsm_type_filter == 'Request' %}selected{% endif %}>サービスリクエスト</option>
+                </select>
+                <button class="btn btn-primary" type="submit">検索</button>
+                <a href="/knowledge/search" class="btn btn-outline">クリア</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <h2 class="section-title">
+            検索結果 <span style="color: var(--color-text-secondary);">({{ results|length }}件)</span>
+        </h2>
+    </div>
 
     {% if results %}
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="border-bottom: 2px solid #eee;">
-                <th style="text-align: left; padding: 0.75rem;">タイトル</th>
-                <th style="text-align: left; padding: 0.75rem;">タイプ</th>
-                <th style="text-align: left; padding: 0.75rem;">要約</th>
-                <th style="text-align: left; padding: 0.75rem;">作成日時</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for knowledge in results %}
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 0.75rem;">
-                    <a href="/knowledge/{{ knowledge.id }}" style="color: #667eea; text-decoration: none; font-weight: 500;">
-                        {{ knowledge.title }}
-                    </a>
-                </td>
-                <td style="padding: 0.75rem;">
-                    <span class="badge badge-{{ knowledge.itsm_type.lower() }}">
-                        {{ knowledge.itsm_type }}
-                    </span>
-                </td>
-                <td style="padding: 0.75rem; max-width: 400px;">
-                    <small style="color: #666;">
-                        {{ knowledge.summary_non_technical[:100] }}{% if knowledge.summary_non_technical|length > 100 %}...{% endif %}
-                    </small>
-                </td>
-                <td style="padding: 0.75rem; white-space: nowrap;">
-                    {{ knowledge.created_at[:10] }}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="content-grid">
+        {% for knowledge in results %}
+        <article class="knowledge-card {{ knowledge.itsm_type|lower }}" tabindex="0" role="button" onclick="location.href='/knowledge/{{ knowledge.id }}'">
+            <div class="card-header">
+                <h3 class="card-title">{{ knowledge.title }}</h3>
+                <span class="badge badge-{{ knowledge.itsm_type|lower }}" role="status">
+                    {% if knowledge.itsm_type == 'Incident' %}インシデント
+                    {% elif knowledge.itsm_type == 'Problem' %}問題管理
+                    {% elif knowledge.itsm_type == 'Change' %}変更管理
+                    {% elif knowledge.itsm_type == 'Release' %}リリース管理
+                    {% elif knowledge.itsm_type == 'Request' %}サービスリクエスト
+                    {% else %}その他{% endif %}
+                </span>
+            </div>
+            <p class="card-summary">
+                {{ knowledge.summary_non_technical or knowledge.content[:100] }}{% if (knowledge.summary_non_technical or knowledge.content)|length > 100 %}...{% endif %}
+            </p>
+            <div class="card-footer">
+                <span><span aria-hidden="true">🏷️</span> {{ (knowledge.tags or [])|join(', ') }}</span>
+                <time datetime="{{ knowledge.created_at[:10] }}">{{ knowledge.created_at[:10] }}</time>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
     {% else %}
-    <div style="text-align: center; padding: 3rem; color: #666;">
-        <p style="font-size: 3rem;">🔍</p>
-        <p>検索条件に一致するナレッジが見つかりませんでした</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <h3>検索条件に一致するナレッジが見つかりませんでした</h3>
         <p style="margin-top: 1rem;">
-            <a href="/knowledge/search" class="btn btn-secondary">検索条件を変更</a>
+            <a href="/knowledge/search" class="btn btn-outline">検索条件を変更</a>
         </p>
     </div>
     {% endif %}
-</div>
-
-<div style="margin-top: 2rem;">
-    <a href="/knowledge/search" class="btn btn-secondary">新しい検索</a>
-    <a href="/" class="btn btn-secondary" style="margin-left: 1rem;">ホームに戻る</a>
-</div>
+</section>
 {% endblock %}

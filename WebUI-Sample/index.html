@@ -40,13 +40,23 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="search.html" class="nav-link">
-                        <span aria-hidden="true">🔍</span> 検索
+                    <a href="knowledge-list.html" class="nav-link">
+                        <span aria-hidden="true">📚</span> ナレッジ一覧
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="create.html" class="nav-link">
                         <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 社内検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="ai-search.html" class="nav-link">
+                        <span aria-hidden="true">🧠</span> AI検索
                     </a>
                 </li>
                 <li class="nav-item">
@@ -73,27 +83,75 @@
                     <div class="stats-card" role="article" style="background: linear-gradient(135deg, #f44336 0%, #c62828 100%);" data-type="incident">
                         <div class="stats-icon" aria-hidden="true">🚨</div>
                         <div class="stats-value" id="incident-count">45</div>
-                        <div class="stats-label">Incident</div>
+                        <div class="stats-label">インシデント</div>
                     </div>
                     <div class="stats-card" role="article" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);" data-type="problem">
                         <div class="stats-icon" aria-hidden="true">🔍</div>
                         <div class="stats-value" id="problem-count">32</div>
-                        <div class="stats-label">Problem</div>
+                        <div class="stats-label">問題管理</div>
                     </div>
                     <div class="stats-card" role="article" style="background: linear-gradient(135deg, #2196F3 0%, #1565c0 100%);" data-type="change">
                         <div class="stats-icon" aria-hidden="true">🔧</div>
                         <div class="stats-value" id="change-count">28</div>
-                        <div class="stats-label">Change</div>
+                        <div class="stats-label">変更管理</div>
                     </div>
                     <div class="stats-card" role="article" style="background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);" data-type="release">
                         <div class="stats-icon" aria-hidden="true">🚀</div>
                         <div class="stats-value" id="release-count">18</div>
-                        <div class="stats-label">Release</div>
+                        <div class="stats-label">リリース管理</div>
                     </div>
                     <div class="stats-card" role="article" style="background: linear-gradient(135deg, #9C27B0 0%, #6a1b9a 100%);" data-type="request">
                         <div class="stats-icon" aria-hidden="true">📝</div>
                         <div class="stats-value" id="request-count">33</div>
-                        <div class="stats-label">Request</div>
+                        <div class="stats-label">サービスリクエスト</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Operations Menu -->
+            <section class="section" aria-labelledby="modules-heading">
+                <div class="section-header">
+                    <h2 id="modules-heading" class="section-title">
+                        <span aria-hidden="true">🧭</span> 運用メニュー
+                    </h2>
+                    <a href="knowledge-list.html" class="btn btn-sm btn-outline">一覧を開く</a>
+                </div>
+                <div class="grid grid-3">
+                    <a href="knowledge-list.html" class="module-card" role="article">
+                        <div class="module-icon">📚</div>
+                        <h3 class="module-title">社内ITナレッジ一覧</h3>
+                        <p class="module-meta">最新化状況・レビュー対象を可視化</p>
+                        <span class="chip">512件</span>
+                    </a>
+                    <a href="create.html" class="module-card" role="article">
+                        <div class="module-icon">✍️</div>
+                        <h3 class="module-title">作成</h3>
+                        <p class="module-meta">インシデントからナレッジを即時登録</p>
+                        <span class="chip">平均 6分</span>
+                    </a>
+                    <a href="search.html" class="module-card" role="article">
+                        <div class="module-icon">🔍</div>
+                        <h3 class="module-title">社内ナレッジ検索</h3>
+                        <p class="module-meta">タグ・ITSMタイプで横断検索</p>
+                        <span class="chip">高速検索</span>
+                    </a>
+                    <a href="ai-search.html" class="module-card" role="article">
+                        <div class="module-icon">🧠</div>
+                        <h3 class="module-title">AI検索</h3>
+                        <p class="module-meta">Claude/Gemini/Perplexityの検索プロセスを可視化</p>
+                        <span class="chip chip-strong">統合回答</span>
+                    </a>
+                    <a href="sf-browser.html" class="module-card" role="article">
+                        <div class="module-icon">💬</div>
+                        <h3 class="module-title">Server Fault質問</h3>
+                        <p class="module-meta">外部Q&Aを取り込みナレッジ化</p>
+                        <span class="chip">248件</span>
+                    </a>
+                    <div class="module-card" role="article">
+                        <div class="module-icon">📊</div>
+                        <h3 class="module-title">ダッシュボード</h3>
+                        <p class="module-meta">全体 KPI と直近の実行状況</p>
+                        <span class="chip chip-warning">更新 5分前</span>
                     </div>
                 </div>
             </section>
@@ -106,13 +164,13 @@
                     </h2>
                     <div class="grid grid-3">
                         <a href="create.html" class="btn btn-primary" style="text-align: center; padding: 1rem;">
-                            <span aria-hidden="true">✍️</span> 新しいナレッジを作成
+                            <span aria-hidden="true">✍️</span> ナレッジを作成
                         </a>
                         <a href="search.html" class="btn btn-outline" style="text-align: center; padding: 1rem;">
-                            <span aria-hidden="true">🔍</span> ナレッジを検索
+                            <span aria-hidden="true">🔍</span> 社内検索
                         </a>
-                        <a href="sf-browser.html" class="btn btn-outline" style="text-align: center; padding: 1rem;">
-                            <span aria-hidden="true">💬</span> Server Fault参照
+                        <a href="ai-search.html" class="btn btn-outline" style="text-align: center; padding: 1rem;">
+                            <span aria-hidden="true">🧠</span> AI検索を実行
                         </a>
                     </div>
                 </div>
@@ -123,9 +181,9 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 id="recent-heading" class="card-title">
-                            <span aria-hidden="true">📚</span> 最近のナレッジ
+                            <span aria-hidden="true">📚</span> 社内ITナレッジ一覧（最新）
                         </h2>
-                        <a href="search.html" class="btn btn-sm">すべて表示</a>
+                        <a href="knowledge-list.html" class="btn btn-sm">すべて表示</a>
                     </div>
                     <div class="card-body">
                         <div class="content-grid" id="recent-knowledge-list">
@@ -133,7 +191,7 @@
                             <article class="knowledge-card incident" tabindex="0" role="button" onclick="location.href='detail.html?id=1'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=1'">
                                 <div class="card-header">
                                     <h3 class="card-title">Webサーバーの503エラー発生時の対応手順</h3>
-                                    <span class="badge badge-incident" role="status">Incident</span>
+                                    <span class="badge badge-incident" role="status">インシデント</span>
                                 </div>
                                 <p class="card-summary">
                                     Apacheサーバーで503エラーが発生した際の調査手順と対応方法をまとめたナレッジです。
@@ -147,7 +205,7 @@
                             <article class="knowledge-card problem" tabindex="0" role="button" onclick="location.href='detail.html?id=2'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=2'">
                                 <div class="card-header">
                                     <h3 class="card-title">データベース接続プールの枯渇問題</h3>
-                                    <span class="badge badge-problem" role="status">Problem</span>
+                                    <span class="badge badge-problem" role="status">問題管理</span>
                                 </div>
                                 <p class="card-summary">
                                     MySQLの接続プールが枯渇する根本原因の調査と恒久対策について記載しています。
@@ -161,7 +219,7 @@
                             <article class="knowledge-card change" tabindex="0" role="button" onclick="location.href='detail.html?id=3'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=3'">
                                 <div class="card-header">
                                     <h3 class="card-title">SSL証明書の更新手順</h3>
-                                    <span class="badge badge-change" role="status">Change</span>
+                                    <span class="badge badge-change" role="status">変更管理</span>
                                 </div>
                                 <p class="card-summary">
                                     本番環境でのSSL証明書更新時の標準手順と注意事項をまとめています。
@@ -226,7 +284,9 @@
                 <div class="footer-section">
                     <h4>リンク</h4>
                     <p><a href="index.html">ダッシュボード</a></p>
-                    <p><a href="search.html">検索</a></p>
+                    <p><a href="knowledge-list.html">ナレッジ一覧</a></p>
+                    <p><a href="search.html">社内検索</a></p>
+                    <p><a href="ai-search.html">AI検索</a></p>
                     <p><a href="create.html">ナレッジ作成</a></p>
                 </div>
                 <div class="footer-section">
@@ -270,10 +330,15 @@
                 e.preventDefault();
                 window.location.href = 'create.html';
             }
+            // a key - ai search
+            if (e.key === 'a' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                window.location.href = 'ai-search.html';
+            }
             // ? key - help
             if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
-                alert('キーボードショートカット:\n\n/ - 検索\nn - 新規作成\n? - ヘルプ');
+                alert('キーボードショートカット:\n\n/ - 社内検索\nn - 新規作成\na - AI検索\n? - ヘルプ');
             }
         });
 

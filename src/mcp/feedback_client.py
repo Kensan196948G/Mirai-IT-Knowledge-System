@@ -24,6 +24,20 @@ class FeedbackClient(SQLiteClient):
             with self.get_connection() as conn:
                 conn.executescript(schema)
 
+    def _table_exists(self, table_name: str) -> bool:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (table_name,),
+            )
+            return cursor.fetchone() is not None
+
+    def _get_knowledge_table(self) -> str:
+        if self._table_exists("knowledge_entries"):
+            return "knowledge_entries"
+        return "knowledge"
+
     # ========== ナレッジフィードバック ==========
 
     def add_knowledge_feedback(
@@ -80,11 +94,12 @@ class FeedbackClient(SQLiteClient):
 
     def get_top_rated_knowledge(self, limit: int = 10) -> List[Dict[str, Any]]:
         """評価の高いナレッジを取得"""
+        knowledge_table = self._get_knowledge_table()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT k.*, r.avg_rating, r.feedback_count
-                FROM knowledge_entries k
+                FROM {knowledge_table} k
                 JOIN knowledge_ratings r ON k.id = r.knowledge_id
                 WHERE r.feedback_count >= 3
                 ORDER BY r.avg_rating DESC, r.feedback_count DESC
@@ -242,11 +257,12 @@ class FeedbackClient(SQLiteClient):
 
     def get_popular_knowledge(self, limit: int = 10, days: int = 30) -> List[Dict[str, Any]]:
         """人気のナレッジを取得"""
+        knowledge_table = self._get_knowledge_table()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT k.*, COUNT(u.id) as view_count
-                FROM knowledge_entries k
+                FROM {knowledge_table} k
                 JOIN knowledge_usage_stats u ON k.id = u.knowledge_id
                 WHERE u.action_type = 'view'
                   AND u.created_at > datetime('now', '-' || ? || ' days')

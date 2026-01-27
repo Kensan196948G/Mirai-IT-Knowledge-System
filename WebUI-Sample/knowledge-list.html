@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="社内ITナレッジ一覧 - Mirai IT Knowledge Systems">
+    <title>社内ITナレッジ一覧 - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="create.html" class="btn" aria-label="新規作成">
+                        <span aria-hidden="true">✍️</span> 新規作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="knowledge-list.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">📚</span> ナレッジ一覧
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 社内検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="ai-search.html" class="nav-link">
+                        <span aria-hidden="true">🧠</span> AI検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span aria-hidden="true">📚</span> 社内ITナレッジ一覧
+                </h1>
+                <p class="page-description">
+                    ナレッジの状態、優先度、更新状況を一覧で把握できます。
+                </p>
+            </div>
+
+            <!-- Overview Cards -->
+            <section class="section">
+                <div class="dashboard-grid">
+                    <div class="stats-card">
+                        <div class="stats-icon" aria-hidden="true">📘</div>
+                        <div class="stats-value">512</div>
+                        <div class="stats-label">公開ナレッジ</div>
+                    </div>
+                    <div class="stats-card" style="background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);">
+                        <div class="stats-icon" aria-hidden="true">✅</div>
+                        <div class="stats-value">94%</div>
+                        <div class="stats-label">最新化率</div>
+                    </div>
+                    <div class="stats-card" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">
+                        <div class="stats-icon" aria-hidden="true">🕒</div>
+                        <div class="stats-value">18</div>
+                        <div class="stats-label">要レビュー</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filters -->
+            <section class="section">
+                <div class="card">
+                    <div class="grid grid-4">
+                        <div class="form-group">
+                            <label class="form-label" for="listQuery">キーワード</label>
+                            <input id="listQuery" class="form-input" placeholder="例: SSL 更新" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="listType">ITSMタイプ</label>
+                            <select id="listType" class="form-select">
+                                <option value="">すべて</option>
+                                <option value="Incident">インシデント</option>
+                                <option value="Problem">問題管理</option>
+                                <option value="Change">変更管理</option>
+                                <option value="Release">リリース管理</option>
+                                <option value="Request">サービスリクエスト</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="listOwner">担当</label>
+                            <select id="listOwner" class="form-select">
+                                <option value="">全担当</option>
+                                <option value="ops">運用チーム</option>
+                                <option value="security">セキュリティ</option>
+                                <option value="service">サービスデスク</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="listSort">並び替え</label>
+                            <select id="listSort" class="form-select">
+                                <option value="updated">更新日（新しい順）</option>
+                                <option value="created">作成日</option>
+                                <option value="priority">優先度</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="applyListFilters()">絞り込み</button>
+                        <button class="btn btn-outline" onclick="resetListFilters()">リセット</button>
+                        <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline btn-sm" onclick="toggleView('card')">カード表示</button>
+                            <button class="btn btn-outline btn-sm" onclick="toggleView('table')">テーブル表示</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card View -->
+            <section class="section" id="cardView">
+                <div class="content-grid">
+                    <article class="knowledge-card incident" onclick="location.href='detail.html?id=41'">
+                        <div class="card-header">
+                            <h3 class="card-title">メール送信遅延の一次切り分け</h3>
+                            <span class="badge badge-incident">インシデント</span>
+                        </div>
+                        <p class="card-summary">SMTPキュー滞留を検知した際の一次切り分けと暫定対応。</p>
+                        <div class="card-footer">
+                            <span>担当: サービスデスク</span>
+                            <time datetime="2026-01-27">2026-01-27</time>
+                        </div>
+                    </article>
+                    <article class="knowledge-card problem" onclick="location.href='detail.html?id=42'">
+                        <div class="card-header">
+                            <h3 class="card-title">VPN接続不安定の根本原因分析</h3>
+                            <span class="badge badge-problem">問題管理</span>
+                        </div>
+                        <p class="card-summary">セッションタイムアウトと認証サーバの負荷相関を分析。</p>
+                        <div class="card-footer">
+                            <span>担当: ネットワーク</span>
+                            <time datetime="2026-01-26">2026-01-26</time>
+                        </div>
+                    </article>
+                    <article class="knowledge-card change" onclick="location.href='detail.html?id=43'">
+                        <div class="card-header">
+                            <h3 class="card-title">SSL証明書の自動更新手順</h3>
+                            <span class="badge badge-change">変更管理</span>
+                        </div>
+                        <p class="card-summary">証明書ローテーション手順と監視項目の更新。</p>
+                        <div class="card-footer">
+                            <span>担当: セキュリティ</span>
+                            <time datetime="2026-01-25">2026-01-25</time>
+                        </div>
+                    </article>
+                    <article class="knowledge-card release" onclick="location.href='detail.html?id=44'">
+                        <div class="card-header">
+                            <h3 class="card-title">監視ツール v3.2 リリース手順</h3>
+                            <span class="badge badge-release">リリース管理</span>
+                        </div>
+                        <p class="card-summary">ステージング検証とロールバックチェックリストを統合。</p>
+                        <div class="card-footer">
+                            <span>担当: DevOps</span>
+                            <time datetime="2026-01-24">2026-01-24</time>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- Table View -->
+            <section class="section" id="tableView" style="display: none;">
+                <table class="data-table" aria-label="ナレッジ一覧テーブル">
+                    <thead>
+                        <tr>
+                            <th>タイトル</th>
+                            <th>ITSMタイプ</th>
+                            <th>担当</th>
+                            <th>最終更新</th>
+                            <th>状態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr onclick="location.href='detail.html?id=41'">
+                            <td>メール送信遅延の一次切り分け</td>
+                            <td><span class="badge badge-incident">インシデント</span></td>
+                            <td>サービスデスク</td>
+                            <td>2026-01-27</td>
+                            <td><span class="chip chip-strong">最新</span></td>
+                        </tr>
+                        <tr onclick="location.href='detail.html?id=42'">
+                            <td>VPN接続不安定の根本原因分析</td>
+                            <td><span class="badge badge-problem">問題管理</span></td>
+                            <td>ネットワーク</td>
+                            <td>2026-01-26</td>
+                            <td><span class="chip chip-warning">要レビュー</span></td>
+                        </tr>
+                        <tr onclick="location.href='detail.html?id=43'">
+                            <td>SSL証明書の自動更新手順</td>
+                            <td><span class="badge badge-change">変更管理</span></td>
+                            <td>セキュリティ</td>
+                            <td>2026-01-25</td>
+                            <td><span class="chip chip-strong">最新</span></td>
+                        </tr>
+                        <tr onclick="location.href='detail.html?id=44'">
+                            <td>監視ツール v3.2 リリース手順</td>
+                            <td><span class="badge badge-release">リリース管理</span></td>
+                            <td>DevOps</td>
+                            <td>2026-01-24</td>
+                            <td><span class="chip">レビュー済</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="knowledge-list.html">ナレッジ一覧</a></p>
+                    <p><a href="search.html">社内検索</a></p>
+                    <p><a href="ai-search.html">AI検索</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleView(view) {
+            const cardView = document.getElementById('cardView');
+            const tableView = document.getElementById('tableView');
+            if (view === 'table') {
+                cardView.style.display = 'none';
+                tableView.style.display = 'block';
+            } else {
+                cardView.style.display = 'block';
+                tableView.style.display = 'none';
+            }
+        }
+
+        function applyListFilters() {
+            console.log('フィルター適用');
+        }
+
+        function resetListFilters() {
+            document.getElementById('listQuery').value = '';
+            document.getElementById('listType').value = '';
+            document.getElementById('listOwner').value = '';
+            document.getElementById('listSort').value = 'updated';
+        }
+    </script>
+</body>
+</html>

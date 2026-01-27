@@ -42,15 +42,32 @@ if [ "$KNOWLEDGE_COUNT" = "0" ] || [ -z "$KNOWLEDGE_COUNT" ]; then
     echo ""
 fi
 
+# 環境変数読み込み（開発環境想定）
+if [ -f ".env.development" ]; then
+    set -a
+    source .env.development
+    set +a
+fi
+
 # IPアドレス取得
-IP_ADDRESS=$(hostname -I | awk '{print $1}')
-PORT=8888
+IP_ADDRESS="${HOST:-}"
+if [ -z "$IP_ADDRESS" ] || [ "$IP_ADDRESS" = "0.0.0.0" ] || [ "$IP_ADDRESS" = "localhost" ]; then
+    IP_ADDRESS=$(hostname -I | awk '{print $1}')
+fi
+
+PORT="${PORT:-8888}"
+SSL_FLAG="${SSL_ENABLED:-False}"
+if [[ "${SSL_FLAG,,}" == "true" || "${SSL_FLAG,,}" == "1" || "${SSL_FLAG,,}" == "yes" || "${SSL_FLAG,,}" == "on" ]]; then
+    PROTOCOL="https"
+else
+    PROTOCOL="http"
+fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🚀 WebUIを起動します..."
 echo ""
-echo "   ネットワークアクセス: http://${IP_ADDRESS}:${PORT}"
-echo "   ローカルアクセス    : http://localhost:${PORT}"
+echo "   ネットワークアクセス: ${PROTOCOL}://${IP_ADDRESS}:${PORT}"
+echo "   ローカルアクセス    : ${PROTOCOL}://localhost:${PORT}"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

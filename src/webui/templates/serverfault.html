@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Server Fault質問ブラウジング - Mirai IT Knowledge Systems{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>💬 Server Fault質問ブラウジング</h2>
+    <p>Server Faultから取得した質問を日本語で表示します。</p>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <form id="searchForm" role="search" onsubmit="performSearch(event)">
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <input type="search" id="searchInput" placeholder="例: Apache 503" style="flex: 1; height: 48px; font-size: 1rem; padding: 0.75rem 0.9rem;" />
+            <button class="btn" type="submit">検索</button>
+        </div>
+        <p style="color: #666; margin-top: 0.5rem;">日本語のキーワードで検索できます。</p>
+    </form>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(220px, 260px) 1fr; gap: 1.5rem;">
+    <aside class="card" style="height: fit-content;">
+        <h3 style="margin-bottom: 0.75rem;">フィルター</h3>
+        <div style="margin-bottom: 1rem;">
+            <strong>ステータス</strong>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                <label><input type="checkbox" name="status" value="answered" checked> 回答済み</label>
+                <label><input type="checkbox" name="status" value="unanswered" checked> 未回答</label>
+                <label><input type="checkbox" name="status" value="accepted" checked> 解決済み</label>
+            </div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <strong>スコア</strong>
+            <select id="scoreFilter" style="width: 100%; margin-top: 0.5rem;">
+                <option value="">すべて</option>
+                <option value="10">10以上</option>
+                <option value="50">50以上</option>
+                <option value="100">100以上</option>
+            </select>
+        </div>
+        <button class="btn" style="width: 100%;" onclick="applyFilters()">適用</button>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;" onclick="clearFilters()">クリア</button>
+        <hr style="margin: 1rem 0;">
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
+            <div>取得済み質問: <strong id="totalQuestions">-</strong></div>
+            <div>解決済み: <strong id="answeredQuestions">-</strong></div>
+            <div>未回答: <strong id="unansweredQuestions">-</strong></div>
+        </div>
+    </aside>
+
+    <section>
+        <div class="card" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">質問一覧 <span id="resultCount" style="color: #666; font-size: 0.9rem;"></span></h3>
+                <select id="sortBy" onchange="sortResults()">
+                    <option value="score">スコア順</option>
+                    <option value="date">新しい順</option>
+                    <option value="views">閲覧数順</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="questionList">
+            <div class="spinner"></div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const state = {
+        questions: [],
+        filtered: [],
+        answersCache: {}
+    };
+
+    function mapStatus(item) {
+        if (item.has_accepted_answer) return 'accepted';
+        if (item.is_answered) return 'answered';
+        return 'unanswered';
+    }
+
+    function renderQuestions(list) {
+        const container = document.getElementById('questionList');
+        container.innerHTML = '';
+
+        if (!list.length) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>該当する質問がありません</h3></div>';
+            return;
+        }
+
+        list.forEach(item => {
+            const status = mapStatus(item);
+            const statusColor = status === 'accepted' ? '#4CAF50' : (status === 'answered' ? '#2196F3' : '#999');
+            const tags = (item.tags || []).map(tag => `<span class="badge" style="background:#f5f5f5; color:#555; margin-right:4px;">${tag}</span>`).join(' ');
+            const answersContainerId = `answers-${item.question_id}`;
+
+            container.insertAdjacentHTML('beforeend', `
+                <div class="card" style="border-left: 4px solid ${statusColor};">
+                    <div style="display: flex; gap: 1rem;">
+                        <div style="min-width: 70px; text-align: center; font-size: 0.85rem; color:#666;">
+                            <div><strong style="font-size: 1.4rem; color:${statusColor};">${item.score ?? 0}</strong><br>投票</div>
+                            <div style="margin-top: 0.5rem;"><strong style="font-size: 1.1rem;">${item.answer_count ?? 0}</strong><br>回答</div>
+                            <div style="margin-top: 0.5rem;"><strong>${item.view_count ?? 0}</strong><br>閲覧</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <h3 style="margin-bottom: 0.5rem;">
+                                <a href="${item.link}" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary); text-decoration: none;">
+                                    ${item.title}
+                                </a>
+                            </h3>
+                            <p style="color: #666; margin-bottom: 0.75rem; line-height: 1.6;">
+                                ${item.excerpt || ''}
+                            </p>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                                <div>${tags}</div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-secondary" onclick="importQuestion('${item.question_id}')">📥 インポート</button>
+                                    <button class="btn" onclick="toggleAnswers('${item.question_id}')">💬 回答を表示</button>
+                                    <a class="btn" href="${item.link}" target="_blank" rel="noopener noreferrer">詳細</a>
+                                </div>
+                            </div>
+                            <div id="${answersContainerId}" style="margin-top: 1rem; display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        });
+    }
+
+    function updateStats(list) {
+        const total = list.length;
+        const answered = list.filter(item => mapStatus(item) !== 'unanswered').length;
+        const unanswered = total - answered;
+        document.getElementById('totalQuestions').textContent = total;
+        document.getElementById('answeredQuestions').textContent = answered;
+        document.getElementById('unansweredQuestions').textContent = unanswered;
+        document.getElementById('resultCount').textContent = `(${total}件)`;
+    }
+
+    function applyFilters() {
+        const statusFilters = Array.from(document.querySelectorAll('input[name="status"]:checked')).map(cb => cb.value);
+        const scoreThreshold = parseInt(document.getElementById('scoreFilter').value || '0', 10);
+        const query = document.getElementById('searchInput').value.toLowerCase();
+
+        state.filtered = state.questions.filter(item => {
+            const status = mapStatus(item);
+            if (statusFilters.length && !statusFilters.includes(status)) return false;
+            if ((item.score ?? 0) < scoreThreshold) return false;
+            if (query) {
+                const haystack = `${item.title} ${item.excerpt} ${(item.tags || []).join(' ')}`.toLowerCase();
+                if (!haystack.includes(query)) return false;
+            }
+            return true;
+        });
+
+        renderQuestions(state.filtered);
+        updateStats(state.filtered);
+    }
+
+    function clearFilters() {
+        document.querySelectorAll('input[name="status"]').forEach(cb => cb.checked = true);
+        document.getElementById('scoreFilter').value = '';
+        document.getElementById('searchInput').value = '';
+        state.filtered = [...state.questions];
+        renderQuestions(state.filtered);
+        updateStats(state.filtered);
+    }
+
+    function sortResults() {
+        const sortBy = document.getElementById('sortBy').value;
+        const list = state.filtered.length ? state.filtered : state.questions;
+        const sorted = [...list];
+        if (sortBy === 'score') {
+            sorted.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        } else if (sortBy === 'views') {
+            sorted.sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0));
+        } else {
+            sorted.sort((a, b) => (b.creation_date ?? 0) - (a.creation_date ?? 0));
+        }
+        state.filtered = sorted;
+        renderQuestions(sorted);
+    }
+
+    function performSearch(event) {
+        if (event) event.preventDefault();
+        applyFilters();
+    }
+
+    function importQuestion(questionId) {
+        alert(`質問 ${questionId} をナレッジ化する処理は未実装です。`);
+    }
+
+    async function toggleAnswers(questionId) {
+        const container = document.getElementById(`answers-${questionId}`);
+        if (!container) return;
+        if (container.dataset.loaded === 'true') {
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        container.innerHTML = '<div class="spinner"></div>';
+        try {
+            const response = await fetch(`/api/serverfault/answers?question_id=${questionId}&translate=true`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'fetch failed');
+            const answers = data.items || [];
+            state.answersCache[questionId] = answers;
+            container.innerHTML = renderAnswers(answers);
+            container.dataset.loaded = 'true';
+        } catch (err) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>回答の取得に失敗しました</h3><p>${err}</p></div>`;
+        }
+    }
+
+    function renderAnswers(answers) {
+        if (!answers.length) {
+            return '<div class="empty-state"><div class="empty-state-icon">💬</div><h3>回答はまだありません</h3></div>';
+        }
+
+        return answers.map(answer => `
+            <div class="card" style="background:#f8f9fb; margin-bottom: 0.75rem; border-left: 4px solid ${answer.is_accepted ? '#4CAF50' : '#ccc'};">
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:0.5rem;">
+                    <strong>${answer.is_accepted ? '✅ 承認済み回答' : '回答'}</strong>
+                    <span style="color:#666;">スコア: ${answer.score ?? 0}</span>
+                </div>
+                <p style="color:#555; line-height:1.7;">${answer.body || answer.excerpt || ''}</p>
+            </div>
+        `).join('');
+    }
+
+    async function loadQuestions() {
+        const container = document.getElementById('questionList');
+        container.innerHTML = '<div class="spinner"></div>';
+        try {
+            const response = await fetch('/api/serverfault/questions?pagesize=20&translate=true');
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'fetch failed');
+            state.questions = data.items || [];
+            state.filtered = [...state.questions];
+            renderQuestions(state.filtered);
+            updateStats(state.filtered);
+        } catch (err) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>取得に失敗しました</h3><p>${err}</p></div>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadQuestions);
+</script>
+{% endblock %}

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI検索 - Mirai IT Knowledge Systems">
+    <title>AI検索 - Mirai IT Knowledge Systems</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div>
+                    <h1 class="header-title">Mirai IT Knowledge Systems</h1>
+                    <p class="header-subtitle">インテリジェントなITナレッジ管理</p>
+                </div>
+                <div class="header-actions">
+                    <a href="create.html" class="btn" aria-label="新規作成">
+                        <span aria-hidden="true">✍️</span> 新規作成
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav" role="navigation" aria-label="メインナビゲーション">
+        <div class="container nav-container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">
+                        <span aria-hidden="true">🏠</span> ダッシュボード
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="knowledge-list.html" class="nav-link">
+                        <span aria-hidden="true">📚</span> ナレッジ一覧
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="create.html" class="nav-link">
+                        <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link">
+                        <span aria-hidden="true">🔍</span> 社内検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="ai-search.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">🧠</span> AI検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="sf-browser.html" class="nav-link">
+                        <span aria-hidden="true">💬</span> Server Fault
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+        <div class="container">
+            <div class="search-section ai-search-view">
+                <div class="search-header-bar">
+                    <div class="search-header-content">
+                        <div class="search-icon">🧠</div>
+                        <div>
+                            <h3 class="search-title">AI検索アシスタント</h3>
+                            <p class="search-subtitle">Claude → Gemini → Perplexity → 統合 の4段階で最適な回答を提供します</p>
+                        </div>
+                    </div>
+                    <button class="reload-btn" id="reloadSearchBtn" title="検索をリセット">
+                        <span class="reload-icon">🔄</span>
+                    </button>
+                </div>
+
+                <div class="search-container-wrapper">
+                    <div class="search-box">
+                        <input type="text" class="search-input" id="searchInput" placeholder="例: データベースが遅い時はどうすればいい？">
+                        <button class="btn-search" id="btnSearch">
+                            <span>検索</span>
+                        </button>
+                    </div>
+
+                    <div class="frequent-questions">
+                        <div class="freq-label">よく使う質問:</div>
+                        <div class="freq-tags">
+                            <button class="tag-btn">データベースが遅い時は？</button>
+                            <button class="tag-btn">503エラーの原因は？</button>
+                            <button class="tag-btn">証明書更新手順</button>
+                            <button class="tag-btn">バックアップ設定</button>
+                        </div>
+                    </div>
+
+                    <!-- AI処理ステータス -->
+                    <div class="ai-processing" id="searchAiProcessing" style="display: none;">
+                        <div class="processing-header">
+                            <span class="processing-icon">⚡</span>
+                            <span>AI検索処理中...</span>
+                        </div>
+                        <div class="ai-flow-icons" aria-hidden="true">
+                            <span class="flow-icon" id="flow-claude" data-state="pending">→</span>
+                            <span class="flow-icon" id="flow-gemini" data-state="pending">→</span>
+                            <span class="flow-icon" id="flow-perplexity" data-state="pending">→</span>
+                            <span class="flow-icon" id="flow-merge" data-state="pending">✅</span>
+                        </div>
+                        <div class="flow-status-row" aria-live="polite">
+                            <div class="flow-status-item" id="flow-status-claude">
+                                <span class="blink-dot" aria-hidden="true"></span>
+                                <span>意図解析 / ルーティング / 要約</span>
+                            </div>
+                            <div class="flow-status-item" id="flow-status-gemini">
+                                <span class="blink-dot" aria-hidden="true"></span>
+                                <span>技術情報抽出 / 変数候補</span>
+                            </div>
+                            <div class="flow-status-item" id="flow-status-perplexity">
+                                <span class="blink-dot" aria-hidden="true"></span>
+                                <span>根拠収集 / 最新情報の補強</span>
+                            </div>
+                            <div class="flow-status-item" id="flow-status-merge">
+                                <span class="blink-dot" aria-hidden="true"></span>
+                                <span>回答生成 / 参照リンク整理</span>
+                            </div>
+                        </div>
+                        <div class="ai-pipeline">
+                            <div class="pipeline-stage" id="searchStage1">
+                                <div class="stage-icon">🧠</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Claude</span>
+                                    <span class="stage-desc">意図解析</span>
+                                </div>
+                                <div class="status-indicator waiting"></div>
+                            </div>
+                            <div class="pipeline-arrow">→</div>
+                            <div class="pipeline-stage" id="searchStage2">
+                                <div class="stage-icon">🔮</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Gemini</span>
+                                    <span class="stage-desc">技術抽出</span>
+                                </div>
+                                <div class="status-indicator waiting"></div>
+                            </div>
+                            <div class="pipeline-arrow">→</div>
+                            <div class="pipeline-stage" id="searchStage3">
+                                <div class="stage-icon">🌐</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">Perplexity</span>
+                                    <span class="stage-desc">根拠補強</span>
+                                </div>
+                                <div class="status-indicator waiting"></div>
+                            </div>
+                            <div class="pipeline-arrow">→</div>
+                            <div class="pipeline-stage" id="searchStage4">
+                                <div class="stage-icon">✅</div>
+                                <div class="stage-info">
+                                    <span class="stage-name">統合</span>
+                                    <span class="stage-desc">回答生成</span>
+                                </div>
+                                <div class="status-indicator waiting"></div>
+                            </div>
+                        </div>
+                        <div class="processing-message" id="searchProcessingMessage">
+                            <p>検索準備中...</p>
+                        </div>
+                    </div>
+
+                    <div class="search-results hidden" id="searchResults">
+                        <h4 class="results-title">検索結果</h4>
+                        <div class="result-list" id="resultList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Mirai IT Knowledge Systems</h4>
+                    <p>AIを活用したインテリジェントなITナレッジ管理システム</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <p><a href="index.html">ダッシュボード</a></p>
+                    <p><a href="knowledge-list.html">ナレッジ一覧</a></p>
+                    <p><a href="search.html">社内検索</a></p>
+                    <p><a href="ai-search.html">AI検索</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>ドキュメント</h4>
+                    <p><a href="README.md">使い方ガイド</a></p>
+                    <p><a href="#" aria-label="APIドキュメント">APIドキュメント</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mirai IT Knowledge Systems. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const flowMap = {
+            'stage-claude': 'flow-claude',
+            'stage-gemini': 'flow-gemini',
+            'stage-perplexity': 'flow-perplexity',
+            'stage-merge': 'flow-merge'
+        };
+
+        const flowStatusMap = {
+            'stage-claude': 'flow-status-claude',
+            'stage-gemini': 'flow-status-gemini',
+            'stage-perplexity': 'flow-status-perplexity',
+            'stage-merge': 'flow-status-merge'
+        };
+
+        function setFlowState(stageId, state) {
+            const flowId = flowMap[stageId];
+            if (flowId) {
+                const flowIcon = document.getElementById(flowId);
+                if (flowIcon) {
+                    flowIcon.setAttribute('data-state', state);
+                }
+            }
+            const statusId = flowStatusMap[stageId];
+            if (statusId) {
+                const statusItem = document.getElementById(statusId);
+                if (statusItem) {
+                    if (state === 'processing') {
+                        statusItem.classList.add('active');
+                    } else {
+                        statusItem.classList.remove('active');
+                    }
+                }
+            }
+        }
+
+        function resetSearchProcessing() {
+            const stageIds = ['searchStage1', 'searchStage2', 'searchStage3', 'searchStage4'];
+            stageIds.forEach(id => {
+                const stage = document.getElementById(id);
+                if (stage) {
+                    const indicator = stage.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator waiting';
+                }
+            });
+            Object.keys(flowStatusMap).forEach(stageId => setFlowState(stageId, 'waiting'));
+        }
+
+        function showSearchProcessing() {
+            const searchAiProcessing = document.getElementById('searchAiProcessing');
+            if (!searchAiProcessing) return;
+
+            searchAiProcessing.style.display = 'block';
+            resetSearchProcessing();
+
+            setTimeout(() => {
+                const stage1 = document.getElementById('searchStage1');
+                if (stage1) {
+                    const indicator = stage1.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator processing';
+                }
+                setFlowState('stage-claude', 'processing');
+                const msg = document.getElementById('searchProcessingMessage');
+                if (msg) msg.innerHTML = '<p>Claude が意図解析と要約を生成中...</p>';
+            }, 300);
+
+            setTimeout(() => {
+                const stage1 = document.getElementById('searchStage1');
+                if (stage1) {
+                    const indicator = stage1.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator completed';
+                }
+                setFlowState('stage-claude', 'completed');
+                const stage2 = document.getElementById('searchStage2');
+                if (stage2) {
+                    const indicator = stage2.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator processing';
+                }
+                setFlowState('stage-gemini', 'processing');
+                const msg = document.getElementById('searchProcessingMessage');
+                if (msg) msg.innerHTML = '<p>Gemini が技術情報を抽出中...</p>';
+            }, 1500);
+
+            setTimeout(() => {
+                const stage2 = document.getElementById('searchStage2');
+                if (stage2) {
+                    const indicator = stage2.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator completed';
+                }
+                setFlowState('stage-gemini', 'completed');
+                const stage3 = document.getElementById('searchStage3');
+                if (stage3) {
+                    const indicator = stage3.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator processing';
+                }
+                setFlowState('stage-perplexity', 'processing');
+                const msg = document.getElementById('searchProcessingMessage');
+                if (msg) msg.innerHTML = '<p>Perplexity で最新情報を補完中...</p>';
+            }, 2600);
+
+            setTimeout(() => {
+                const stage3 = document.getElementById('searchStage3');
+                if (stage3) {
+                    const indicator = stage3.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator completed';
+                }
+                setFlowState('stage-perplexity', 'completed');
+                const stage4 = document.getElementById('searchStage4');
+                if (stage4) {
+                    const indicator = stage4.querySelector('.status-indicator');
+                    if (indicator) indicator.className = 'status-indicator processing';
+                }
+                setFlowState('stage-merge', 'processing');
+                const msg = document.getElementById('searchProcessingMessage');
+                if (msg) msg.innerHTML = '<p>統合回答を生成中...</p>';
+            }, 3600);
+        }
+
+        function hideSearchProcessing() {
+            const searchAiProcessing = document.getElementById('searchAiProcessing');
+            if (!searchAiProcessing) return;
+
+            const stage4 = document.getElementById('searchStage4');
+            if (stage4) {
+                const indicator = stage4.querySelector('.status-indicator');
+                if (indicator) indicator.className = 'status-indicator completed';
+            }
+            setFlowState('stage-merge', 'completed');
+
+            setTimeout(() => {
+                searchAiProcessing.style.display = 'none';
+                resetSearchProcessing();
+            }, 600);
+        }
+
+        function renderResults() {
+            const resultList = document.getElementById('resultList');
+            if (!resultList) return;
+            resultList.innerHTML = `
+                <div style="padding: 20px; background: #f8fafc; border-radius: 10px; margin-bottom: 16px; border: 2px solid #e2e8f0;">
+                    <h5 style="font-size: 16px; font-weight: 700; color: #6366f1; margin-bottom: 8px;">データベースパフォーマンス最適化ガイド</h5>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 12px; line-height: 1.6;">データベースが遅い時の診断と対処方法を詳しく解説。インデックスの最適化、クエリチューニング、接続プール設定などを網羅しています。</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span style="padding: 4px 12px; background: #e0e7ff; border-radius: 12px; font-size: 12px; font-weight: 600; color: #4f46e5;">データベース</span>
+                        <span style="padding: 4px 12px; background: #dbeafe; border-radius: 12px; font-size: 12px; font-weight: 600; color: #1e40af;">パフォーマンス</span>
+                    </div>
+                </div>
+                <div style="padding: 20px; background: #f8fafc; border-radius: 10px; margin-bottom: 16px; border: 2px solid #e2e8f0;">
+                    <h5 style="font-size: 16px; font-weight: 700; color: #6366f1; margin-bottom: 8px;">PostgreSQL スロークエリ対応マニュアル</h5>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 12px; line-height: 1.6;">スロークエリログの確認方法、EXPLAIN ANALYZEの使い方、インデックス作成のベストプラクティスを解説。</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span style="padding: 4px 12px; background: #e0e7ff; border-radius: 12px; font-size: 12px; font-weight: 600; color: #4f46e5;">PostgreSQL</span>
+                        <span style="padding: 4px 12px; background: #dbeafe; border-radius: 12px; font-size: 12px; font-weight: 600; color: #1e40af;">トラブルシューティング</span>
+                    </div>
+                </div>
+                <div style="padding: 20px; background: #f8fafc; border-radius: 10px; border: 2px solid #e2e8f0;">
+                    <h5 style="font-size: 16px; font-weight: 700; color: #6366f1; margin-bottom: 8px;">データベース接続プール設定ガイド</h5>
+                    <p style="font-size: 14px; color: #64748b; margin-bottom: 12px; line-height: 1.6;">pgBouncerやHikariCPの設定方法、最適な接続プールサイズの決定方法、モニタリング手法を紹介。</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span style="padding: 4px 12px; background: #e0e7ff; border-radius: 12px; font-size: 12px; font-weight: 600; color: #4f46e5;">設定</span>
+                        <span style="padding: 4px 12px; background: #dbeafe; border-radius: 12px; font-size: 12px; font-weight: 600; color: #1e40af;">接続プール</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function performSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchResults = document.getElementById('searchResults');
+            if (!searchInput || !searchInput.value.trim()) return;
+
+            if (searchResults) {
+                searchResults.classList.add('hidden');
+            }
+
+            showSearchProcessing();
+
+            setTimeout(() => {
+                hideSearchProcessing();
+                setTimeout(() => {
+                    if (searchResults) {
+                        searchResults.classList.remove('hidden');
+                        renderResults();
+                    }
+                }, 300);
+            }, 4200);
+        }
+
+        const btnSearch = document.getElementById('btnSearch');
+        if (btnSearch) {
+            btnSearch.addEventListener('click', performSearch);
+        }
+
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performSearch();
+                }
+            });
+        }
+
+        document.querySelectorAll('.tag-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = btn.textContent;
+                    performSearch();
+                }
+            });
+        });
+
+        const reloadSearchBtn = document.getElementById('reloadSearchBtn');
+        if (reloadSearchBtn) {
+            reloadSearchBtn.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                const searchResults = document.getElementById('searchResults');
+                if (searchResults) {
+                    searchResults.classList.add('hidden');
+                }
+                const searchAiProcessing = document.getElementById('searchAiProcessing');
+                if (searchAiProcessing) {
+                    searchAiProcessing.style.display = 'none';
+                }
+                resetSearchProcessing();
+            });
+        }
+    </script>
+</body>
+</html>

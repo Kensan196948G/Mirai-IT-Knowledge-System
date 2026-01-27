@@ -3,56 +3,76 @@
 {% block title %}{{ knowledge.title }} - Mirai IT Knowledge Systems{% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <span aria-hidden="true">📄</span> ナレッジ詳細
+    </h1>
+    <p class="page-description">ナレッジの内容・要約・タグを確認できます。</p>
+</div>
+
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-        <h2>{{ knowledge.title }}</h2>
-        <span class="badge badge-{{ knowledge.itsm_type.lower() }}">{{ knowledge.itsm_type }}</span>
+    <div class="card-header" style="align-items: flex-start;">
+        <h2 class="card-title">{{ knowledge.title }}</h2>
+        <span class="badge badge-{{ knowledge.itsm_type.lower() }}">
+            {% if knowledge.itsm_type == 'Incident' %}インシデント
+            {% elif knowledge.itsm_type == 'Problem' %}問題管理
+            {% elif knowledge.itsm_type == 'Change' %}変更管理
+            {% elif knowledge.itsm_type == 'Release' %}リリース管理
+            {% elif knowledge.itsm_type == 'Request' %}サービスリクエスト
+            {% else %}その他{% endif %}
+        </span>
     </div>
 
-    <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
-        <p><strong>作成日時:</strong> {{ knowledge.created_at }}</p>
-        <p><strong>更新日時:</strong> {{ knowledge.updated_at }}</p>
-        {% if knowledge.created_by %}
-        <p><strong>作成者:</strong> {{ knowledge.created_by }}</p>
+    <div class="card-body">
+        <div class="grid grid-3" style="margin-bottom: 1rem;">
+            <div class="chip">作成日: {{ knowledge.created_at[:10] }}</div>
+            <div class="chip">更新日: {{ knowledge.updated_at[:10] }}</div>
+            {% if knowledge.created_by %}
+            <div class="chip">作成者: {{ knowledge.created_by }}</div>
+            {% endif %}
+        </div>
+
+        {% if knowledge.summary_technical %}
+        <div class="alert alert-info" style="margin-bottom: 1rem;">
+            <strong>📝 技術者向け要約</strong><br>
+            {{ knowledge.summary_technical }}
+        </div>
+        {% endif %}
+
+        {% if knowledge.summary_non_technical %}
+        <div class="alert" style="background:#f3e5f5; border-left: 4px solid #7b1fa2; margin-bottom: 1rem;">
+            <strong>👥 非技術者向け要約</strong><br>
+            {{ knowledge.summary_non_technical }}
+        </div>
+        {% endif %}
+
+        {% if knowledge.tags %}
+        <div style="margin-bottom: 1rem;">
+            <strong>🏷️ タグ:</strong>
+            <div class="tags" style="margin-top: 0.5rem;">
+                {% for tag in knowledge.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">📄 詳細内容</h3>
+        <div style="line-height: 1.8; white-space: pre-wrap; color: var(--color-text-secondary);">
+            {{ knowledge.content }}
+        </div>
+
+        {% if knowledge.insights %}
+        <div class="card" style="margin-top: 1.5rem; background: #fff3e0;">
+            <h3>💡 抽出された知見</h3>
+            <ul style="margin-left: 1.2rem; line-height: 1.8;">
+                {% for insight in knowledge.insights %}
+                <li>{{ insight }}</li>
+                {% endfor %}
+            </ul>
+        </div>
         {% endif %}
     </div>
-
-    {% if knowledge.summary_technical %}
-    <div style="background: #e3f2fd; padding: 1rem; border-left: 4px solid #2196F3; margin-bottom: 1.5rem;">
-        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">📝 技術者向け要約</h3>
-        <p>{{ knowledge.summary_technical }}</p>
-    </div>
-    {% endif %}
-
-    {% if knowledge.summary_non_technical %}
-    <div style="background: #f3e5f5; padding: 1rem; border-left: 4px solid #7b1fa2; margin-bottom: 1.5rem;">
-        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">👥 非技術者向け要約</h3>
-        <p>{{ knowledge.summary_non_technical }}</p>
-    </div>
-    {% endif %}
-
-    {% if knowledge.tags %}
-    <div style="margin-bottom: 1.5rem;">
-        <strong>🏷️ タグ:</strong>
-        {% for tag in knowledge.tags %}
-        <span class="badge" style="background: #e0e0e0; color: #333; margin-left: 0.5rem;">{{ tag }}</span>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">📄 詳細内容</h3>
-    <div style="line-height: 1.8; white-space: pre-wrap;">{{ knowledge.content }}</div>
-
-    {% if knowledge.insights %}
-    <div style="background: #fff3e0; padding: 1rem; border-radius: 4px; margin-top: 2rem;">
-        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">💡 抽出された知見</h3>
-        <ul style="margin-left: 1.5rem; line-height: 1.8;">
-            {% for insight in knowledge.insights %}
-            <li>{{ insight }}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
 </div>
 
 {% if related %}
@@ -61,7 +81,7 @@
     <ul style="list-style: none;">
         {% for rel in related %}
         <li style="padding: 0.75rem 0; border-bottom: 1px solid #eee;">
-            <a href="/knowledge/{{ rel.id }}" style="color: #667eea; text-decoration: none;">
+            <a href="/knowledge/{{ rel.id }}" style="color: var(--color-primary); text-decoration: none;">
                 {{ rel.title }}
             </a>
             <span class="badge badge-{{ rel.itsm_type.lower() }}" style="margin-left: 0.5rem;">
@@ -78,7 +98,7 @@
 </div>
 {% endif %}
 
-<div style="margin-top: 2rem;">
-    <a href="/" class="btn btn-secondary">戻る</a>
+<div style="margin-top: 1.5rem;">
+    <a href="/knowledge/search" class="btn btn-outline">一覧に戻る</a>
 </div>
 {% endblock %}

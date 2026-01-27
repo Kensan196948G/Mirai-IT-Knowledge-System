@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ナレッジ検索 - Mirai IT Knowledge Systems">
-    <title>ナレッジ検索 - Mirai IT Knowledge Systems</title>
+    <meta name="description" content="社内ナレッジ検索 - Mirai IT Knowledge Systems">
+    <title>社内ナレッジ検索 - Mirai IT Knowledge Systems</title>
 
     <!-- CSS -->
     <link rel="stylesheet" href="css/base.css">
@@ -40,13 +40,23 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="search.html" class="nav-link active" aria-current="page">
-                        <span aria-hidden="true">🔍</span> 検索
+                    <a href="knowledge-list.html" class="nav-link">
+                        <span aria-hidden="true">📚</span> ナレッジ一覧
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="create.html" class="nav-link">
                         <span aria-hidden="true">✍️</span> 作成
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="search.html" class="nav-link active" aria-current="page">
+                        <span aria-hidden="true">🔍</span> 社内検索
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="ai-search.html" class="nav-link">
+                        <span aria-hidden="true">🧠</span> AI検索
                     </a>
                 </li>
                 <li class="nav-item">
@@ -64,7 +74,7 @@
             <!-- Page Header -->
             <div class="page-header">
                 <h1 class="page-title">
-                    <span aria-hidden="true">🔍</span> ナレッジ検索
+                    <span aria-hidden="true">🔍</span> 社内ナレッジ検索
                 </h1>
                 <p class="page-description">
                     キーワードやITSMタイプ、タグでナレッジを検索できます
@@ -84,27 +94,27 @@
                             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="checkbox" name="type" value="Incident" style="margin-right: 0.5rem;">
-                                    <span class="badge badge-incident">Incident</span>
+                                    <span class="badge badge-incident">インシデント</span>
                                     <span style="margin-left: auto; color: var(--color-text-secondary);">(45)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="checkbox" name="type" value="Problem" style="margin-right: 0.5rem;">
-                                    <span class="badge badge-problem">Problem</span>
+                                    <span class="badge badge-problem">問題管理</span>
                                     <span style="margin-left: auto; color: var(--color-text-secondary);">(32)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="checkbox" name="type" value="Change" style="margin-right: 0.5rem;">
-                                    <span class="badge badge-change">Change</span>
+                                    <span class="badge badge-change">変更管理</span>
                                     <span style="margin-left: auto; color: var(--color-text-secondary);">(28)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="checkbox" name="type" value="Release" style="margin-right: 0.5rem;">
-                                    <span class="badge badge-release">Release</span>
+                                    <span class="badge badge-release">リリース管理</span>
                                     <span style="margin-left: auto; color: var(--color-text-secondary);">(18)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="checkbox" name="type" value="Request" style="margin-right: 0.5rem;">
-                                    <span class="badge badge-request">Request</span>
+                                    <span class="badge badge-request">サービスリクエスト</span>
                                     <span style="margin-left: auto; color: var(--color-text-secondary);">(33)</span>
                                 </label>
                             </div>
@@ -164,6 +174,14 @@
                             <p class="form-help">
                                 自然な言葉で検索できます。複数のキーワードを入力すると、すべてを含むナレッジが検索されます。
                             </p>
+                            <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                                <a href="ai-search.html" class="btn btn-outline btn-sm">
+                                    <span aria-hidden="true">🧠</span> AI検索へ
+                                </a>
+                                <a href="knowledge-list.html" class="btn btn-outline btn-sm">
+                                    <span aria-hidden="true">📚</span> 一覧を見る
+                                </a>
+                            </div>
                         </form>
                     </div>
 
@@ -188,7 +206,7 @@
                         <article class="knowledge-card incident" tabindex="0" role="button" onclick="location.href='detail.html?id=1'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=1'">
                             <div class="card-header">
                                 <h3 class="card-title">Webサーバーの503エラー発生時の対応手順</h3>
-                                <span class="badge badge-incident" role="status">Incident</span>
+                                <span class="badge badge-incident" role="status">インシデント</span>
                             </div>
                             <p class="card-summary">
                                 Apacheサーバーで503エラーが発生した際の調査手順と対応方法をまとめたナレッジです。エラーログの確認からプロセスの再起動まで段階的に説明しています。
@@ -202,7 +220,7 @@
                         <article class="knowledge-card problem" tabindex="0" role="button" onclick="location.href='detail.html?id=2'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=2'">
                             <div class="card-header">
                                 <h3 class="card-title">データベース接続プールの枯渇問題</h3>
-                                <span class="badge badge-problem" role="status">Problem</span>
+                                <span class="badge badge-problem" role="status">問題管理</span>
                             </div>
                             <p class="card-summary">
                                 MySQLの接続プールが枯渇する根本原因の調査と恒久対策について記載しています。接続リークの検出方法とプール設定の最適化を解説します。
@@ -216,7 +234,7 @@
                         <article class="knowledge-card change" tabindex="0" role="button" onclick="location.href='detail.html?id=3'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=3'">
                             <div class="card-header">
                                 <h3 class="card-title">SSL証明書の更新手順</h3>
-                                <span class="badge badge-change" role="status">Change</span>
+                                <span class="badge badge-change" role="status">変更管理</span>
                             </div>
                             <p class="card-summary">
                                 本番環境でのSSL証明書更新時の標準手順と注意事項をまとめています。証明書の取得からWebサーバーへの適用、動作確認まで網羅しています。
@@ -230,7 +248,7 @@
                         <article class="knowledge-card release" tabindex="0" role="button" onclick="location.href='detail.html?id=4'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=4'">
                             <div class="card-header">
                                 <h3 class="card-title">アプリケーションv2.0のリリース手順</h3>
-                                <span class="badge badge-release" role="status">Release</span>
+                                <span class="badge badge-release" role="status">リリース管理</span>
                             </div>
                             <p class="card-summary">
                                 メジャーバージョンアップ時のリリース手順書です。デプロイメント手順、切り戻し手順、リリース判定基準を含みます。
@@ -244,7 +262,7 @@
                         <article class="knowledge-card request" tabindex="0" role="button" onclick="location.href='detail.html?id=5'" onkeypress="if(event.key==='Enter')location.href='detail.html?id=5'">
                             <div class="card-header">
                                 <h3 class="card-title">VPN接続の設定方法</h3>
-                                <span class="badge badge-request" role="status">Request</span>
+                                <span class="badge badge-request" role="status">サービスリクエスト</span>
                             </div>
                             <p class="card-summary">
                                 リモートワーク用のVPN接続設定手順です。Windows、Mac、Linuxそれぞれの設定方法とトラブルシューティングを記載しています。
@@ -307,7 +325,9 @@
                 <div class="footer-section">
                     <h4>リンク</h4>
                     <p><a href="index.html">ダッシュボード</a></p>
-                    <p><a href="search.html">検索</a></p>
+                    <p><a href="knowledge-list.html">ナレッジ一覧</a></p>
+                    <p><a href="search.html">社内検索</a></p>
+                    <p><a href="ai-search.html">AI検索</a></p>
                     <p><a href="create.html">ナレッジ作成</a></p>
                 </div>
                 <div class="footer-section">
@@ -371,10 +391,8 @@
             cards.forEach(card => {
                 const title = card.querySelector('.card-title').textContent.toLowerCase();
                 const summary = card.querySelector('.card-summary').textContent.toLowerCase();
-                const badge = card.querySelector('.badge').textContent.toLowerCase();
-
                 const matchesSearch = !searchQuery || title.includes(searchQuery) || summary.includes(searchQuery);
-                const matchesType = selectedTypes.length === 0 || selectedTypes.some(type => badge.includes(type));
+                const matchesType = selectedTypes.length === 0 || selectedTypes.some(type => card.classList.contains(type));
 
                 if (matchesSearch && matchesType) {
                     card.style.display = '';
