@@ -1,9 +1,10 @@
 [Unit]
 Description=Mirai IT Knowledge System - Production Environment
 Documentation=https://github.com/Kensan196948G/Mirai-IT-Knowledge-System
-After=network.target
+After=network-online.target
+Wants=network-online.target
 StartLimitIntervalSec=300
-StartLimitBurst=5
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -16,22 +17,56 @@ Environment="ENVIRONMENT=production"
 Environment="FLASK_ENV=production"
 Environment="FLASK_APP=src/webui/app.py"
 Environment="PYTHONPATH=/mnt/LinuxHDD/Mirai-IT-Knowledge-System-production"
+Environment="PYTHONUNBUFFERED=1"
 
-# 起動コマンド
+# 環境変数ファイル読み込み（存在する場合）
+EnvironmentFile=-/mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/.env.production
+
+# 起動コマンド（+ プレフィックスでセキュリティコンテキスト外で実行）
+ExecStartPre=+/bin/mkdir -p /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/db /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/data/logs/prod /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/backups
+ExecStartPre=+/bin/chown -R kensan:kensan /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/db /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/data /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/backups
 ExecStart=/bin/bash /mnt/LinuxHDD/Mirai-IT-Knowledge-System-production/scripts/start_backend.sh --env production --non-interactive
+
+# 停止設定
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStartSec=90
+TimeoutStopSec=60
+KillMode=mixed
+KillSignal=SIGTERM
 
 # 再起動設定
 Restart=always
-RestartSec=10
+RestartSec=5
+RestartPreventExitStatus=0
 
 # ログ設定
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=mirai-knowledge-prod
 
-# セキュリティ設定
+# リソース制限（本番環境）
+MemoryMax=2G
+MemoryHigh=1536M
+CPUQuota=200%
+TasksMax=128
+
+# セキュリティ設定（本番環境向け - /mnt配下のため調整）
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectHome=read-only
+
+# 追加セキュリティ（本番環境）
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+
+# ネットワーク制限
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# ファイルディスクリプタ制限
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target

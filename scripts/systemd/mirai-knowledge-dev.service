@@ -1,7 +1,8 @@
 [Unit]
 Description=Mirai IT Knowledge System - Development Environment
 Documentation=https://github.com/Kensan196948G/Mirai-IT-Knowledge-System
-After=network.target
+After=network-online.target
+Wants=network-online.target
 StartLimitIntervalSec=300
 StartLimitBurst=5
 
@@ -16,22 +17,49 @@ Environment="ENVIRONMENT=development"
 Environment="FLASK_ENV=development"
 Environment="FLASK_APP=src/webui/app.py"
 Environment="PYTHONPATH=/mnt/LinuxHDD/Mirai-IT-Knowledge-System"
+Environment="PYTHONUNBUFFERED=1"
 
-# 起動コマンド
+# 環境変数ファイル読み込み（存在する場合）
+EnvironmentFile=-/mnt/LinuxHDD/Mirai-IT-Knowledge-System/.env.development
+
+# 起動コマンド（+ プレフィックスでセキュリティコンテキスト外で実行）
+ExecStartPre=+/bin/mkdir -p /mnt/LinuxHDD/Mirai-IT-Knowledge-System/db /mnt/LinuxHDD/Mirai-IT-Knowledge-System/data/logs/dev /mnt/LinuxHDD/Mirai-IT-Knowledge-System/backups
+ExecStartPre=+/bin/chown -R kensan:kensan /mnt/LinuxHDD/Mirai-IT-Knowledge-System/db /mnt/LinuxHDD/Mirai-IT-Knowledge-System/data /mnt/LinuxHDD/Mirai-IT-Knowledge-System/backups
 ExecStart=/bin/bash /mnt/LinuxHDD/Mirai-IT-Knowledge-System/scripts/start_backend.sh --env development --non-interactive
 
+# 停止設定
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStartSec=60
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
 # 再起動設定
-Restart=always
+Restart=on-failure
 RestartSec=10
+RestartPreventExitStatus=0
 
 # ログ設定
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=mirai-knowledge-dev
 
-# セキュリティ設定
+# リソース制限（開発環境）
+MemoryMax=1G
+MemoryHigh=768M
+CPUQuota=100%
+TasksMax=64
+
+# セキュリティ設定（開発環境向け - /mnt配下のため緩め）
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectHome=read-only
+
+# ネットワーク制限
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# ファイルディスクリプタ制限
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
