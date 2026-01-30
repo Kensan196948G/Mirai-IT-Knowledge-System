@@ -52,3 +52,11 @@ Thumbs.db
 
 # Knowledge files (optional - remove if you want to track them)
 # data/knowledge/*.md
+
+# Environment files (contains sensitive API keys)
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
