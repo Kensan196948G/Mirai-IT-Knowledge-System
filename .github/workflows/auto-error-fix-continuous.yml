@@ -197,21 +197,28 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
 
-          # 結果を集計
-          total_errors=$(grep -c "エラー検出\|Detected.*errors\|ERROR" auto_fix_output.txt 2>/dev/null || echo "0")
-          total_fixes=$(grep -c "修復アクション実行\|Fixed:\|Action.*success" auto_fix_output.txt 2>/dev/null || echo "0")
+          # 結果を集計（改行を除去）
+          total_errors=$(grep -c "エラー検出\|Detected.*errors\|ERROR" auto_fix_output.txt 2>/dev/null | tr -d '\n' || echo "0")
+          total_fixes=$(grep -c "修復アクション実行\|Fixed:\|Action.*success" auto_fix_output.txt 2>/dev/null | tr -d '\n' || echo "0")
+
+          # 数値に変換（空の場合は0）
+          total_errors=${total_errors:-0}
+          total_fixes=${total_fixes:-0}
 
           # 成功率計算
-          if [ "$total_errors" -gt 0 ]; then
+          if [ "$total_errors" -gt 0 ] 2>/dev/null; then
             success_rate=$((total_fixes * 100 / total_errors))
           else
             success_rate=100
           fi
 
           # 全体ステータス判定
-          if [ "${{ steps.health_check.outputs.health_status }}" = "healthy" ] && [ "${{ steps.unit_tests.outputs.test_status }}" = "passed" ]; then
+          health_status="${{ steps.health_check.outputs.health_status }}"
+          test_status="${{ steps.unit_tests.outputs.test_status }}"
+
+          if [ "$health_status" = "healthy" ] && [ "$test_status" = "passed" ]; then
             overall_status="healthy"
-          elif [ "$total_errors" -gt 0 ] && [ "$success_rate" -lt 50 ]; then
+          elif [ "$total_errors" -gt 0 ] 2>/dev/null && [ "$success_rate" -lt 50 ] 2>/dev/null; then
             overall_status="critical"
           else
             overall_status="degraded"
