@@ -311,7 +311,19 @@ def search_knowledge():
             itsm_type_filter=itsm_type,
         )
 
-    return render_template("search.html")
+    # パラメータなしの場合: ナレッジ一覧とFAQ一覧を表示
+    # ナレッジ一覧（Incident, Problem, Change, Release）
+    knowledge_list = db_client.search_knowledge(limit=50)
+    knowledge_list = [k for k in knowledge_list if k.get("itsm_type") != "Request"]
+
+    # FAQ一覧（Request = FAQ）
+    faq_list = db_client.search_knowledge(itsm_type="Request", limit=50)
+
+    return render_template(
+        "knowledge_list.html",
+        knowledge_list=knowledge_list,
+        faq_list=faq_list
+    )
 
 
 @app.route("/knowledge/<int:knowledge_id>")
@@ -377,6 +389,81 @@ def create_knowledge():
             return render_template("create.html", error=result.get("error"))
 
     return render_template("create.html")
+
+
+# ===== ヘルスチェックAPI =====
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    """
+    ヘルスチェックAPI
+
+    自動エラー検知・修復システム用のエンドポイント
+    """
+    import shutil
+    import sqlite3
+
+    health_status = {
+        "timestamp": datetime.now().isoformat(),
+        "status": "healthy",
+        "checks": {},
+        "environment": ENVIRONMENT
+    }
+
+    # 1. データベース接続チェック
+    try:
+        db_path = env_config.get('database_path', project_root / 'db' / 'knowledge.db')
+        conn = sqlite3.connect(str(db_path), timeout=5)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM knowledge_entries")
+        count = cursor.fetchone()[0]
+        conn.close()
+        health_status["checks"]["database"] = {
+            "status": "healthy",
+            "message": f"Connected, {count} entries"
+        }
+    except Exception as e:
+        health_status["checks"]["database"] = {
+            "status": "unhealthy",
+            "message": str(e)
+        }
+        health_status["status"] = "degraded"
+
+    # 2. ディスク容量チェック
+    try:
+        disk = shutil.disk_usage("/")
+        usage_percent = (disk.used / disk.total) * 100
+        free_gb = disk.free / (1024 ** 3)
+        health_status["checks"]["disk"] = {
+            "status": "healthy" if usage_percent < 90 else "unhealthy",
+            "usage_percent": round(usage_percent, 1),
+            "free_gb": round(free_gb, 1)
+        }
+        if usage_percent >= 90:
+            health_status["status"] = "degraded"
+    except Exception as e:
+        health_status["checks"]["disk"] = {
+            "status": "unhealthy",
+            "message": str(e)
+        }
+
+    # 3. ログディレクトリチェック
+    log_path = env_config.get('log_path', project_root / 'logs')
+    health_status["checks"]["logs"] = {
+        "status": "healthy" if Path(log_path).exists() else "unhealthy",
+        "path": str(log_path)
+    }
+
+    # 4. 全体ステータス判定
+    for check in health_status["checks"].values():
+        if check.get("status") == "unhealthy":
+            health_status["status"] = "critical"
+            break
+
+    status_code = 200 if health_status["status"] == "healthy" else (
+        503 if health_status["status"] == "critical" else 200
+    )
+
+    return jsonify(health_status), status_code
 
 
 @app.route("/api/classify", methods=["POST"])
@@ -516,6 +603,34 @@ def api_knowledge_stats(knowledge_id):
     return jsonify({"usage_stats": usage_stats, "rating": rating})
 
 
+@app.route("/api/knowledge/<int:knowledge_id>", methods=["DELETE"])
+def api_delete_knowledge(knowledge_id):
+    """ナレッジ削除API"""
+    try:
+        # ナレッジの存在確認
+        knowledge = sqlite_client.get_knowledge_by_id(knowledge_id)
+        if not knowledge:
+            return jsonify({"error": "ナレッジが見つかりません"}), 404
+
+        # 削除実行（論理削除: statusを'deleted'に更新）
+        sqlite_client.execute_query(
+            "UPDATE knowledge SET status = 'deleted', updated_at = ? WHERE id = ?",
+            (datetime.now().isoformat(), knowledge_id)
+        )
+
+        logger.info(f"ナレッジ削除: ID={knowledge_id}, タイトル={knowledge.get('title', 'Unknown')}")
+
+        return jsonify({
+            "success": True,
+            "message": "ナレッジを削除しました",
+            "id": knowledge_id
+        })
+
+    except Exception as e:
+        logger.error(f"ナレッジ削除エラー: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 # ========== AI対話機能 ==========
 
 
@@ -637,6 +752,31 @@ def chat_ai_answer():
             "error": str(e),
             "answer": "回答を生成できませんでした。しばらくしてからお試しください。"
         })
+
+
+@app.route("/api/chat/feedback", methods=["POST"])
+def chat_feedback():
+    """チャット回答への評価を保存"""
+    data = request.get_json() or {}
+    session_id = data.get("session_id")
+    message_id = data.get("message_id")
+    rating = data.get("rating")
+    user_id = data.get("user_id", "webui_user")
+
+    if not session_id or not message_id or rating not in (-1, 1):
+        return jsonify({"success": False, "error": "invalid payload"}), 400
+
+    try:
+        feedback_client.add_chat_feedback(
+            session_id=session_id,
+            message_id=message_id,
+            rating=rating,
+            user_id=user_id
+        )
+        return jsonify({"success": True})
+    except Exception as exc:
+        logger.error(f"chat_feedback error: {exc}")
+        return jsonify({"success": False, "error": "failed to save feedback"}), 500
 
 
 @socketio.on("ai_question")
