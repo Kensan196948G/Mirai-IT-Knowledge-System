@@ -28,6 +28,11 @@ on:
           - 'yes'
           - 'no'
 
+# ワークフローの権限設定
+permissions:
+  contents: read
+  issues: write
+
 env:
   MAX_LOOPS: ${{ github.event.inputs.max_loops || '15' }}
   PYTHON_VERSION: '3.11'
