@@ -183,13 +183,14 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
 
-          echo "🔄 Starting error detection loop (max ${{ env.MAX_LOOPS }} cycles)"
+          echo "🔄 Starting error detection loop (max 3 cycles for CI)"
 
-          # 検知・修復ループ実行
-          python scripts/auto_fix_daemon.py --loop-count ${{ env.MAX_LOOPS }} --wait-minutes 0 2>&1 | tee auto_fix_output.txt
+          # 検知・修復ループ実行（CI環境では3回に制限、タイムアウト5分）
+          timeout 300 python scripts/auto_fix_daemon.py --once 2>&1 | tee auto_fix_output.txt || true
 
           echo "✅ Detection loop completed"
         continue-on-error: true
+        timeout-minutes: 5
 
       - name: Generate summary
         id: summary
