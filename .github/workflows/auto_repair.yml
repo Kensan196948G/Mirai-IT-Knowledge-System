@@ -31,6 +31,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
       
       - name: 🐍 Setup Python
         uses: actions/setup-python@v4
@@ -209,12 +211,13 @@ jobs:
           
           # state.jsonとrepair_log.jsonをコミット
           git add data/state.json data/repair_log.json 2>/dev/null || true
+          PUSH_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           
           if git diff --staged --quiet; then
             echo "No state changes to commit"
           else
             git commit -m "🤖 Auto-repair: Run #${{ steps.load_state.outputs.run_count }} - ${{ steps.repair_loop.outputs.test_passed == 'true' && '✅ Success' || '❌ Failed' }}"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
+            git push "$PUSH_URL" HEAD:${{ github.ref_name }}
           fi
       
       - name: 📊 Summary
