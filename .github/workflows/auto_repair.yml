@@ -17,6 +17,9 @@ env:
   MAX_ITERATIONS: 15
   PYTHON_VERSION: '3.11'
 
+permissions:
+  contents: write
+
 jobs:
   auto_repair_loop:
     name: Auto Repair Loop (Max 15 iterations per Run)
@@ -211,7 +214,7 @@ jobs:
             echo "No state changes to commit"
           else
             git commit -m "🤖 Auto-repair: Run #${{ steps.load_state.outputs.run_count }} - ${{ steps.repair_loop.outputs.test_passed == 'true' && '✅ Success' || '❌ Failed' }}"
-            git push
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
           fi
       
       - name: 📊 Summary
