@@ -64,7 +64,7 @@ class SQLiteClient:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO knowledge (
+                INSERT INTO knowledge_entries (
                     title, itsm_type, content, summary_technical, summary_non_technical,
                     insights, tags, markdown_path, created_by
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -92,7 +92,7 @@ class SQLiteClient:
             cursor = conn.cursor()
             sql = """
                 SELECT k.*, r.relationship_type, r.description as relation_description
-                FROM knowledge k
+                FROM knowledge_entries k
                 JOIN relationships r ON (k.id = r.target_id OR k.id = r.source_id)
                 WHERE (r.source_id = ? OR r.target_id = ?)
                 AND k.id != ?
@@ -478,14 +478,14 @@ class SQLiteClient:
 
             # ナレッジ数
             cursor.execute(
-                "SELECT COUNT(*) as total FROM knowledge WHERE status = 'active'"
+                "SELECT COUNT(*) as total FROM knowledge_entries WHERE status = 'active'"
             )
             total_knowledge = cursor.fetchone()["total"]
 
             # ITSMタイプ別
             cursor.execute("""
                 SELECT itsm_type, COUNT(*) as count
-                FROM knowledge
+                FROM knowledge_entries
                 WHERE status = 'active'
                 GROUP BY itsm_type
             """)
@@ -533,7 +533,7 @@ class SQLiteClient:
             cursor = conn.cursor()
 
             sql = """
-                SELECT * FROM knowledge
+                SELECT * FROM knowledge_entries
                 WHERE (status = 'active' OR status IS NULL)
             """
             params = []
@@ -562,7 +562,7 @@ class SQLiteClient:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT * FROM knowledge WHERE id = ?",
+                "SELECT * FROM knowledge_entries WHERE id = ?",
                 (knowledge_id,)
             )
             row = cursor.fetchone()
@@ -607,7 +607,7 @@ class SQLiteClient:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                f"UPDATE knowledge SET {set_clause} WHERE id = ?",
+                f"UPDATE knowledge_entries SET {set_clause} WHERE id = ?",
                 values
             )
             conn.commit()

@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}ナレッジ一覧 / FAQ一覧 - Mirai IT Knowledge Systems{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <span aria-hidden="true">📚</span> ナレッジ一覧 / FAQ一覧
+    </h1>
+    <p class="page-description">
+        社内ITナレッジとよくある質問（FAQ）を一覧表示
+    </p>
+</div>
+
+<!-- 検索ボックス -->
+<section class="section">
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <form id="searchForm" method="POST" action="/knowledge/search" role="search">
+            <div class="search-box">
+                <input
+                    type="search"
+                    id="searchInput"
+                    name="query"
+                    placeholder="キーワードで検索..."
+                    aria-label="ナレッジを検索"
+                >
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <select class="form-select" name="itsm_type" aria-label="ITSMタイプ">
+                    <option value="">すべて</option>
+                    <option value="Incident">インシデント</option>
+                    <option value="Problem">問題管理</option>
+                    <option value="Change">変更管理</option>
+                    <option value="Release">リリース管理</option>
+                    <option value="Request">FAQ/サービスリクエスト</option>
+                </select>
+                <button class="btn btn-primary" type="submit">検索</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- ナレッジ一覧セクション -->
+<section class="section" aria-labelledby="knowledge-heading">
+    <div class="card">
+        <div class="card-header">
+            <h2 id="knowledge-heading" class="card-title">
+                <span aria-hidden="true">📖</span> ナレッジ一覧
+                <span style="color: var(--color-text-secondary); font-size: 0.9rem; font-weight: normal;">({{ knowledge_list|length }}件)</span>
+            </h2>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <a href="/knowledge/search?itsm_type=Incident" class="btn btn-sm btn-outline">インシデントのみ</a>
+            </div>
+        </div>
+
+        <!-- 一括操作バー -->
+        <div id="bulkActionsKnowledge" class="bulk-actions">
+            <span class="bulk-count"><span id="selectedCountKnowledge">0</span>件選択中</span>
+            <button class="btn btn-sm" onclick="exportSelected('knowledge')">📥 エクスポート</button>
+            <button class="btn btn-sm" onclick="clearSelection('knowledge')">✕ 選択解除</button>
+        </div>
+
+        <!-- ソートコントロール -->
+        <div class="sort-controls">
+            <span class="sort-label">並び替え:</span>
+            <button class="sort-btn active desc" data-sort="date" onclick="toggleSort(this, 'knowledge')">
+                📅 日付 <span class="sort-icon">↓</span>
+            </button>
+            <button class="sort-btn" data-sort="title" onclick="toggleSort(this, 'knowledge')">
+                📝 タイトル <span class="sort-icon">↓</span>
+            </button>
+            <button class="sort-btn" data-sort="type" onclick="toggleSort(this, 'knowledge')">
+                🏷️ タイプ <span class="sort-icon">↓</span>
+            </button>
+        </div>
+
+        <div class="card-body">
+            {% if knowledge_list %}
+            <div class="content-grid" id="knowledgeGrid">
+                {% for knowledge in knowledge_list %}
+                <article class="knowledge-card {{ knowledge.itsm_type|lower }}" tabindex="0" role="button" data-id="{{ knowledge.id }}" data-date="{{ knowledge.created_at }}" data-title="{{ knowledge.title }}" data-type="{{ knowledge.itsm_type }}">
+                    <div class="card-header">
+                        <label class="checkbox-wrapper" onclick="event.stopPropagation();">
+                            <input type="checkbox" class="item-checkbox knowledge-checkbox" data-id="{{ knowledge.id }}" onchange="updateBulkActions('knowledge')">
+                            <span class="checkmark"></span>
+                        </label>
+                        <h3 class="card-title" onclick="location.href='/knowledge/{{ knowledge.id }}'">{{ knowledge.title }}</h3>
+                        <span class="badge badge-{{ knowledge.itsm_type|lower }}" role="status">
+                            {% if knowledge.itsm_type == 'Incident' %}インシデント
+                            {% elif knowledge.itsm_type == 'Problem' %}問題管理
+                            {% elif knowledge.itsm_type == 'Change' %}変更管理
+                            {% elif knowledge.itsm_type == 'Release' %}リリース管理
+                            {% else %}その他{% endif %}
+                        </span>
+                    </div>
+                    <p class="card-summary" onclick="location.href='/knowledge/{{ knowledge.id }}'">
+                        {{ (knowledge.summary or knowledge.content)|truncate(100, True) }}
+                    </p>
+                    <div class="card-footer">
+                        {% if knowledge.tags %}
+                        <span><span aria-hidden="true">🏷️</span>
+                            {% if knowledge.tags is string %}
+                                {{ knowledge.tags|truncate(50, True) }}
+                            {% else %}
+                                {{ knowledge.tags|join(', ')|truncate(50, True) }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        <time datetime="{{ knowledge.created_at[:10] if knowledge.created_at else '' }}">
+                            {{ knowledge.created_at[:10] if knowledge.created_at else '日付なし' }}
+                        </time>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <!-- ページネーション -->
+            <nav class="pagination" aria-label="ナレッジ一覧のページネーション" id="knowledgePagination">
+                <!-- JavaScriptで動的に生成 -->
+            </nav>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <h3>ナレッジがまだありません</h3>
+                <p>インシデント・問題管理・変更管理などのナレッジを登録してください</p>
+                <a href="/knowledge/create" class="btn btn-primary" style="margin-top: 1rem;">ナレッジを作成</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- FAQ一覧セクション -->
+<section class="section" aria-labelledby="faq-heading">
+    <div class="card">
+        <div class="card-header">
+            <h2 id="faq-heading" class="card-title">
+                <span aria-hidden="true">❓</span> FAQ一覧（よくある質問）
+                <span style="color: var(--color-text-secondary); font-size: 0.9rem; font-weight: normal;">({{ faq_list|length }}件)</span>
+            </h2>
+            <a href="/knowledge/search?itsm_type=Request" class="btn btn-sm btn-outline">すべてのFAQを見る</a>
+        </div>
+
+        <!-- 一括操作バー -->
+        <div id="bulkActionsFaq" class="bulk-actions">
+            <span class="bulk-count"><span id="selectedCountFaq">0</span>件選択中</span>
+            <button class="btn btn-sm" onclick="exportSelected('faq')">📥 エクスポート</button>
+            <button class="btn btn-sm" onclick="clearSelection('faq')">✕ 選択解除</button>
+        </div>
+
+        <div class="card-body">
+            {% if faq_list %}
+            <div class="content-grid" id="faqGrid">
+                {% for faq in faq_list %}
+                <article class="knowledge-card request" tabindex="0" role="button" data-id="{{ faq.id }}" data-date="{{ faq.created_at }}" data-title="{{ faq.title }}">
+                    <div class="card-header">
+                        <label class="checkbox-wrapper" onclick="event.stopPropagation();">
+                            <input type="checkbox" class="item-checkbox faq-checkbox" data-id="{{ faq.id }}" onchange="updateBulkActions('faq')">
+                            <span class="checkmark"></span>
+                        </label>
+                        <h3 class="card-title" onclick="location.href='/knowledge/{{ faq.id }}'">{{ faq.title }}</h3>
+                        <span class="badge badge-request" role="status">FAQ</span>
+                    </div>
+                    <p class="card-summary" onclick="location.href='/knowledge/{{ faq.id }}'">
+                        {{ (faq.summary or faq.content)|truncate(100, True) }}
+                    </p>
+                    <div class="card-footer">
+                        {% if faq.tags %}
+                        <span><span aria-hidden="true">🏷️</span>
+                            {% if faq.tags is string %}
+                                {{ faq.tags|truncate(50, True) }}
+                            {% else %}
+                                {{ faq.tags|join(', ')|truncate(50, True) }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        <time datetime="{{ faq.created_at[:10] if faq.created_at else '' }}">
+                            {{ faq.created_at[:10] if faq.created_at else '日付なし' }}
+                        </time>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">❓</div>
+                <h3>FAQがまだありません</h3>
+                <p>よくある質問とその回答を登録してください</p>
+                <a href="/knowledge/create" class="btn btn-primary" style="margin-top: 1rem;">FAQを作成</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- クイックアクションバー -->
+<div class="quick-actions-bar">
+    <button class="quick-action-btn" data-tooltip="新規作成" onclick="location.href='/knowledge/create'" aria-label="新規ナレッジ作成">
+        ✍️
+    </button>
+    <button class="quick-action-btn secondary" data-tooltip="ショートカット" onclick="showKeyboardHelp()" aria-label="キーボードショートカットを表示">
+        ⌨️
+    </button>
+    <button class="quick-action-btn secondary" data-tooltip="トップへ" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" aria-label="ページトップへスクロール">
+        ↑
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* チェックボックススタイル */
+.checkbox-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    margin-right: 0.5rem;
+}
+
+.checkbox-wrapper input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    height: 18px;
+    width: 18px;
+    background-color: #fff;
+    border: 2px solid var(--color-border);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.checkbox-wrapper:hover .checkmark {
+    border-color: var(--color-primary);
+}
+
+.checkbox-wrapper input:checked ~ .checkmark {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 6px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-wrapper input:checked ~ .checkmark:after {
+    display: block;
+}
+
+/* カードヘッダー調整 */
+.knowledge-card .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.knowledge-card .card-title {
+    flex: 1;
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 一括操作機能
+function updateBulkActions(type) {
+    const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
+    const count = checkboxes.length;
+    const bulkBar = document.getElementById(`bulkActions${type.charAt(0).toUpperCase() + type.slice(1)}`);
+    const countSpan = document.getElementById(`selectedCount${type.charAt(0).toUpperCase() + type.slice(1)}`);
+
+    if (count > 0) {
+        bulkBar.classList.add('show');
+        countSpan.textContent = count;
+    } else {
+        bulkBar.classList.remove('show');
+    }
+}
+
+function clearSelection(type) {
+    const checkboxes = document.querySelectorAll(`.${type}-checkbox`);
+    checkboxes.forEach(cb => cb.checked = false);
+    updateBulkActions(type);
+}
+
+function exportSelected(type) {
+    const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+    if (ids.length === 0) {
+        showToast('エクスポートする項目を選択してください', 'warning');
+        return;
+    }
+
+    // エクスポートデータを収集
+    const exportData = ids.map(id => {
+        const card = document.querySelector(`[data-id="${id}"]`);
+        return {
+            id: id,
+            title: card.dataset.title,
+            date: card.dataset.date,
+            type: card.dataset.type || 'FAQ'
+        };
+    });
+
+    // JSONとしてダウンロード
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}_export_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast(`${ids.length}件をエクスポートしました`, 'success');
+    clearSelection(type);
+}
+
+// ソート機能
+function toggleSort(btn, type) {
+    const sortBtns = btn.parentElement.querySelectorAll('.sort-btn');
+    const isActive = btn.classList.contains('active');
+
+    // 他のボタンの状態をリセット
+    sortBtns.forEach(b => b.classList.remove('active', 'asc', 'desc'));
+
+    // 現在のボタンの状態を切り替え
+    btn.classList.add('active');
+    if (isActive && btn.classList.contains('desc')) {
+        btn.classList.add('asc');
+        btn.classList.remove('desc');
+    } else {
+        btn.classList.add('desc');
+    }
+
+    // ソート実行
+    const grid = document.getElementById(`${type}Grid`);
+    const cards = Array.from(grid.querySelectorAll('.knowledge-card'));
+    const sortKey = btn.dataset.sort;
+    const isDesc = btn.classList.contains('desc');
+
+    cards.sort((a, b) => {
+        let valA, valB;
+
+        switch (sortKey) {
+            case 'date':
+                valA = a.dataset.date || '';
+                valB = b.dataset.date || '';
+                break;
+            case 'title':
+                valA = a.dataset.title || '';
+                valB = b.dataset.title || '';
+                break;
+            case 'type':
+                valA = a.dataset.type || '';
+                valB = b.dataset.type || '';
+                break;
+            default:
+                valA = '';
+                valB = '';
+        }
+
+        if (valA < valB) return isDesc ? 1 : -1;
+        if (valA > valB) return isDesc ? -1 : 1;
+        return 0;
+    });
+
+    // DOMを更新
+    cards.forEach(card => grid.appendChild(card));
+
+    showToast(`${sortKey === 'date' ? '日付' : sortKey === 'title' ? 'タイトル' : 'タイプ'}順でソートしました`, 'info');
+}
+
+// ページネーション（大量データ用）
+(function() {
+    const ITEMS_PER_PAGE = 12;
+
+    function setupPagination(gridId, paginationId) {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+
+        const cards = Array.from(grid.querySelectorAll('.knowledge-card'));
+        const totalPages = Math.ceil(cards.length / ITEMS_PER_PAGE);
+
+        if (totalPages <= 1) return;
+
+        let currentPage = 1;
+
+        function showPage(page) {
+            currentPage = page;
+            const start = (page - 1) * ITEMS_PER_PAGE;
+            const end = start + ITEMS_PER_PAGE;
+
+            cards.forEach((card, index) => {
+                card.style.display = (index >= start && index < end) ? '' : 'none';
+            });
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById(paginationId);
+            if (!pagination) return;
+
+            let html = '';
+
+            // 前へボタン
+            html += `<button class="pagination-btn ${currentPage === 1 ? 'disabled' : ''}"
+                             onclick="event.preventDefault(); ${gridId}GoToPage(${currentPage - 1})"
+                             ${currentPage === 1 ? 'disabled' : ''}>←</button>`;
+
+            // ページ番号
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}"
+                                     onclick="event.preventDefault(); ${gridId}GoToPage(${i})">${i}</button>`;
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    html += '<span class="pagination-info">...</span>';
+                }
+            }
+
+            // 次へボタン
+            html += `<button class="pagination-btn ${currentPage === totalPages ? 'disabled' : ''}"
+                             onclick="event.preventDefault(); ${gridId}GoToPage(${currentPage + 1})"
+                             ${currentPage === totalPages ? 'disabled' : ''}>→</button>`;
+
+            html += `<span class="pagination-info">${currentPage} / ${totalPages}ページ</span>`;
+
+            pagination.innerHTML = html;
+        }
+
+        // グローバル関数として登録
+        window[`${gridId}GoToPage`] = function(page) {
+            if (page >= 1 && page <= totalPages) {
+                showPage(page);
+                // ページトップにスムーズスクロール
+                grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        };
+
+        // 初期表示
+        showPage(1);
+    }
+
+    // 各グリッドのページネーションを設定
+    setupPagination('knowledgeGrid', 'knowledgePagination');
+})();
+</script>
+{% endblock %}
