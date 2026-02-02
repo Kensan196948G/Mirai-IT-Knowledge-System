@@ -1,0 +1,244 @@
+name: Auto Error Detection & Repair Loop
+# 自動エラー検知・修復ループ
+
+on:
+  schedule:
+    # 5分間隔で実行（疑似無限ループ）
+    - cron: '*/5 * * * *'
+  
+  workflow_dispatch:
+    inputs:
+      max_iterations:
+        description: 'Maximum repair iterations (default: 15)'
+        required: false
+        default: '15'
+
+env:
+  MAX_ITERATIONS: 15
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  auto_repair_loop:
+    name: Auto Repair Loop (Max 15 iterations per Run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 📊 Load previous state
+        id: load_state
+        run: |
+          if [ -f data/state.json ]; then
+            echo "Previous state found"
+            cat data/state.json
+            
+            # 状態から retry_required を読み取る
+            retry_required=$(python3 -c "import json; print(json.load(open('data/state.json')).get('retry_required', False))" 2>/dev/null || echo "False")
+            run_count=$(python3 -c "import json; print(json.load(open('data/state.json')).get('run_count', 0))" 2>/dev/null || echo "0")
+            
+            echo "retry_required=$retry_required" >> $GITHUB_OUTPUT
+            echo "run_count=$run_count" >> $GITHUB_OUTPUT
+          else
+            echo "No previous state"
+            echo "retry_required=False" >> $GITHUB_OUTPUT
+            echo "run_count=0" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 🔄 Auto-Repair Loop (Up to 15 iterations)
+        id: repair_loop
+        run: |
+          set +e  # エラーでも継続
+          
+          MAX_ITER=${{ github.event.inputs.max_iterations || env.MAX_ITERATIONS }}
+          ITERATION=0
+          TEST_PASSED=false
+          REPAIRS_MADE=0
+          
+          echo "==================================================================="
+          echo "🚀 Starting Auto-Repair Loop (Max $MAX_ITER iterations)"
+          echo "==================================================================="
+          
+          while [ $ITERATION -lt $MAX_ITER ]; do
+            ITERATION=$((ITERATION + 1))
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📍 Iteration $ITERATION / $MAX_ITER"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # テスト実行
+            echo "🧪 Running tests..."
+            TEST_OUTPUT=$(python3 scripts/test_workflow.py 2>&1)
+            TEST_EXIT_CODE=$?
+            
+            echo "$TEST_OUTPUT"
+            
+            if [ $TEST_EXIT_CODE -eq 0 ]; then
+              echo ""
+              echo "✅ Tests passed!"
+              TEST_PASSED=true
+              break
+            fi
+            
+            echo ""
+            echo "❌ Tests failed (exit code: $TEST_EXIT_CODE)"
+            
+            # エラー検知・修復
+            echo ""
+            echo "🔧 Attempting auto-repair..."
+            
+            REPAIR_OUTPUT=$(echo "$TEST_OUTPUT" | python3 scripts/auto_fix_daemon.py 2>&1)
+            REPAIR_EXIT_CODE=$?
+            
+            echo "$REPAIR_OUTPUT"
+            
+            if [ $REPAIR_EXIT_CODE -eq 0 ]; then
+              echo "✅ Repair successful"
+              REPAIRS_MADE=$((REPAIRS_MADE + 1))
+            else
+              echo "❌ Repair failed or no actionable errors"
+              
+              # 修復できない場合は次のRunに委ねる
+              if [ $ITERATION -ge 3 ]; then
+                echo "⚠️  Multiple repair attempts failed. Deferring to next Run."
+                break
+              fi
+            fi
+            
+            # 短いウェイト（クールダウン）
+            echo "⏳ Waiting 5 seconds before next iteration..."
+            sleep 5
+          done
+          
+          echo ""
+          echo "==================================================================="
+          echo "📊 Auto-Repair Loop Summary"
+          echo "==================================================================="
+          echo "Iterations: $ITERATION / $MAX_ITER"
+          echo "Repairs made: $REPAIRS_MADE"
+          echo "Final test status: $([ "$TEST_PASSED" = true ] && echo "PASSED ✅" || echo "FAILED ❌")"
+          echo "==================================================================="
+          
+          # 出力設定
+          echo "test_passed=$TEST_PASSED" >> $GITHUB_OUTPUT
+          echo "iterations=$ITERATION" >> $GITHUB_OUTPUT
+          echo "repairs_made=$REPAIRS_MADE" >> $GITHUB_OUTPUT
+          
+          # テストが成功した場合は終了コード0、失敗の場合は1
+          if [ "$TEST_PASSED" = true ]; then
+            exit 0
+          else
+            exit 1
+          fi
+      
+      - name: 📝 Update state for next Run
+        if: always()
+        run: |
+          # Run カウントの更新
+          NEW_RUN_COUNT=${{ steps.load_state.outputs.run_count }}
+          NEW_RUN_COUNT=$((NEW_RUN_COUNT + 1))
+          
+          # state.jsonが存在しない場合は作成
+          if [ ! -f data/state.json ]; then
+            mkdir -p data
+            echo '{}' > data/state.json
+          fi
+          
+          # 状態の更新（Python使用）
+          python3 << 'EOF'
+          import json
+          from pathlib import Path
+          from datetime import datetime
+          
+          state_file = Path('data/state.json')
+          
+          # 既存の状態を読み込み
+          if state_file.exists():
+              with open(state_file, 'r') as f:
+                  try:
+                      state = json.load(f)
+                  except:
+                      state = {}
+          else:
+              state = {}
+          
+          # Run情報の更新
+          test_passed = "${{ steps.repair_loop.outputs.test_passed }}" == "true"
+          
+          state['retry_required'] = not test_passed
+          state['run_count'] = int("${{ steps.load_state.outputs.run_count }}") + 1
+          state['last_run_at'] = datetime.now().isoformat()
+          state['last_run_result'] = 'success' if test_passed else 'failed'
+          state['last_iterations'] = int("${{ steps.repair_loop.outputs.iterations }}" or "0")
+          state['last_repairs_made'] = int("${{ steps.repair_loop.outputs.repairs_made }}" or "0")
+          
+          # 保存
+          with open(state_file, 'w') as f:
+              json.dump(state, f, indent=2, ensure_ascii=False)
+          
+          print("State updated:")
+          print(json.dumps(state, indent=2, ensure_ascii=False))
+          EOF
+          
+          echo "State file updated"
+          cat data/state.json
+      
+      - name: 💾 Commit state changes
+        if: always()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Auto-Repair"
+          
+          # state.jsonとrepair_log.jsonをコミット
+          git add data/state.json data/repair_log.json 2>/dev/null || true
+          
+          if git diff --staged --quiet; then
+            echo "No state changes to commit"
+          else
+            git commit -m "🤖 Auto-repair: Run #${{ steps.load_state.outputs.run_count }} - ${{ steps.repair_loop.outputs.test_passed == 'true' && '✅ Success' || '❌ Failed' }}"
+            git push
+          fi
+      
+      - name: 📊 Summary
+        if: always()
+        run: |
+          echo "## 🤖 Auto-Repair Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Run Count | #${{ steps.load_state.outputs.run_count }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Iterations | ${{ steps.repair_loop.outputs.iterations }} / ${{ github.event.inputs.max_iterations || env.MAX_ITERATIONS }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repairs Made | ${{ steps.repair_loop.outputs.repairs_made }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Final Status | ${{ steps.repair_loop.outputs.test_passed == 'true' && '✅ Tests Passed' || '❌ Tests Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Next Run | ${{ steps.repair_loop.outputs.test_passed == 'true' && 'Not required (success)' || 'Scheduled in 5 minutes' }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f data/state.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📄 Current State" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            cat data/state.json >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f data/repair_log.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔧 Recent Repairs" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            tail -20 data/repair_log.json >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
