@@ -3,8 +3,8 @@ GitHub MCP Client
 バージョン管理・監査証跡クライアント
 """
 
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 class GitHubClient:
@@ -33,7 +33,7 @@ class GitHubClient:
         file_path: str,
         content: str,
         commit_message: str,
-        author: Optional[str] = None
+        author: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         ナレッジをGitHubにコミット
@@ -63,16 +63,14 @@ class GitHubClient:
             "message": commit_message,
             "author": author or "system",
             "timestamp": datetime.now().isoformat(),
-            "file_path": file_path
+            "file_path": file_path,
         }
 
         self._commit_cache.append(commit)
         return commit
 
     def get_knowledge_history(
-        self,
-        file_path: str,
-        limit: int = 10
+        self, file_path: str, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """
         ナレッジの変更履歴を取得
@@ -93,13 +91,10 @@ class GitHubClient:
         # })
 
         # デモ実装
-        return [c for c in self._commit_cache if c['file_path'] == file_path][:limit]
+        return [c for c in self._commit_cache if c["file_path"] == file_path][:limit]
 
     def create_audit_issue(
-        self,
-        title: str,
-        description: str,
-        labels: Optional[List[str]] = None
+        self, title: str, description: str, labels: Optional[List[str]] = None
     ) -> Optional[Dict[str, Any]]:
         """
         監査用issueを作成
@@ -126,14 +121,10 @@ class GitHubClient:
             "number": len(self._commit_cache) + 1,
             "title": title,
             "state": "open",
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         }
 
-    def get_file_content(
-        self,
-        file_path: str,
-        ref: str = "main"
-    ) -> Optional[str]:
+    def get_file_content(self, file_path: str, ref: str = "main") -> Optional[str]:
         """
         ファイル内容を取得
 
@@ -159,7 +150,7 @@ class GitHubClient:
         branch_name: str,
         title: str,
         description: str,
-        files_changed: List[Dict[str, str]]
+        files_changed: List[Dict[str, str]],
     ) -> Optional[Dict[str, Any]]:
         """
         ナレッジ変更のPRを作成
@@ -183,13 +174,10 @@ class GitHubClient:
             "number": 42,
             "title": title,
             "state": "open",
-            "html_url": f"https://github.com/{self.repository}/pull/42"
+            "html_url": f"https://github.com/{self.repository}/pull/42",
         }
 
-    def enable_automated_commits(
-        self,
-        enabled: bool = True
-    ):
+    def enable_automated_commits(self, enabled: bool = True):
         """
         自動コミット機能の有効/無効
 
@@ -198,10 +186,7 @@ class GitHubClient:
         """
         self.auto_commit_enabled = enabled
 
-    def get_audit_trail(
-        self,
-        knowledge_id: int
-    ) -> Dict[str, Any]:
+    def get_audit_trail(self, knowledge_id: int) -> Dict[str, Any]:
         """
         監査証跡を取得
 
@@ -211,20 +196,18 @@ class GitHubClient:
         Returns:
             監査証跡情報
         """
-        commits = [c for c in self._commit_cache if str(knowledge_id) in c['file_path']]
+        commits = [c for c in self._commit_cache if str(knowledge_id) in c["file_path"]]
 
         return {
             "knowledge_id": knowledge_id,
             "total_commits": len(commits),
             "first_commit": commits[-1] if commits else None,
             "latest_commit": commits[0] if commits else None,
-            "all_commits": commits
+            "all_commits": commits,
         }
 
     def generate_change_log(
-        self,
-        since: Optional[str] = None,
-        until: Optional[str] = None
+        self, since: Optional[str] = None, until: Optional[str] = None
     ) -> str:
         """
         変更ログを生成

@@ -4,11 +4,12 @@ Agent and Hook Configuration Loader
 設定ファイルからSubAgentとHookの定義を読み込む
 """
 
-import yaml
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SubAgentConfig:
     """SubAgent設定データクラス"""
+
     name: str
     description: str
     capabilities: List[str]
@@ -28,6 +30,7 @@ class SubAgentConfig:
 @dataclass
 class HookConfig:
     """Hook設定データクラス"""
+
     name: str
     description: str
     trigger: str
@@ -43,7 +46,12 @@ class AgentLoader:
 
     def __init__(self, config_path: Optional[Path] = None):
         if config_path is None:
-            config_path = Path(__file__).parent.parent.parent / 'config' / 'agents' / 'subagents.yaml'
+            config_path = (
+                Path(__file__).parent.parent.parent
+                / "config"
+                / "agents"
+                / "subagents.yaml"
+            )
         self.config_path = config_path
         self._agents: Dict[str, SubAgentConfig] = {}
         self._execution_config: Dict[str, Any] = {}
@@ -53,29 +61,33 @@ class AgentLoader:
         """設定ファイルを読み込む"""
         try:
             if not self.config_path.exists():
-                logger.warning(f"SubAgent設定ファイルが見つかりません: {self.config_path}")
+                logger.warning(
+                    f"SubAgent設定ファイルが見つかりません: {self.config_path}"
+                )
                 return False
 
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
             # SubAgent定義を読み込み
-            for agent_id, agent_data in config.get('subagents', {}).items():
+            for agent_id, agent_data in config.get("subagents", {}).items():
                 self._agents[agent_id] = SubAgentConfig(
-                    name=agent_data.get('name', agent_id),
-                    description=agent_data.get('description', ''),
-                    capabilities=agent_data.get('capabilities', []),
-                    prompts=agent_data.get('prompts', {}),
-                    priority=agent_data.get('priority', 'medium'),
-                    model=agent_data.get('model', 'claude-sonnet-4-20250514'),
-                    enabled=agent_data.get('enabled', True)
+                    name=agent_data.get("name", agent_id),
+                    description=agent_data.get("description", ""),
+                    capabilities=agent_data.get("capabilities", []),
+                    prompts=agent_data.get("prompts", {}),
+                    priority=agent_data.get("priority", "medium"),
+                    model=agent_data.get("model", "claude-sonnet-4-20250514"),
+                    enabled=agent_data.get("enabled", True),
                 )
 
             # 実行設定を読み込み
-            self._execution_config = config.get('execution', {})
+            self._execution_config = config.get("execution", {})
 
             self._loaded = True
-            logger.info(f"SubAgent設定を読み込みました: {len(self._agents)}エージェント")
+            logger.info(
+                f"SubAgent設定を読み込みました: {len(self._agents)}エージェント"
+            )
             return True
 
         except Exception as e:
@@ -112,7 +124,9 @@ class HookLoader:
 
     def __init__(self, config_path: Optional[Path] = None):
         if config_path is None:
-            config_path = Path(__file__).parent.parent.parent / 'config' / 'agents' / 'hooks.yaml'
+            config_path = (
+                Path(__file__).parent.parent.parent / "config" / "agents" / "hooks.yaml"
+            )
         self.config_path = config_path
         self._hooks: Dict[str, HookConfig] = {}
         self._triggers: Dict[str, List[str]] = {}
@@ -126,30 +140,42 @@ class HookLoader:
                 logger.warning(f"Hook設定ファイルが見つかりません: {self.config_path}")
                 return False
 
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
             # Hook定義を読み込み
-            for hook_id, hook_data in config.get('hooks', {}).items():
-                extra_config = {k: v for k, v in hook_data.items()
-                              if k not in ['name', 'description', 'trigger', 'actions', 'prompts', 'enabled', 'timeout_seconds']}
+            for hook_id, hook_data in config.get("hooks", {}).items():
+                extra_config = {
+                    k: v
+                    for k, v in hook_data.items()
+                    if k
+                    not in [
+                        "name",
+                        "description",
+                        "trigger",
+                        "actions",
+                        "prompts",
+                        "enabled",
+                        "timeout_seconds",
+                    ]
+                }
 
                 self._hooks[hook_id] = HookConfig(
-                    name=hook_data.get('name', hook_id),
-                    description=hook_data.get('description', ''),
-                    trigger=hook_data.get('trigger', ''),
-                    actions=hook_data.get('actions', []),
-                    prompts=hook_data.get('prompts', {}),
-                    enabled=hook_data.get('enabled', True),
-                    timeout_seconds=hook_data.get('timeout_seconds', 30),
-                    extra_config=extra_config
+                    name=hook_data.get("name", hook_id),
+                    description=hook_data.get("description", ""),
+                    trigger=hook_data.get("trigger", ""),
+                    actions=hook_data.get("actions", []),
+                    prompts=hook_data.get("prompts", {}),
+                    enabled=hook_data.get("enabled", True),
+                    timeout_seconds=hook_data.get("timeout_seconds", 30),
+                    extra_config=extra_config,
                 )
 
             # イベントトリガーを読み込み
-            self._triggers = config.get('event_triggers', {})
+            self._triggers = config.get("event_triggers", {})
 
             # グローバル設定を読み込み
-            self._global_settings = config.get('global_settings', {})
+            self._global_settings = config.get("global_settings", {})
 
             self._loaded = True
             logger.info(f"Hook設定を読み込みました: {len(self._hooks)}フック")

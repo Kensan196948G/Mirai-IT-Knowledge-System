@@ -3,17 +3,17 @@ Advanced Analytics Engine
 高度な分析エンジン
 """
 
-from typing import Dict, Any, List, Tuple
-from datetime import datetime, timedelta
-from collections import Counter
 import sys
+from collections import Counter
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.mcp.sqlite_client import SQLiteClient
 from src.mcp.feedback_client import FeedbackClient
+from src.mcp.sqlite_client import SQLiteClient
 
 
 class AnalyticsEngine:
@@ -39,28 +39,35 @@ class AnalyticsEngine:
             cursor = conn.cursor()
 
             # 期間内のインシデント数推移
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DATE(created_at) as date, COUNT(*) as count
                 FROM knowledge_entries
                 WHERE itsm_type = 'Incident'
                   AND created_at > datetime('now', '-' || ? || ' days')
                 GROUP BY DATE(created_at)
                 ORDER BY date
-            """, (days,))
+            """,
+                (days,),
+            )
             daily_counts = [dict(row) for row in cursor.fetchall()]
 
             # タグ別インシデント数
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT tags, COUNT(*) as count
                 FROM knowledge_entries
                 WHERE itsm_type = 'Incident'
                   AND created_at > datetime('now', '-' || ? || ' days')
                 GROUP BY tags
-            """, (days,))
+            """,
+                (days,),
+            )
             tag_distribution = [dict(row) for row in cursor.fetchall()]
 
             # 再発インシデント検知（類似タイトル）
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT k1.id, k1.title, COUNT(*) as recurrence_count
                 FROM knowledge_entries k1
                 JOIN knowledge_entries k2 ON k1.title = k2.title AND k1.id != k2.id
@@ -70,7 +77,9 @@ class AnalyticsEngine:
                 HAVING COUNT(*) > 0
                 ORDER BY recurrence_count DESC
                 LIMIT 10
-            """, (days,))
+            """,
+                (days,),
+            )
             recurring_incidents = [dict(row) for row in cursor.fetchall()]
 
             return {
@@ -78,7 +87,7 @@ class AnalyticsEngine:
                 "daily_counts": daily_counts,
                 "tag_distribution": tag_distribution,
                 "recurring_incidents": recurring_incidents,
-                "total_incidents": sum(d['count'] for d in daily_counts)
+                "total_incidents": sum(d["count"] for d in daily_counts),
             }
 
     def analyze_problem_resolution_rate(self) -> Dict[str, Any]:
@@ -90,7 +99,7 @@ class AnalyticsEngine:
             cursor.execute("""
                 SELECT COUNT(*) as total FROM knowledge_entries WHERE itsm_type = 'Problem'
             """)
-            total = cursor.fetchone()['total']
+            total = cursor.fetchone()["total"]
 
             # 解決済み（変更管理に移行したもの）
             cursor.execute("""
@@ -100,7 +109,7 @@ class AnalyticsEngine:
                 WHERE k.itsm_type = 'Problem'
                   AND r.relationship_type = 'Problem→Change'
             """)
-            resolved = cursor.fetchone()['resolved']
+            resolved = cursor.fetchone()["resolved"]
 
             # 平均解決時間（Problem作成から最初のChange作成まで）
             cursor.execute("""
@@ -112,13 +121,13 @@ class AnalyticsEngine:
                   AND c.itsm_type = 'Change'
                   AND r.relationship_type = 'Problem→Change'
             """)
-            avg_resolution_days = cursor.fetchone()['avg_days'] or 0
+            avg_resolution_days = cursor.fetchone()["avg_days"] or 0
 
             return {
                 "total_problems": total,
                 "resolved_problems": resolved,
                 "resolution_rate": round(resolved / total * 100, 1) if total > 0 else 0,
-                "avg_resolution_days": round(avg_resolution_days, 1)
+                "avg_resolution_days": round(avg_resolution_days, 1),
             }
 
     # ========== 品質分析 ==========
@@ -142,7 +151,9 @@ class AnalyticsEngine:
                 FROM knowledge_entries
                 GROUP BY length_category
             """)
-            length_distribution = {row['length_category']: row['count'] for row in cursor.fetchall()}
+            length_distribution = {
+                row["length_category"]: row["count"] for row in cursor.fetchall()
+            }
 
             # 要約が生成されているナレッジの割合
             cursor.execute("""
@@ -167,8 +178,14 @@ class AnalyticsEngine:
 
             return {
                 "length_distribution": length_distribution,
-                "summary_coverage": round(summary_stats['with_summary'] / summary_stats['total'] * 100, 1) if summary_stats['total'] > 0 else 0,
-                "tag_distribution": tag_distribution
+                "summary_coverage": (
+                    round(
+                        summary_stats["with_summary"] / summary_stats["total"] * 100, 1
+                    )
+                    if summary_stats["total"] > 0
+                    else 0
+                ),
+                "tag_distribution": tag_distribution,
             }
 
     # ========== 相関分析 ==========
@@ -209,20 +226,38 @@ class AnalyticsEngine:
                 JOIN relationships r2 ON p.id = r2.source_id AND r2.relationship_type = 'Problem→Change'
                 WHERE i.itsm_type = 'Incident'
             """)
-            complete_flow = cursor.fetchone()['complete_flow_count']
+            complete_flow = cursor.fetchone()["complete_flow_count"]
 
             return {
                 "incident_to_problem": {
-                    "total": incident_to_problem['total_incidents'],
-                    "escalated": incident_to_problem['escalated_to_problem'],
-                    "rate": round(incident_to_problem['escalated_to_problem'] / incident_to_problem['total_incidents'] * 100, 1) if incident_to_problem['total_incidents'] > 0 else 0
+                    "total": incident_to_problem["total_incidents"],
+                    "escalated": incident_to_problem["escalated_to_problem"],
+                    "rate": (
+                        round(
+                            incident_to_problem["escalated_to_problem"]
+                            / incident_to_problem["total_incidents"]
+                            * 100,
+                            1,
+                        )
+                        if incident_to_problem["total_incidents"] > 0
+                        else 0
+                    ),
                 },
                 "problem_to_change": {
-                    "total": problem_to_change['total_problems'],
-                    "escalated": problem_to_change['escalated_to_change'],
-                    "rate": round(problem_to_change['escalated_to_change'] / problem_to_change['total_problems'] * 100, 1) if problem_to_change['total_problems'] > 0 else 0
+                    "total": problem_to_change["total_problems"],
+                    "escalated": problem_to_change["escalated_to_change"],
+                    "rate": (
+                        round(
+                            problem_to_change["escalated_to_change"]
+                            / problem_to_change["total_problems"]
+                            * 100,
+                            1,
+                        )
+                        if problem_to_change["total_problems"] > 0
+                        else 0
+                    ),
                 },
-                "complete_flow_count": complete_flow
+                "complete_flow_count": complete_flow,
             }
 
     # ========== 利用状況分析 ==========
@@ -238,7 +273,8 @@ class AnalyticsEngine:
         # 検索キーワードトレンド
         with self.db_client.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT search_query, COUNT(*) as count
                 FROM search_history
                 WHERE created_at > datetime('now', '-' || ? || ' days')
@@ -246,14 +282,16 @@ class AnalyticsEngine:
                 GROUP BY search_query
                 ORDER BY count DESC
                 LIMIT 20
-            """, (days,))
+            """,
+                (days,),
+            )
             search_trends = [dict(row) for row in cursor.fetchall()]
 
         return {
             "popular_knowledge": popular,
             "top_rated_knowledge": top_rated,
             "search_trends": search_trends,
-            "period_days": days
+            "period_days": days,
         }
 
     # ========== 総合レポート ==========
@@ -268,7 +306,7 @@ class AnalyticsEngine:
             "knowledge_quality": self.analyze_knowledge_quality(),
             "itsm_flow": self.analyze_itsm_flow(),
             "usage_patterns": self.analyze_usage_patterns(days),
-            "feedback_summary": self.feedback_client.get_feedback_summary()
+            "feedback_summary": self.feedback_client.get_feedback_summary(),
         }
 
     # ========== 推奨事項生成 ==========
@@ -279,29 +317,35 @@ class AnalyticsEngine:
 
         # インシデントトレンド分析から
         trends = self.analyze_incident_trends(30)
-        if trends['total_incidents'] > 50:
-            recommendations.append({
-                "category": "incident_management",
-                "priority": "high",
-                "recommendation": "インシデント数が多いため、根本原因分析の強化を推奨します"
-            })
+        if trends["total_incidents"] > 50:
+            recommendations.append(
+                {
+                    "category": "incident_management",
+                    "priority": "high",
+                    "recommendation": "インシデント数が多いため、根本原因分析の強化を推奨します",
+                }
+            )
 
         # 問題解決率から
         problem_stats = self.analyze_problem_resolution_rate()
-        if problem_stats['resolution_rate'] < 70:
-            recommendations.append({
-                "category": "problem_management",
-                "priority": "high",
-                "recommendation": "問題管理の解決率が低いため、恒久対策の実施を強化してください"
-            })
+        if problem_stats["resolution_rate"] < 70:
+            recommendations.append(
+                {
+                    "category": "problem_management",
+                    "priority": "high",
+                    "recommendation": "問題管理の解決率が低いため、恒久対策の実施を強化してください",
+                }
+            )
 
         # 品質分析から
         quality = self.analyze_knowledge_quality()
-        if quality['summary_coverage'] < 80:
-            recommendations.append({
-                "category": "quality",
-                "priority": "medium",
-                "recommendation": "要約が不足しているナレッジがあります。自動要約機能の改善を検討してください"
-            })
+        if quality["summary_coverage"] < 80:
+            recommendations.append(
+                {
+                    "category": "quality",
+                    "priority": "medium",
+                    "recommendation": "要約が不足しているナレッジがあります。自動要約機能の改善を検討してください",
+                }
+            )
 
         return recommendations

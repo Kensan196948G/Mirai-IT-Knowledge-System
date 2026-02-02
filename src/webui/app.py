@@ -5,53 +5,61 @@ Flask-based Web Interface for Knowledge Management
 環境対応版 - Phase 4実装
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from flask_socketio import SocketIO, emit, join_room
-from pathlib import Path
-import sys
-import os
-import logging
-from datetime import datetime
-import json
 import html as html_lib
+import json
+import logging
+import os
 import re
+import sys
 import urllib.parse
 import urllib.request
-from typing import Dict, Any
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict
+
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask_socketio import SocketIO, emit, join_room
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # 環境設定読み込み
-from src.config.environment import load_environment, get_config
+from src.config.environment import get_config, load_environment
 
 # 環境を決定（環境変数またはデフォルト）
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 env_config = load_environment(ENVIRONMENT)
 
-from src.core.workflow import WorkflowEngine
 from src.core.itsm_classifier import ITSMClassifier
-from src.mcp.sqlite_client import SQLiteClient
+from src.core.workflow import WorkflowEngine
 from src.mcp.feedback_client import FeedbackClient
+from src.mcp.sqlite_client import SQLiteClient
+from src.workflows.intelligent_search import IntelligentSearchAssistant
 from src.workflows.interactive_knowledge_creation import (
     InteractiveKnowledgeCreationWorkflow,
 )
-from src.workflows.intelligent_search import IntelligentSearchAssistant
 from src.workflows.workflow_studio_engine import WorkflowStudioEngine
 
 # ログ設定
-log_level = getattr(logging, env_config.get('log_level', 'DEBUG').upper(), logging.DEBUG)
+log_level = getattr(
+    logging, env_config.get("log_level", "DEBUG").upper(), logging.DEBUG
+)
 logging.basicConfig(
     level=log_level,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(
-            env_config.get('log_path', project_root / 'data' / 'logs') / env_config.get('log_file', 'app.log'),
-            encoding='utf-8'
-        ) if Path(env_config.get('log_path', project_root / 'data' / 'logs')).exists() else logging.NullHandler()
-    ]
+        (
+            logging.FileHandler(
+                env_config.get("log_path", project_root / "data" / "logs")
+                / env_config.get("log_file", "app.log"),
+                encoding="utf-8",
+            )
+            if Path(env_config.get("log_path", project_root / "data" / "logs")).exists()
+            else logging.NullHandler()
+        ),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -63,19 +71,19 @@ _TRANSLATION_CACHE = {}
 
 def _strip_html(raw_html: str) -> str:
     if not raw_html:
-        return ''
-    text = re.sub(r'<[^>]+>', ' ', raw_html)
+        return ""
+    text = re.sub(r"<[^>]+>", " ", raw_html)
     text = html_lib.unescape(text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
 def _truncate(text: str, limit: int = 240) -> str:
     if not text:
-        return ''
+        return ""
     if len(text) <= limit:
         return text
-    return text[:limit].rstrip() + '...'
+    return text[:limit].rstrip() + "..."
 
 
 def _translate_texts(texts, api_key, target_lang, api_url):
@@ -101,22 +109,22 @@ def _translate_texts(texts, api_key, target_lang, api_url):
     translated_success = True
     batch_size = 50
     for start in range(0, len(payload_texts), batch_size):
-        batch = payload_texts[start:start + batch_size]
-        batch_indices = index_map[start:start + batch_size]
+        batch = payload_texts[start : start + batch_size]
+        batch_indices = index_map[start : start + batch_size]
         try:
-            data = [('auth_key', api_key), ('target_lang', target_lang)]
+            data = [("auth_key", api_key), ("target_lang", target_lang)]
             for text in batch:
-                data.append(('text', text))
-            body = urllib.parse.urlencode(data, doseq=True).encode('utf-8')
-            req = urllib.request.Request(api_url, data=body, method='POST')
-            req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+                data.append(("text", text))
+            body = urllib.parse.urlencode(data, doseq=True).encode("utf-8")
+            req = urllib.request.Request(api_url, data=body, method="POST")
+            req.add_header("Content-Type", "application/x-www-form-urlencoded")
             with urllib.request.urlopen(req, timeout=15) as resp:
-                payload = json.loads(resp.read().decode('utf-8'))
-            translations = payload.get('translations', [])
+                payload = json.loads(resp.read().decode("utf-8"))
+            translations = payload.get("translations", [])
             if len(translations) != len(batch):
-                raise ValueError('DeepL response count mismatch')
+                raise ValueError("DeepL response count mismatch")
             for i, item in enumerate(translations):
-                translated_text = item.get('text', batch[i])
+                translated_text = item.get("text", batch[i])
                 results[batch_indices[i]] = translated_text
                 _TRANSLATION_CACHE[batch[i]] = translated_text
         except Exception as exc:
@@ -130,99 +138,110 @@ def _translate_texts(texts, api_key, target_lang, api_url):
 
 def _fetch_serverfault_questions(page, pagesize, sort, order, tagged, api_base):
     params = {
-        'site': 'serverfault',
-        'page': page,
-        'pagesize': pagesize,
-        'order': order,
-        'sort': sort,
-        'filter': 'withbody'
+        "site": "serverfault",
+        "page": page,
+        "pagesize": pagesize,
+        "order": order,
+        "sort": sort,
+        "filter": "withbody",
     }
     if tagged:
-        params['tagged'] = tagged
+        params["tagged"] = tagged
     query = urllib.parse.urlencode(params, doseq=True)
     url = f"{api_base}/questions?{query}"
 
     with urllib.request.urlopen(url, timeout=15) as resp:
-        payload = json.loads(resp.read().decode('utf-8'))
+        payload = json.loads(resp.read().decode("utf-8"))
 
     items = []
-    for item in payload.get('items', []):
-        body_text = _strip_html(item.get('body', ''))
-        items.append({
-            'question_id': item.get('question_id'),
-            'title': item.get('title', ''),
-            'excerpt': _truncate(body_text, 240),
-            'tags': item.get('tags', []),
-            'score': item.get('score', 0),
-            'answer_count': item.get('answer_count', 0),
-            'view_count': item.get('view_count', 0),
-            'is_answered': item.get('is_answered', False),
-            'has_accepted_answer': bool(item.get('accepted_answer_id')),
-            'link': item.get('link', ''),
-            'creation_date': item.get('creation_date')
-        })
+    for item in payload.get("items", []):
+        body_text = _strip_html(item.get("body", ""))
+        items.append(
+            {
+                "question_id": item.get("question_id"),
+                "title": item.get("title", ""),
+                "excerpt": _truncate(body_text, 240),
+                "tags": item.get("tags", []),
+                "score": item.get("score", 0),
+                "answer_count": item.get("answer_count", 0),
+                "view_count": item.get("view_count", 0),
+                "is_answered": item.get("is_answered", False),
+                "has_accepted_answer": bool(item.get("accepted_answer_id")),
+                "link": item.get("link", ""),
+                "creation_date": item.get("creation_date"),
+            }
+        )
 
     return items, payload
 
 
 def _fetch_serverfault_answers(question_id, sort, order, api_base):
-    params = {
-        'site': 'serverfault',
-        'order': order,
-        'sort': sort,
-        'filter': 'withbody'
-    }
+    params = {"site": "serverfault", "order": order, "sort": sort, "filter": "withbody"}
     query = urllib.parse.urlencode(params, doseq=True)
     url = f"{api_base}/questions/{question_id}/answers?{query}"
 
     with urllib.request.urlopen(url, timeout=15) as resp:
-        payload = json.loads(resp.read().decode('utf-8'))
+        payload = json.loads(resp.read().decode("utf-8"))
 
     items = []
-    for item in payload.get('items', []):
-        body_text = _strip_html(item.get('body', ''))
-        items.append({
-            'answer_id': item.get('answer_id'),
-            'question_id': question_id,
-            'score': item.get('score', 0),
-            'is_accepted': item.get('is_accepted', False),
-            'excerpt': _truncate(body_text, 280),
-            'body': body_text
-        })
+    for item in payload.get("items", []):
+        body_text = _strip_html(item.get("body", ""))
+        items.append(
+            {
+                "answer_id": item.get("answer_id"),
+                "question_id": question_id,
+                "score": item.get("score", 0),
+                "is_accepted": item.get("is_accepted", False),
+                "excerpt": _truncate(body_text, 280),
+                "body": body_text,
+            }
+        )
 
     return items, payload
 
+
 # 環境別Flask設定
-app.config["SECRET_KEY"] = env_config.get('secret_key', 'mirai-it-knowledge-systems-secret-key')
-app.config["DEBUG"] = env_config.get('flask_debug', True)
-app.config["ENV"] = env_config.get('flask_env', 'development')
+app.config["SECRET_KEY"] = env_config.get(
+    "secret_key", "mirai-it-knowledge-systems-secret-key"
+)
+app.config["DEBUG"] = env_config.get("flask_debug", True)
+app.config["ENV"] = env_config.get("flask_env", "development")
 
 # セッションCookie設定
-app.config["SESSION_COOKIE_SECURE"] = env_config.get('session_cookie_secure', True)
-app.config["SESSION_COOKIE_HTTPONLY"] = env_config.get('session_cookie_httponly', True)
-app.config["SESSION_COOKIE_SAMESITE"] = env_config.get('session_cookie_samesite', 'Lax')
+app.config["SESSION_COOKIE_SECURE"] = env_config.get("session_cookie_secure", True)
+app.config["SESSION_COOKIE_HTTPONLY"] = env_config.get("session_cookie_httponly", True)
+app.config["SESSION_COOKIE_SAMESITE"] = env_config.get("session_cookie_samesite", "Lax")
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
 
 # 環境情報をテンプレートに自動注入
 @app.context_processor
 def inject_environment():
     """テンプレートに環境情報を注入"""
     return {
-        'environment': ENVIRONMENT,
-        'is_development': ENVIRONMENT == 'development',
-        'is_production': ENVIRONMENT == 'production',
-        'app_version': '3.0.0',
-        'use_sample_data': env_config.get('use_sample_data', True),
-        'base_url': env_config.get('base_url', f"https://{env_config.get('host', 'localhost')}:{env_config.get('port', 8888)}")
+        "environment": ENVIRONMENT,
+        "is_development": ENVIRONMENT == "development",
+        "is_production": ENVIRONMENT == "production",
+        "app_version": "3.0.0",
+        "use_sample_data": env_config.get("use_sample_data", True),
+        "base_url": env_config.get(
+            "base_url",
+            f"https://{env_config.get('host', 'localhost')}:{env_config.get('port', 8888)}",
+        ),
     }
 
-logger.info(f"🚀 アプリケーション起動: 環境={ENVIRONMENT}, ポート={env_config.get('port', 8888)}")
+
+logger.info(
+    f"🚀 アプリケーション起動: 環境={ENVIRONMENT}, ポート={env_config.get('port', 8888)}"
+)
 
 # グローバルインスタンス
 
-db_client = SQLiteClient(str(env_config.get('database_path', 'db/knowledge.db')))
-feedback_client = FeedbackClient(str(env_config.get('database_path', 'db/knowledge.db')))
+db_client = SQLiteClient(str(env_config.get("database_path", "db/knowledge.db")))
+feedback_client = FeedbackClient(
+    str(env_config.get("database_path", "db/knowledge.db"))
+)
 workflow_engine = WorkflowEngine()
 itsm_classifier = ITSMClassifier()
 intelligent_search = IntelligentSearchAssistant()
@@ -320,9 +339,7 @@ def search_knowledge():
     faq_list = db_client.search_knowledge(itsm_type="Request", limit=50)
 
     return render_template(
-        "knowledge_list.html",
-        knowledge_list=knowledge_list,
-        faq_list=faq_list
+        "knowledge_list.html", knowledge_list=knowledge_list, faq_list=faq_list
     )
 
 
@@ -406,12 +423,12 @@ def api_health():
         "timestamp": datetime.now().isoformat(),
         "status": "healthy",
         "checks": {},
-        "environment": ENVIRONMENT
+        "environment": ENVIRONMENT,
     }
 
     # 1. データベース接続チェック
     try:
-        db_path = env_config.get('database_path', project_root / 'db' / 'knowledge.db')
+        db_path = env_config.get("database_path", project_root / "db" / "knowledge.db")
         conn = sqlite3.connect(str(db_path), timeout=5)
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM knowledge_entries")
@@ -419,38 +436,32 @@ def api_health():
         conn.close()
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "message": f"Connected, {count} entries"
+            "message": f"Connected, {count} entries",
         }
     except Exception as e:
-        health_status["checks"]["database"] = {
-            "status": "unhealthy",
-            "message": str(e)
-        }
+        health_status["checks"]["database"] = {"status": "unhealthy", "message": str(e)}
         health_status["status"] = "degraded"
 
     # 2. ディスク容量チェック
     try:
         disk = shutil.disk_usage("/")
         usage_percent = (disk.used / disk.total) * 100
-        free_gb = disk.free / (1024 ** 3)
+        free_gb = disk.free / (1024**3)
         health_status["checks"]["disk"] = {
             "status": "healthy" if usage_percent < 90 else "unhealthy",
             "usage_percent": round(usage_percent, 1),
-            "free_gb": round(free_gb, 1)
+            "free_gb": round(free_gb, 1),
         }
         if usage_percent >= 90:
             health_status["status"] = "degraded"
     except Exception as e:
-        health_status["checks"]["disk"] = {
-            "status": "unhealthy",
-            "message": str(e)
-        }
+        health_status["checks"]["disk"] = {"status": "unhealthy", "message": str(e)}
 
     # 3. ログディレクトリチェック
-    log_path = env_config.get('log_path', project_root / 'logs')
+    log_path = env_config.get("log_path", project_root / "logs")
     health_status["checks"]["logs"] = {
         "status": "healthy" if Path(log_path).exists() else "unhealthy",
-        "path": str(log_path)
+        "path": str(log_path),
     }
 
     # 4. 全体ステータス判定
@@ -459,8 +470,10 @@ def api_health():
             health_status["status"] = "critical"
             break
 
-    status_code = 200 if health_status["status"] == "healthy" else (
-        503 if health_status["status"] == "critical" else 200
+    status_code = (
+        200
+        if health_status["status"] == "healthy"
+        else (503 if health_status["status"] == "critical" else 200)
     )
 
     return jsonify(health_status), status_code
@@ -608,23 +621,23 @@ def api_delete_knowledge(knowledge_id):
     """ナレッジ削除API"""
     try:
         # ナレッジの存在確認
-        knowledge = sqlite_client.get_knowledge_by_id(knowledge_id)
+        knowledge = db_client.get_knowledge_by_id(knowledge_id)
         if not knowledge:
             return jsonify({"error": "ナレッジが見つかりません"}), 404
 
         # 削除実行（論理削除: statusを'deleted'に更新）
-        sqlite_client.execute_query(
+        db_client.execute_query(
             "UPDATE knowledge SET status = 'deleted', updated_at = ? WHERE id = ?",
-            (datetime.now().isoformat(), knowledge_id)
+            (datetime.now().isoformat(), knowledge_id),
         )
 
-        logger.info(f"ナレッジ削除: ID={knowledge_id}, タイトル={knowledge.get('title', 'Unknown')}")
+        logger.info(
+            f"ナレッジ削除: ID={knowledge_id}, タイトル={knowledge.get('title', 'Unknown')}"
+        )
 
-        return jsonify({
-            "success": True,
-            "message": "ナレッジを削除しました",
-            "id": knowledge_id
-        })
+        return jsonify(
+            {"success": True, "message": "ナレッジを削除しました", "id": knowledge_id}
+        )
 
     except Exception as e:
         logger.error(f"ナレッジ削除エラー: {e}")
@@ -694,14 +707,11 @@ def _run_async_orchestrator(orchestrator, question, context=None):
             # Flaskなど既存ループ内で実行中の場合
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(
-                    asyncio.run,
-                    orchestrator.process(question, context)
+                    asyncio.run, orchestrator.process(question, context)
                 )
                 return future.result(timeout=30)
         else:
-            return loop.run_until_complete(
-                orchestrator.process(question, context)
-            )
+            return loop.run_until_complete(orchestrator.process(question, context))
     except RuntimeError:
         # ループがない場合は新規作成
         return asyncio.run(orchestrator.process(question, context))
@@ -734,24 +744,26 @@ def chat_ai_answer():
             ai_result = _run_async_orchestrator(orchestrator, question)
 
             result = {
-                'success': True,
-                'answer': ai_result.answer,
-                'evidence': ai_result.evidence,
-                'sources': ai_result.sources,
-                'confidence': ai_result.confidence,
-                'ai_used': ai_result.ai_used,
-                'processing_time_ms': ai_result.processing_time_ms
+                "success": True,
+                "answer": ai_result.answer,
+                "evidence": ai_result.evidence,
+                "sources": ai_result.sources,
+                "confidence": ai_result.confidence,
+                "ai_used": ai_result.ai_used,
+                "processing_time_ms": ai_result.processing_time_ms,
             }
 
         return jsonify(result)
 
     except Exception as e:
         logger.error(f"AI回答生成エラー: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "answer": "回答を生成できませんでした。しばらくしてからお試しください。"
-        })
+        return jsonify(
+            {
+                "success": False,
+                "error": str(e),
+                "answer": "回答を生成できませんでした。しばらくしてからお試しください。",
+            }
+        )
 
 
 @app.route("/api/chat/feedback", methods=["POST"])
@@ -768,10 +780,7 @@ def chat_feedback():
 
     try:
         feedback_client.add_chat_feedback(
-            session_id=session_id,
-            message_id=message_id,
-            rating=rating,
-            user_id=user_id
+            session_id=session_id, message_id=message_id, rating=rating, user_id=user_id
         )
         return jsonify({"success": True})
     except Exception as exc:
@@ -796,23 +805,30 @@ def handle_ai_question(data):
         orchestrator = get_orchestrator()
         result = _run_async_orchestrator(orchestrator, question)
 
-        emit("ai_answer", {
-            'success': True,
-            'answer': result.answer,
-            'evidence': result.evidence,
-            'sources': result.sources,
-            'confidence': result.confidence,
-            'ai_used': result.ai_used,
-            'processing_time_ms': result.processing_time_ms
-        }, to=session_id if session_id else request.sid)
+        emit(
+            "ai_answer",
+            {
+                "success": True,
+                "answer": result.answer,
+                "evidence": result.evidence,
+                "sources": result.sources,
+                "confidence": result.confidence,
+                "ai_used": result.ai_used,
+                "processing_time_ms": result.processing_time_ms,
+            },
+            to=session_id if session_id else request.sid,
+        )
 
     except Exception as e:
         logger.error(f"AI質問処理エラー: {e}")
-        emit("ai_error", {
-            "success": False,
-            "error": str(e),
-            "message": "AI回答の生成中にエラーが発生しました。"
-        })
+        emit(
+            "ai_error",
+            {
+                "success": False,
+                "error": str(e),
+                "message": "AI回答の生成中にエラーが発生しました。",
+            },
+        )
 
 
 @socketio.on("join_chat")
@@ -949,60 +965,73 @@ def api_serverfault_questions():
     sort = request.args.get("sort", default="activity")
     order = request.args.get("order", default="desc")
     tagged = request.args.get("tag")
-    translate = request.args.get("translate", default="true").lower() in ("true", "1", "yes", "on")
+    translate = request.args.get("translate", default="true").lower() in (
+        "true",
+        "1",
+        "yes",
+        "on",
+    )
 
-    api_base = env_config.get('serverfault_api_base', 'https://api.stackexchange.com/2.3')
-    api_base = api_base.rstrip('/')
+    api_base = env_config.get(
+        "serverfault_api_base", "https://api.stackexchange.com/2.3"
+    )
+    api_base = api_base.rstrip("/")
 
     try:
-        items, payload = _fetch_serverfault_questions(page, pagesize, sort, order, tagged, api_base)
+        items, payload = _fetch_serverfault_questions(
+            page, pagesize, sort, order, tagged, api_base
+        )
     except Exception as exc:
         logger.error(f"Server Fault取得エラー: {exc}")
         return jsonify({"success": False, "error": "質問の取得に失敗しました"}), 502
 
     translated = False
     if translate:
-        api_key = env_config.get('deepl_api_key', '')
-        target_lang = env_config.get('deepl_target_lang', 'JA')
-        api_url = env_config.get('deepl_api_url', 'https://api.deepl.com/v2/translate')
+        api_key = env_config.get("deepl_api_key", "")
+        target_lang = env_config.get("deepl_target_lang", "JA")
+        api_url = env_config.get("deepl_api_url", "https://api.deepl.com/v2/translate")
 
         jobs = []
         for idx, item in enumerate(items):
-            item['title_original'] = item.get('title', '')
-            item['excerpt_original'] = item.get('excerpt', '')
-            item['tags_original'] = item.get('tags', [])
-            jobs.append(('title', idx, None, item['title_original']))
-            jobs.append(('excerpt', idx, None, item['excerpt_original']))
-            for tag_index, tag in enumerate(item['tags_original']):
-                jobs.append(('tag', idx, tag_index, tag))
+            item["title_original"] = item.get("title", "")
+            item["excerpt_original"] = item.get("excerpt", "")
+            item["tags_original"] = item.get("tags", [])
+            jobs.append(("title", idx, None, item["title_original"]))
+            jobs.append(("excerpt", idx, None, item["excerpt_original"]))
+            for tag_index, tag in enumerate(item["tags_original"]):
+                jobs.append(("tag", idx, tag_index, tag))
 
         texts = [job[3] for job in jobs]
-        translated_texts, translated = _translate_texts(texts, api_key, target_lang, api_url)
+        translated_texts, translated = _translate_texts(
+            texts, api_key, target_lang, api_url
+        )
 
         for job, translated_text in zip(jobs, translated_texts):
             kind, item_index, tag_index, _ = job
-            if kind == 'title':
-                items[item_index]['title'] = translated_text
-            elif kind == 'excerpt':
-                items[item_index]['excerpt'] = translated_text
-            elif kind == 'tag':
-                tags = items[item_index].get('tags', [])
+            if kind == "title":
+                items[item_index]["title"] = translated_text
+            elif kind == "excerpt":
+                items[item_index]["excerpt"] = translated_text
+            elif kind == "tag":
+                tags = items[item_index].get("tags", [])
                 while len(tags) <= tag_index:
-                    tags.append('')
+                    tags.append("")
                 tags[tag_index] = translated_text
-                items[item_index]['tags'] = tags
+                items[item_index]["tags"] = tags
 
         for item in items:
-            if 'tags' not in item:
-                item['tags'] = item.get('tags_original', [])
+            if "tags" not in item:
+                item["tags"] = item.get("tags_original", [])
 
-    response = jsonify({
-        "success": True,
-        "items": items,
-        "has_more": payload.get("has_more", False),
-        "quota_remaining": payload.get("quota_remaining"),
-        "translated": translated
-    })
+    response = jsonify(
+        {
+            "success": True,
+            "items": items,
+            "has_more": payload.get("has_more", False),
+            "quota_remaining": payload.get("quota_remaining"),
+            "translated": translated,
+        }
+    )
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
@@ -1018,10 +1047,17 @@ def api_serverfault_answers():
 
     sort = request.args.get("sort", default="votes")
     order = request.args.get("order", default="desc")
-    translate = request.args.get("translate", default="true").lower() in ("true", "1", "yes", "on")
+    translate = request.args.get("translate", default="true").lower() in (
+        "true",
+        "1",
+        "yes",
+        "on",
+    )
 
-    api_base = env_config.get('serverfault_api_base', 'https://api.stackexchange.com/2.3')
-    api_base = api_base.rstrip('/')
+    api_base = env_config.get(
+        "serverfault_api_base", "https://api.stackexchange.com/2.3"
+    )
+    api_base = api_base.rstrip("/")
 
     try:
         items, payload = _fetch_serverfault_answers(question_id, sort, order, api_base)
@@ -1031,34 +1067,38 @@ def api_serverfault_answers():
 
     translated = False
     if translate:
-        api_key = env_config.get('deepl_api_key', '')
-        target_lang = env_config.get('deepl_target_lang', 'JA')
-        api_url = env_config.get('deepl_api_url', 'https://api.deepl.com/v2/translate')
+        api_key = env_config.get("deepl_api_key", "")
+        target_lang = env_config.get("deepl_target_lang", "JA")
+        api_url = env_config.get("deepl_api_url", "https://api.deepl.com/v2/translate")
 
         jobs = []
         for idx, item in enumerate(items):
-            item['body_original'] = item.get('body', '')
-            item['excerpt_original'] = item.get('excerpt', '')
-            jobs.append(('body', idx, item['body_original']))
-            jobs.append(('excerpt', idx, item['excerpt_original']))
+            item["body_original"] = item.get("body", "")
+            item["excerpt_original"] = item.get("excerpt", "")
+            jobs.append(("body", idx, item["body_original"]))
+            jobs.append(("excerpt", idx, item["excerpt_original"]))
 
         texts = [job[2] for job in jobs]
-        translated_texts, translated = _translate_texts(texts, api_key, target_lang, api_url)
+        translated_texts, translated = _translate_texts(
+            texts, api_key, target_lang, api_url
+        )
 
         for job, translated_text in zip(jobs, translated_texts):
             kind, item_index, _ = job
-            if kind == 'body':
-                items[item_index]['body'] = translated_text
-            elif kind == 'excerpt':
-                items[item_index]['excerpt'] = translated_text
+            if kind == "body":
+                items[item_index]["body"] = translated_text
+            elif kind == "excerpt":
+                items[item_index]["excerpt"] = translated_text
 
-    response = jsonify({
-        "success": True,
-        "items": items,
-        "has_more": payload.get("has_more", False),
-        "quota_remaining": payload.get("quota_remaining"),
-        "translated": translated
-    })
+    response = jsonify(
+        {
+            "success": True,
+            "items": items,
+            "has_more": payload.get("has_more", False),
+            "quota_remaining": payload.get("quota_remaining"),
+            "translated": translated,
+        }
+    )
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
@@ -1114,9 +1154,15 @@ def api_settings_authenticate():
 
         return jsonify({"success": True, "token": token, "username": username})
     else:
-        return jsonify(
-            {"success": False, "error": "ユーザー名またはパスワードが正しくありません"}
-        ), 401
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "ユーザー名またはパスワードが正しくありません",
+                }
+            ),
+            401,
+        )
 
 
 @app.route("/api/settings/save", methods=["POST"])
@@ -1152,15 +1198,15 @@ if __name__ == "__main__":
     import socket
 
     # 環境設定から取得
-    HOST = env_config.get('host', '0.0.0.0')
-    PORT = env_config.get('port', 8888)
-    DEBUG = env_config.get('flask_debug', True)
-    SSL_ENABLED = env_config.get('ssl_enabled', False)
-    SSL_CERT = env_config.get('ssl_cert', '')
-    SSL_KEY = env_config.get('ssl_key', '')
+    HOST = env_config.get("host", "0.0.0.0")
+    PORT = env_config.get("port", 8888)
+    DEBUG = env_config.get("flask_debug", True)
+    SSL_ENABLED = env_config.get("ssl_enabled", False)
+    SSL_CERT = env_config.get("ssl_cert", "")
+    SSL_KEY = env_config.get("ssl_key", "")
 
     # 環境バッジ
-    env_badge = "🔧 開発" if ENVIRONMENT == 'development' else "🚀 本番"
+    env_badge = "🔧 開発" if ENVIRONMENT == "development" else "🚀 本番"
     protocol = "https" if SSL_ENABLED else "http"
 
     print("")
@@ -1177,7 +1223,7 @@ if __name__ == "__main__":
     print(f"   {protocol}://localhost:{PORT}")
     print("")
 
-    if ENVIRONMENT == 'development':
+    if ENVIRONMENT == "development":
         print("   📝 開発環境: サンプルデータが有効です")
     else:
         print("   ⚠️  本番環境: サンプルデータは無効です")
@@ -1200,9 +1246,9 @@ if __name__ == "__main__":
     # Flask-SocketIO起動
     socketio.run(
         app,
-        host='0.0.0.0',
+        host="0.0.0.0",
         port=PORT,
         debug=DEBUG,
         ssl_context=ssl_context,
-        allow_unsafe_werkzeug=True
+        allow_unsafe_werkzeug=True,
     )
