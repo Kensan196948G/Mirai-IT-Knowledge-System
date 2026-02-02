@@ -33,7 +33,7 @@ def sample_knowledge_data():
         """.strip(),
         "itsm_type": "Incident",
         "tags": ["Webサーバー", "障害対応", "運用手順"],
-        "created_by": "test_user"
+        "created_by": "test_user",
     }
 
 
@@ -44,9 +44,7 @@ def sample_subagent_results():
         "architect": {
             "status": "success",
             "message": "設計整合性チェック完了",
-            "data": {
-                "consistency_score": 0.9
-            }
+            "data": {"consistency_score": 0.9},
         },
         "knowledge_curator": {
             "status": "success",
@@ -54,11 +52,8 @@ def sample_subagent_results():
             "data": {
                 "tags": ["Webサーバー", "障害対応"],
                 "keywords": ["障害", "対応", "手順"],
-                "importance": {
-                    "score": 0.8,
-                    "level": "high"
-                }
-            }
+                "importance": {"score": 0.8, "level": "high"},
+            },
         },
         "itsm_expert": {
             "status": "success",
@@ -66,21 +61,16 @@ def sample_subagent_results():
             "data": {
                 "deviations": [],
                 "compliance_score": 0.95,
-                "recommendations": [
-                    "影響範囲の記載を追加することを推奨します"
-                ]
-            }
+                "recommendations": ["影響範囲の記載を追加することを推奨します"],
+            },
         },
         "qa": {
             "status": "success",
             "message": "品質チェック完了",
             "data": {
-                "duplicates": {
-                    "similar_knowledge": [],
-                    "high_similarity_count": 0
-                },
-                "quality_score": 0.85
-            }
+                "duplicates": {"similar_knowledge": [], "high_similarity_count": 0},
+                "quality_score": 0.85,
+            },
         },
         "documenter": {
             "status": "success",
@@ -91,12 +81,12 @@ def sample_subagent_results():
                 "summary_3lines": [
                     "Webサーバー障害発生時の対応手順",
                     "状態確認、ログ確認、再起動の流れ",
-                    "緊急時は管理者へエスカレーション"
+                    "緊急時は管理者へエスカレーション",
                 ],
                 "markdown": "# Webサーバー障害対応手順\n...",
-                "html": "<h1>Webサーバー障害対応手順</h1>..."
-            }
-        }
+                "html": "<h1>Webサーバー障害対応手順</h1>...",
+            },
+        },
     }
 
 
@@ -108,18 +98,18 @@ def sample_hook_results():
             "hook_name": "duplicate_check",
             "result": "pass",
             "message": "重複するナレッジは検出されませんでした",
-            "details": {"threshold": 0.85}
+            "details": {"threshold": 0.85},
         },
         {
             "hook_name": "deviation_check",
             "result": "pass",
             "message": "ITSM原則に準拠しています",
-            "details": {"compliance_score": 0.95}
+            "details": {"compliance_score": 0.95},
         },
         {
             "hook_name": "auto_summary",
             "result": "pass",
             "message": "3行要約が正常に生成されました",
-            "details": {"line_count": 3}
-        }
+            "details": {"line_count": 3},
+        },
     ]

@@ -4,12 +4,13 @@ Hook Base Class
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
 from enum import Enum
+from typing import Any, Dict, Optional
 
 
 class HookResult(Enum):
     """フック実行結果"""
+
     PASS = "pass"
     WARNING = "warning"
     ERROR = "error"
@@ -23,7 +24,7 @@ class HookResponse:
         result: HookResult,
         message: str,
         details: Optional[Dict[str, Any]] = None,
-        block_execution: bool = False
+        block_execution: bool = False,
     ):
         """
         Args:
@@ -40,10 +41,10 @@ class HookResponse:
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'result': self.result.value,
-            'message': self.message,
-            'details': self.details,
-            'block_execution': self.block_execution
+            "result": self.result.value,
+            "message": self.message,
+            "details": self.details,
+            "block_execution": self.block_execution,
         }
 
     def __repr__(self) -> str:

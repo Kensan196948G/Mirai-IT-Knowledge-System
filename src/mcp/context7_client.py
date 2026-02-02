@@ -3,7 +3,7 @@ Context7 MCP Client
 技術ドキュメント参照クライアント
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Context7Client:
@@ -21,10 +21,7 @@ class Context7Client:
         self._cached_docs = {}  # ドキュメントキャッシュ
 
     def query_documentation(
-        self,
-        library_name: str,
-        query: str,
-        max_results: int = 5
+        self, library_name: str, query: str, max_results: int = 5
     ) -> List[Dict[str, Any]]:
         """
         技術ドキュメントを検索
@@ -83,41 +80,39 @@ class Context7Client:
                 {
                     "title": "Flask Routing",
                     "url": "https://flask.palletsprojects.com/routing/",
-                    "snippet": "Use the route() decorator to bind a function to a URL..."
+                    "snippet": "Use the route() decorator to bind a function to a URL...",
                 },
                 {
                     "title": "URL Building",
                     "url": "https://flask.palletsprojects.com/quickstart/#url-building",
-                    "snippet": "url_for() generates URLs to functions based on the function name..."
-                }
+                    "snippet": "url_for() generates URLs to functions based on the function name...",
+                },
             ],
             "sqlite": [
                 {
                     "title": "SQLite FTS5",
                     "url": "https://www.sqlite.org/fts5.html",
-                    "snippet": "FTS5 is an SQLite virtual table module for full-text search..."
+                    "snippet": "FTS5 is an SQLite virtual table module for full-text search...",
                 },
                 {
                     "title": "SQLite Index",
                     "url": "https://www.sqlite.org/lang_createindex.html",
-                    "snippet": "CREATE INDEX creates a new index on a table..."
-                }
+                    "snippet": "CREATE INDEX creates a new index on a table...",
+                },
             ],
             "python": [
                 {
                     "title": "Python Error Handling",
                     "url": "https://docs.python.org/3/tutorial/errors.html",
-                    "snippet": "Handle exceptions with try-except blocks..."
+                    "snippet": "Handle exceptions with try-except blocks...",
                 }
-            ]
+            ],
         }
 
         return demo_data.get(library_name, [])
 
     def enrich_knowledge_with_docs(
-        self,
-        knowledge_content: str,
-        detected_technologies: List[str]
+        self, knowledge_content: str, detected_technologies: List[str]
     ) -> Dict[str, Any]:
         """
         ナレッジ内容を技術ドキュメントで補強
@@ -138,10 +133,7 @@ class Context7Client:
             if keywords:
                 # 各キーワードでドキュメント検索
                 docs = self.query_documentation(tech, " ".join(keywords))
-                enrichments[tech] = {
-                    "keywords": keywords,
-                    "documentation": docs
-                }
+                enrichments[tech] = {"keywords": keywords, "documentation": docs}
 
         return enrichments
 
@@ -150,9 +142,16 @@ class Context7Client:
         content_lower = content.lower()
 
         tech_keywords = {
-            "flask": ["route", "request", "response", "session", "template", "blueprint"],
+            "flask": [
+                "route",
+                "request",
+                "response",
+                "session",
+                "template",
+                "blueprint",
+            ],
             "sqlite": ["query", "index", "fts", "transaction", "trigger", "view"],
-            "python": ["exception", "class", "function", "module", "package"]
+            "python": ["exception", "class", "function", "module", "package"],
         }
 
         keywords = []

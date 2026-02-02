@@ -7,12 +7,12 @@ SubAgentとHookの実行エンジン
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional, Any, Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Dict, List, Optional
 
-from .loader import AgentLoader, HookLoader, SubAgentConfig, HookConfig
+from .loader import AgentLoader, HookConfig, HookLoader, SubAgentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionResult:
     """実行結果データクラス"""
+
     success: bool
     agent_name: str
     output: Any
@@ -44,10 +45,14 @@ class SubAgentExecutor:
     def _get_max_workers(self) -> int:
         """並列実行の最大ワーカー数を取得"""
         config = self.loader.get_execution_config()
-        return config.get('max_concurrent', 3)
+        return config.get("max_concurrent", 3)
 
-    def execute(self, agent_id: str, input_data: Dict[str, Any],
-                callback: Optional[Callable[[ExecutionResult], None]] = None) -> ExecutionResult:
+    def execute(
+        self,
+        agent_id: str,
+        input_data: Dict[str, Any],
+        callback: Optional[Callable[[ExecutionResult], None]] = None,
+    ) -> ExecutionResult:
         """単一のSubAgentを実行"""
         agent = self.loader.get_agent(agent_id)
         if agent is None:
@@ -56,7 +61,7 @@ class SubAgentExecutor:
                 agent_name=agent_id,
                 output=None,
                 execution_time_ms=0,
-                error_message=f"Agent not found: {agent_id}"
+                error_message=f"Agent not found: {agent_id}",
             )
 
         start_time = time.time()
@@ -69,7 +74,7 @@ class SubAgentExecutor:
                 success=True,
                 agent_name=agent.name,
                 output=output,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
         except Exception as e:
@@ -79,7 +84,7 @@ class SubAgentExecutor:
                 agent_name=agent.name,
                 output=None,
                 execution_time_ms=execution_time_ms,
-                error_message=str(e)
+                error_message=str(e),
             )
             logger.error(f"SubAgent実行エラー [{agent.name}]: {e}")
 
@@ -90,7 +95,9 @@ class SubAgentExecutor:
 
         return result
 
-    def _execute_agent_logic(self, agent: SubAgentConfig, input_data: Dict[str, Any]) -> Any:
+    def _execute_agent_logic(
+        self, agent: SubAgentConfig, input_data: Dict[str, Any]
+    ) -> Any:
         """
         実際のAgent処理ロジック
         ここでClaude APIを呼び出す等の処理を行う
@@ -103,43 +110,42 @@ class SubAgentExecutor:
             "agent": agent.name,
             "capabilities": agent.capabilities,
             "input": input_data,
-            "status": "processed"
+            "status": "processed",
         }
 
-    async def execute_parallel(self, agent_ids: List[str],
-                               input_data: Dict[str, Any]) -> List[ExecutionResult]:
+    async def execute_parallel(
+        self, agent_ids: List[str], input_data: Dict[str, Any]
+    ) -> List[ExecutionResult]:
         """複数のSubAgentを並列実行"""
         config = self.loader.get_execution_config()
-        if not config.get('parallel_enabled', True):
+        if not config.get("parallel_enabled", True):
             # 並列実行が無効の場合は順次実行
             return [self.execute(aid, input_data) for aid in agent_ids]
 
         loop = asyncio.get_event_loop()
         futures = [
-            loop.run_in_executor(
-                self._executor,
-                self.execute,
-                agent_id,
-                input_data
-            )
+            loop.run_in_executor(self._executor, self.execute, agent_id, input_data)
             for agent_id in agent_ids
         ]
 
         results = await asyncio.gather(*futures)
         return list(results)
 
-    def execute_by_priority(self, input_data: Dict[str, Any],
-                            min_priority: str = "low") -> List[ExecutionResult]:
+    def execute_by_priority(
+        self, input_data: Dict[str, Any], min_priority: str = "low"
+    ) -> List[ExecutionResult]:
         """優先度順にSubAgentを実行"""
-        priority_order = ['critical', 'high', 'medium', 'low']
+        priority_order = ["critical", "high", "medium", "low"]
         min_idx = priority_order.index(min_priority)
 
         results = []
-        for priority in priority_order[:min_idx + 1]:
+        for priority in priority_order[: min_idx + 1]:
             agents = self.loader.get_agents_by_priority(priority)
             for agent in agents:
                 if agent.enabled:
-                    result = self.execute(agent.name.lower().replace(' ', '_'), input_data)
+                    result = self.execute(
+                        agent.name.lower().replace(" ", "_"), input_data
+                    )
                     results.append(result)
 
         return results
@@ -170,7 +176,7 @@ class HookExecutor:
                 agent_name=hook_id,
                 output=None,
                 execution_time_ms=0,
-                error_message=f"Hook not found: {hook_id}"
+                error_message=f"Hook not found: {hook_id}",
             )
 
         if not hook.enabled:
@@ -178,7 +184,7 @@ class HookExecutor:
                 success=True,
                 agent_name=hook.name,
                 output={"skipped": True, "reason": "Hook is disabled"},
-                execution_time_ms=0
+                execution_time_ms=0,
             )
 
         start_time = time.time()
@@ -188,13 +194,15 @@ class HookExecutor:
 
             # タイムアウトチェック
             if execution_time_ms > hook.timeout_seconds * 1000:
-                logger.warning(f"Hook [{hook.name}] タイムアウト超過: {execution_time_ms}ms")
+                logger.warning(
+                    f"Hook [{hook.name}] タイムアウト超過: {execution_time_ms}ms"
+                )
 
             result = ExecutionResult(
                 success=True,
                 agent_name=hook.name,
                 output=output,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
         except Exception as e:
@@ -204,7 +212,7 @@ class HookExecutor:
                 agent_name=hook.name,
                 output=None,
                 execution_time_ms=execution_time_ms,
-                error_message=str(e)
+                error_message=str(e),
             )
             logger.error(f"Hook実行エラー [{hook.name}]: {e}")
 
@@ -227,35 +235,38 @@ class HookExecutor:
             "hook": hook.name,
             "trigger": hook.trigger,
             "actions": action_results,
-            "context": context
+            "context": context,
         }
 
-    def _execute_action(self, action: str, hook: HookConfig, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_action(
+        self, action: str, hook: HookConfig, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """個別のアクションを実行"""
         # プレースホルダー実装
-        return {
-            "action": action,
-            "status": "executed",
-            "hook": hook.name
-        }
+        return {"action": action, "status": "executed", "hook": hook.name}
 
-    def trigger(self, trigger_name: str, context: Dict[str, Any]) -> List[ExecutionResult]:
+    def trigger(
+        self, trigger_name: str, context: Dict[str, Any]
+    ) -> List[ExecutionResult]:
         """特定のトリガーに関連する全Hookを実行"""
         hooks = self.loader.get_hooks_for_trigger(trigger_name)
 
         global_settings = self.loader.get_global_settings()
-        parallel = global_settings.get('parallel_execution', True)
+        parallel = global_settings.get("parallel_execution", True)
 
         if parallel and len(hooks) > 1:
             # 並列実行（簡易版）
             results = []
             for hook in hooks:
-                result = self.execute_hook(hook.name.lower().replace(' ', '_'), context)
+                result = self.execute_hook(hook.name.lower().replace(" ", "_"), context)
                 results.append(result)
             return results
         else:
             # 順次実行
-            return [self.execute_hook(h.name.lower().replace(' ', '_'), context) for h in hooks]
+            return [
+                self.execute_hook(h.name.lower().replace(" ", "_"), context)
+                for h in hooks
+            ]
 
     def get_execution_history(self) -> List[ExecutionResult]:
         """実行履歴を取得"""

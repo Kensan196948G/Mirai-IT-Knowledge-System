@@ -3,34 +3,34 @@ Core Workflow Engine
 中核ワークフローエンジン
 """
 
-import time
-from typing import Dict, Any, List, Optional
-from pathlib import Path
 import sys
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # モジュールパスを追加
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from src.hooks import (
+    AutoSummaryHook,
+    DeviationCheckHook,
+    DuplicateCheckHook,
+    HookResult,
+    PostTaskHook,
+    PreTaskHook,
+)
+from src.mcp.mcp_integration import mcp_integration
+from src.mcp.sqlite_client import SQLiteClient
 from src.subagents import (
     ArchitectSubAgent,
-    KnowledgeCuratorSubAgent,
-    ITSMExpertSubAgent,
-    DevOpsSubAgent,
-    QASubAgent,
-    DocumenterSubAgent,
     CoordinatorSubAgent,
+    DevOpsSubAgent,
+    DocumenterSubAgent,
+    ITSMExpertSubAgent,
+    KnowledgeCuratorSubAgent,
+    QASubAgent,
 )
-from src.hooks import (
-    PreTaskHook,
-    PostTaskHook,
-    DuplicateCheckHook,
-    DeviationCheckHook,
-    AutoSummaryHook,
-    HookResult,
-)
-from src.mcp.sqlite_client import SQLiteClient
-from src.mcp.mcp_integration import mcp_integration
 
 
 class WorkflowEngine:

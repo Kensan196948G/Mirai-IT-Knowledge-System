@@ -11,15 +11,16 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
-from src.hooks.base import HookResult, HookResponse, BaseHook
-from src.hooks.pre_task import PreTaskHook
-from src.hooks.post_task import PostTaskHook
-from src.hooks.duplicate_check import DuplicateCheckHook
-from src.hooks.deviation_check import DeviationCheckHook
-from src.hooks.auto_summary import AutoSummaryHook
 
+from src.hooks.auto_summary import AutoSummaryHook
+from src.hooks.base import BaseHook, HookResponse, HookResult
+from src.hooks.deviation_check import DeviationCheckHook
+from src.hooks.duplicate_check import DuplicateCheckHook
+from src.hooks.post_task import PostTaskHook
+from src.hooks.pre_task import PreTaskHook
 
 # ========== BaseHook テスト ==========
+
 
 class TestBaseHook:
     """BaseHookの基本機能テスト"""
@@ -36,7 +37,7 @@ class TestBaseHook:
             result=HookResult.PASS,
             message="Test message",
             details={"key": "value"},
-            block_execution=False
+            block_execution=False,
         )
         assert response.result == HookResult.PASS
         assert response.message == "Test message"
@@ -46,9 +47,7 @@ class TestBaseHook:
     def test_hook_response_to_dict(self):
         """HookResponseの辞書変換が正しいこと"""
         response = HookResponse(
-            result=HookResult.WARNING,
-            message="Warning message",
-            details={"count": 3}
+            result=HookResult.WARNING, message="Warning message", details={"count": 3}
         )
         result_dict = response.to_dict()
         assert result_dict["result"] == "warning"
@@ -64,6 +63,7 @@ class TestBaseHook:
 
 # ========== PreTaskHook テスト ==========
 
+
 class TestPreTaskHook:
     """PreTaskHookの詳細テスト"""
 
@@ -77,7 +77,7 @@ class TestPreTaskHook:
         context = {
             "title": "テストタイトル",
             "content": "これは20文字以上のテスト内容です。正常なデータです。",
-            "itsm_type": "Incident"
+            "itsm_type": "Incident",
         }
         result = hook.execute(context)
         assert result.result == HookResult.PASS
@@ -89,7 +89,7 @@ class TestPreTaskHook:
         context = {
             "title": "",
             "content": "これは20文字以上のテスト内容です。",
-            "itsm_type": "Incident"
+            "itsm_type": "Incident",
         }
         result = hook.execute(context)
         assert result.result == HookResult.ERROR
@@ -98,11 +98,7 @@ class TestPreTaskHook:
 
     def test_empty_content_returns_error(self, hook):
         """内容が空の場合ERRORが返り、実行がブロックされること"""
-        context = {
-            "title": "テストタイトル",
-            "content": "",
-            "itsm_type": "Incident"
-        }
+        context = {"title": "テストタイトル", "content": "", "itsm_type": "Incident"}
         result = hook.execute(context)
         assert result.result == HookResult.ERROR
         assert result.block_execution is True
@@ -113,7 +109,7 @@ class TestPreTaskHook:
         context = {
             "title": "短い",
             "content": "これは20文字以上のテスト内容です。",
-            "itsm_type": "Incident"
+            "itsm_type": "Incident",
         }
         result = hook.execute(context)
         assert result.result == HookResult.ERROR
@@ -125,7 +121,7 @@ class TestPreTaskHook:
         context = {
             "title": "テストタイトル",
             "content": "短い",
-            "itsm_type": "Incident"
+            "itsm_type": "Incident",
         }
         result = hook.execute(context)
         assert result.result == HookResult.ERROR
@@ -137,7 +133,7 @@ class TestPreTaskHook:
         context = {
             "title": "テストタイトル",
             "content": "これは20文字以上のテスト内容です。正常なデータです。",
-            "itsm_type": "InvalidType"
+            "itsm_type": "InvalidType",
         }
         result = hook.execute(context)
         assert result.result == HookResult.ERROR
@@ -149,7 +145,7 @@ class TestPreTaskHook:
         context = {
             "title": "テストタイトル",
             "content": "これは20文字以上のテスト内容です。正常なデータです。",
-            "itsm_type": "Incident"
+            "itsm_type": "Incident",
         }
         result = hook.execute(context)
         subagents = result.details["recommended_subagents"]
@@ -167,7 +163,7 @@ class TestPreTaskHook:
         context = {
             "title": "デプロイスクリプトの自動化",
             "content": "本番環境へのデプロイコマンドを自動化するスクリプトを作成しました。",
-            "itsm_type": "Change"
+            "itsm_type": "Change",
         }
         result = hook.execute(context)
         subagents = result.details["recommended_subagents"]
@@ -178,6 +174,7 @@ class TestPreTaskHook:
 
 
 # ========== PostTaskHook テスト ==========
+
 
 class TestPostTaskHook:
     """PostTaskHookの詳細テスト"""
@@ -192,23 +189,26 @@ class TestPostTaskHook:
         context = {
             "subagent_results": {
                 "architect": {"status": "success", "message": "OK"},
-                "qa": {"status": "success", "message": "OK"}
+                "qa": {"status": "success", "message": "OK"},
             },
-            "hook_results": []
+            "hook_results": [],
         }
         result = hook.execute(context)
         assert result.result == HookResult.PASS
         assert result.block_execution is False
-        assert result.details["overall_assessment"]["quality_level"] in ["excellent", "good"]
+        assert result.details["overall_assessment"]["quality_level"] in [
+            "excellent",
+            "good",
+        ]
 
     def test_warnings_present_returns_warning(self, hook):
         """警告がある場合WARNINGが返ること"""
         context = {
             "subagent_results": {
                 "architect": {"status": "success", "message": "OK"},
-                "qa": {"status": "warning", "message": "類似ナレッジあり"}
+                "qa": {"status": "warning", "message": "類似ナレッジあり"},
             },
-            "hook_results": []
+            "hook_results": [],
         }
         result = hook.execute(context)
         assert result.result == HookResult.WARNING
@@ -219,9 +219,9 @@ class TestPostTaskHook:
         context = {
             "subagent_results": {
                 "architect": {"status": "success", "message": "OK"},
-                "qa": {"status": "failed", "message": "重大なエラー"}
+                "qa": {"status": "failed", "message": "重大なエラー"},
             },
-            "hook_results": []
+            "hook_results": [],
         }
         result = hook.execute(context)
         assert result.result == HookResult.ERROR
@@ -233,9 +233,9 @@ class TestPostTaskHook:
             "subagent_results": {
                 "agent1": {"status": "success", "message": "OK"},
                 "agent2": {"status": "success", "message": "OK"},
-                "agent3": {"status": "failed", "message": "エラー"}
+                "agent3": {"status": "failed", "message": "エラー"},
             },
-            "hook_results": []
+            "hook_results": [],
         }
         result = hook.execute(context)
         assessment = result.details["overall_assessment"]
@@ -248,16 +248,14 @@ class TestPostTaskHook:
     def test_collect_issues_from_hooks(self, hook):
         """フックからの問題も集約されること"""
         context = {
-            "subagent_results": {
-                "architect": {"status": "success", "message": "OK"}
-            },
+            "subagent_results": {"architect": {"status": "success", "message": "OK"}},
             "hook_results": [
                 {
                     "hook_name": "duplicate_check",
                     "result": "warning",
-                    "message": "重複検出"
+                    "message": "重複検出",
                 }
-            ]
+            ],
         }
         result = hook.execute(context)
         issues = result.details["issues"]
@@ -268,6 +266,7 @@ class TestPostTaskHook:
 
 
 # ========== DuplicateCheckHook テスト ==========
+
 
 class TestDuplicateCheckHook:
     """DuplicateCheckHookの詳細テスト"""
@@ -281,10 +280,7 @@ class TestDuplicateCheckHook:
         """重複がない場合PASSが返ること"""
         context = {
             "qa_result": {
-                "duplicates": {
-                    "similar_knowledge": [],
-                    "high_similarity_count": 0
-                }
+                "duplicates": {"similar_knowledge": [], "high_similarity_count": 0}
             }
         }
         result = hook.execute(context)
@@ -300,10 +296,10 @@ class TestDuplicateCheckHook:
                         {
                             "knowledge_id": 1,
                             "overall_similarity": 0.9,
-                            "title": "類似ナレッジ"
+                            "title": "類似ナレッジ",
                         }
                     ],
-                    "high_similarity_count": 1
+                    "high_similarity_count": 1,
                 }
             }
         }
@@ -321,10 +317,10 @@ class TestDuplicateCheckHook:
                         {
                             "knowledge_id": 2,
                             "overall_similarity": 0.7,
-                            "title": "類似ナレッジ"
+                            "title": "類似ナレッジ",
                         }
                     ],
-                    "high_similarity_count": 0
+                    "high_similarity_count": 0,
                 }
             }
         }
@@ -345,6 +341,7 @@ class TestDuplicateCheckHook:
 
 # ========== DeviationCheckHook テスト ==========
 
+
 class TestDeviationCheckHook:
     """DeviationCheckHookの詳細テスト"""
 
@@ -355,12 +352,7 @@ class TestDeviationCheckHook:
 
     def test_no_deviations_returns_pass(self, hook):
         """逸脱がない場合PASSが返ること"""
-        context = {
-            "itsm_expert_result": {
-                "deviations": [],
-                "compliance_score": 0.95
-            }
-        }
+        context = {"itsm_expert_result": {"deviations": [], "compliance_score": 0.95}}
         result = hook.execute(context)
         assert result.result == HookResult.PASS
         assert "準拠しています" in result.message
@@ -373,10 +365,10 @@ class TestDeviationCheckHook:
                     {
                         "deviation_type": "missing_info",
                         "severity": "error",
-                        "description": "必須情報が不足"
+                        "description": "必須情報が不足",
                     }
                 ],
-                "compliance_score": 0.5
+                "compliance_score": 0.5,
             }
         }
         result = hook.execute(context)
@@ -392,10 +384,10 @@ class TestDeviationCheckHook:
                     {
                         "deviation_type": "recommendation",
                         "severity": "warning",
-                        "description": "推奨事項が不足"
+                        "description": "推奨事項が不足",
                     }
                 ],
-                "compliance_score": 0.8
+                "compliance_score": 0.8,
             }
         }
         result = hook.execute(context)
@@ -408,7 +400,7 @@ class TestDeviationCheckHook:
             "itsm_expert_result": {
                 "deviations": [],
                 "compliance_score": 0.6,
-                "principle_checks": []
+                "principle_checks": [],
             }
         }
         result = hook.execute(context)
@@ -417,6 +409,7 @@ class TestDeviationCheckHook:
 
 
 # ========== AutoSummaryHook テスト ==========
+
 
 class TestAutoSummaryHook:
     """AutoSummaryHookの詳細テスト"""
@@ -433,7 +426,7 @@ class TestAutoSummaryHook:
                 "summary_3lines": [
                     "要約の1行目です。",
                     "要約の2行目です。",
-                    "要約の3行目です。"
+                    "要約の3行目です。",
                 ]
             }
         }
@@ -444,11 +437,7 @@ class TestAutoSummaryHook:
 
     def test_missing_summary_returns_warning(self, hook):
         """要約が生成されていない場合WARNINGが返ること"""
-        context = {
-            "documenter_result": {
-                "summary_3lines": []
-            }
-        }
+        context = {"documenter_result": {"summary_3lines": []}}
         result = hook.execute(context)
         assert result.result == HookResult.WARNING
         assert "生成に失敗しました" in result.message
@@ -457,10 +446,7 @@ class TestAutoSummaryHook:
         """要約が不完全な場合WARNINGが返ること"""
         context = {
             "documenter_result": {
-                "summary_3lines": [
-                    "要約の1行目です。",
-                    "要約の2行目です。"
-                ]
+                "summary_3lines": ["要約の1行目です。", "要約の2行目です。"]
             }
         }
         result = hook.execute(context)
@@ -471,13 +457,7 @@ class TestAutoSummaryHook:
     def test_empty_lines_are_filtered(self, hook):
         """空行がフィルタされること"""
         context = {
-            "documenter_result": {
-                "summary_3lines": [
-                    "要約の1行目です。",
-                    "",
-                    "   "
-                ]
-            }
+            "documenter_result": {"summary_3lines": ["要約の1行目です。", "", "   "]}
         }
         result = hook.execute(context)
         assert result.result == HookResult.WARNING
@@ -485,6 +465,7 @@ class TestAutoSummaryHook:
 
 
 # ========== 全Hooksの共通動作テスト ==========
+
 
 class TestHooksCommonBehavior:
     """全Hooksの共通動作テスト"""
@@ -496,7 +477,7 @@ class TestHooksCommonBehavior:
             PostTaskHook(),
             DuplicateCheckHook(),
             DeviationCheckHook(),
-            AutoSummaryHook()
+            AutoSummaryHook(),
         ]
         for hook in hooks:
             assert hook.is_enabled() is True
@@ -508,7 +489,7 @@ class TestHooksCommonBehavior:
             PostTaskHook(),
             DuplicateCheckHook(),
             DeviationCheckHook(),
-            AutoSummaryHook()
+            AutoSummaryHook(),
         ]
         for hook in hooks:
             hook.set_enabled(False)
@@ -520,21 +501,23 @@ class TestHooksCommonBehavior:
             "pre_task": {
                 "title": "テストタイトル",
                 "content": "これは20文字以上のテスト内容です。",
-                "itsm_type": "Incident"
+                "itsm_type": "Incident",
             },
             "post_task": {
                 "subagent_results": {"agent1": {"status": "success", "message": "OK"}},
-                "hook_results": []
+                "hook_results": [],
             },
             "duplicate_check": {
-                "qa_result": {"duplicates": {"similar_knowledge": [], "high_similarity_count": 0}}
+                "qa_result": {
+                    "duplicates": {"similar_knowledge": [], "high_similarity_count": 0}
+                }
             },
             "deviation_check": {
                 "itsm_expert_result": {"deviations": [], "compliance_score": 0.9}
             },
             "auto_summary": {
                 "documenter_result": {"summary_3lines": ["Line1", "Line2", "Line3"]}
-            }
+            },
         }
 
         hooks = {
@@ -542,7 +525,7 @@ class TestHooksCommonBehavior:
             "post_task": PostTaskHook(),
             "duplicate_check": DuplicateCheckHook(),
             "deviation_check": DeviationCheckHook(),
-            "auto_summary": AutoSummaryHook()
+            "auto_summary": AutoSummaryHook(),
         }
 
         for hook_name, hook in hooks.items():

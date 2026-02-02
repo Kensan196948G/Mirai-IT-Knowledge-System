@@ -11,11 +11,14 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
+
 from src.core.itsm_classifier import ITSMClassifier
+
 # workflow と analytics は実際のDBが必要なため、モックを使用
 
 
 # ========== ITSMClassifier テスト ==========
+
 
 class TestITSMClassifier:
     """ITSM分類器の詳細テスト"""
@@ -31,7 +34,7 @@ class TestITSMClassifier:
         """明確なIncidentキーワードでIncidentと分類されること"""
         result = classifier.classify(
             title="Webサーバー障害",
-            content="本番環境のWebサーバーがダウンしました。エラーログにアラートが出ています。緊急対応が必要です。"
+            content="本番環境のWebサーバーがダウンしました。エラーログにアラートが出ています。緊急対応が必要です。",
         )
         assert result["itsm_type"] == "Incident"
         assert result["confidence"] >= 0.3  # 実際のスコアに合わせて調整
@@ -40,7 +43,7 @@ class TestITSMClassifier:
         """Incidentのスコア計算が正しいこと"""
         result = classifier.classify(
             title="障害対応",
-            content="インシデント発生。異常を検知したため、復旧作業を開始しました。"
+            content="インシデント発生。異常を検知したため、復旧作業を開始しました。",
         )
         assert result["scores"]["Incident"] > 0.0
         assert result["confidence"] > 0.0
@@ -51,7 +54,7 @@ class TestITSMClassifier:
         """根本原因分析キーワードでProblemと分類されること"""
         result = classifier.classify(
             title="再発防止のための根本原因分析",
-            content="同様のインシデントが再発しているため、根本原因を特定し恒久対策を立てる必要があります。"
+            content="同様のインシデントが再発しているため、根本原因を特定し恒久対策を立てる必要があります。",
         )
         assert result["itsm_type"] == "Problem"
         assert result["confidence"] >= 0.3  # 実際のスコアに合わせて調整
@@ -60,7 +63,7 @@ class TestITSMClassifier:
         """Problemキーワードが多い場合、IncidentよりProblemのスコアが高いこと"""
         result = classifier.classify(
             title="問題管理：根本原因の調査",
-            content="再発防止のため、真因分析を実施し恒久対策を検討します。"
+            content="再発防止のため、真因分析を実施し恒久対策を検討します。",
         )
         assert result["scores"]["Problem"] > result["scores"]["Incident"]
 
@@ -70,7 +73,7 @@ class TestITSMClassifier:
         """変更管理キーワードでChangeと分類されること"""
         result = classifier.classify(
             title="セキュリティパッチ適用",
-            content="本番環境にセキュリティパッチを適用する変更を計画しています。ロールバック計画も準備済みです。"
+            content="本番環境にセキュリティパッチを適用する変更を計画しています。ロールバック計画も準備済みです。",
         )
         assert result["itsm_type"] == "Change"
         assert result["confidence"] >= 0.3  # 実際のスコアに合わせて調整
@@ -81,7 +84,7 @@ class TestITSMClassifier:
         """リリースキーワードでReleaseと分類されること"""
         result = classifier.classify(
             title="新バージョンのリリース",
-            content="本番環境に新機能をデプロイします。リリースノートを作成し、ロールアウト計画を策定しました。"
+            content="本番環境に新機能をデプロイします。リリースノートを作成し、ロールアウト計画を策定しました。",
         )
         assert result["itsm_type"] == "Release"
         assert result["confidence"] >= 0.5
@@ -92,7 +95,7 @@ class TestITSMClassifier:
         """サービスリクエストキーワードでRequestと分類されること"""
         result = classifier.classify(
             title="アクセス権限の申請",
-            content="新規メンバーのアカウント作成を依頼します。承認後、権限を追加してください。"
+            content="新規メンバーのアカウント作成を依頼します。承認後、権限を追加してください。",
         )
         assert result["itsm_type"] == "Request"
         assert result["confidence"] >= 0.3  # 実際のスコアに合わせて調整
@@ -101,19 +104,13 @@ class TestITSMClassifier:
 
     def test_classify_other_when_confidence_low(self, classifier):
         """信頼度が低い場合Otherと分類されること"""
-        result = classifier.classify(
-            title="メモ",
-            content="ちょっとした作業記録です。"
-        )
+        result = classifier.classify(title="メモ", content="ちょっとした作業記録です。")
         assert result["itsm_type"] == "Other"
         assert result["confidence"] < 0.3
 
     def test_classify_returns_all_scores(self, classifier):
         """分類結果に全てのITSMタイプのスコアが含まれること"""
-        result = classifier.classify(
-            title="テスト",
-            content="これはテストです。"
-        )
+        result = classifier.classify(title="テスト", content="これはテストです。")
         assert "Incident" in result["scores"]
         assert "Problem" in result["scores"]
         assert "Change" in result["scores"]
@@ -127,7 +124,7 @@ class TestITSMClassifier:
         candidates = classifier.suggest_itsm_type(
             title="障害対応と根本原因分析",
             content="インシデントが発生したため対応し、再発防止のため根本原因を調査します。",
-            threshold=0.1  # 閾値を下げて複数の候補が返るようにする
+            threshold=0.1,  # 閾値を下げて複数の候補が返るようにする
         )
         assert len(candidates) >= 1
         assert candidates[0]["itsm_type"] in ["Incident", "Problem"]
@@ -137,7 +134,7 @@ class TestITSMClassifier:
         candidates = classifier.suggest_itsm_type(
             title="障害対応",
             content="インシデント発生。緊急対応が必要です。",
-            threshold=0.1
+            threshold=0.1,
         )
         # スコアが降順であることを確認
         for i in range(len(candidates) - 1):
@@ -149,7 +146,7 @@ class TestITSMClassifier:
         candidates = classifier.suggest_itsm_type(
             title="Webサーバー障害インシデント",
             content="本番環境で障害が発生しました。インシデントとして緊急対応が必要です。エラーログを確認し復旧作業を実施します。",
-            threshold=0.01
+            threshold=0.01,
         )
         if len(candidates) > 0:
             primary_count = sum(1 for c in candidates if c["is_primary"])
@@ -163,14 +160,10 @@ class TestITSMClassifier:
     def test_suggest_itsm_type_with_high_threshold(self, classifier):
         """高い閾値を設定すると候補が絞り込まれること"""
         candidates_low = classifier.suggest_itsm_type(
-            title="テスト",
-            content="これはテストです。",
-            threshold=0.1
+            title="テスト", content="これはテストです。", threshold=0.1
         )
         candidates_high = classifier.suggest_itsm_type(
-            title="テスト",
-            content="これはテストです。",
-            threshold=0.5
+            title="テスト", content="これはテストです。", threshold=0.5
         )
         assert len(candidates_high) <= len(candidates_low)
 
@@ -184,10 +177,12 @@ class TestITSMClassifier:
 
     def test_classify_very_long_text(self, classifier):
         """非常に長いテキストでも正しく分類されること"""
-        long_content = "障害が発生しました。インシデント対応が必要です。エラーが検知されました。" * 50
+        long_content = (
+            "障害が発生しました。インシデント対応が必要です。エラーが検知されました。"
+            * 50
+        )
         result = classifier.classify(
-            title="システム障害の長文テスト",
-            content=long_content
+            title="システム障害の長文テスト", content=long_content
         )
         assert result["itsm_type"] == "Incident"
         assert result["confidence"] > 0.0
@@ -196,7 +191,7 @@ class TestITSMClassifier:
         """日英混在テキストでも分類されること"""
         result = classifier.classify(
             title="Incident Report: サーバー障害",
-            content="The server is down. 緊急対応が必要です。Error detected in production."
+            content="The server is down. 緊急対応が必要です。Error detected in production.",
         )
         assert result["itsm_type"] == "Incident"
 
@@ -222,7 +217,7 @@ class TestITSMClassifier:
             "primary_keywords": ["test", "sample"],
             "secondary_keywords": ["data", "example"],
             "weight_primary": 0.6,
-            "weight_secondary": 0.4
+            "weight_secondary": 0.4,
         }
         text = "this is a test sample with data and example"
         score = classifier._calculate_score(text, rules)
@@ -232,17 +227,16 @@ class TestITSMClassifier:
     def test_case_insensitive_classification(self, classifier):
         """大文字小文字を区別せずに分類されること"""
         result1 = classifier.classify(
-            title="INCIDENT",
-            content="ERROR OCCURRED IN PRODUCTION"
+            title="INCIDENT", content="ERROR OCCURRED IN PRODUCTION"
         )
         result2 = classifier.classify(
-            title="incident",
-            content="error occurred in production"
+            title="incident", content="error occurred in production"
         )
         assert result1["itsm_type"] == result2["itsm_type"]
 
 
 # ========== Workflow テスト（モック使用） ==========
+
 
 class TestWorkflowEngine:
     """ワークフローエンジンの基本動作テスト"""
@@ -251,6 +245,7 @@ class TestWorkflowEngine:
         """WorkflowEngineがインポートできること"""
         try:
             from src.core.workflow import WorkflowEngine
+
             assert WorkflowEngine is not None
         except ImportError:
             pytest.fail("WorkflowEngine could not be imported")
@@ -268,6 +263,7 @@ class TestWorkflowEngine:
 
 # ========== Analytics テスト（モック使用） ==========
 
+
 class TestAnalyticsEngine:
     """分析エンジンの基本動作テスト"""
 
@@ -275,6 +271,7 @@ class TestAnalyticsEngine:
         """AnalyticsEngineがインポートできること"""
         try:
             from src.core.analytics import AnalyticsEngine
+
             assert AnalyticsEngine is not None
         except ImportError:
             pytest.fail("AnalyticsEngine could not be imported")
@@ -295,6 +292,7 @@ class TestAnalyticsEngine:
 
 # ========== エンドツーエンドの統合テスト（簡易版） ==========
 
+
 class TestCoreIntegration:
     """Coreモジュール間の統合テスト"""
 
@@ -302,8 +300,7 @@ class TestCoreIntegration:
         """分類器の結果がワークフローのコンテキストで使用できること"""
         classifier = ITSMClassifier()
         result = classifier.classify(
-            title="障害報告",
-            content="システム障害が発生しました。"
+            title="障害報告", content="システム障害が発生しました。"
         )
 
         # ワークフローのコンテキストとして使用可能な形式か確認
@@ -315,9 +312,9 @@ class TestCoreIntegration:
     def test_all_core_modules_can_coexist(self):
         """全てのCoreモジュールが同時にインポートできること"""
         try:
+            from src.core.analytics import AnalyticsEngine
             from src.core.itsm_classifier import ITSMClassifier
             from src.core.workflow import WorkflowEngine
-            from src.core.analytics import AnalyticsEngine
 
             # インスタンス化可能か確認（DB依存のものは除く）
             classifier = ITSMClassifier()

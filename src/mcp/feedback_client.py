@@ -3,8 +3,9 @@ Feedback Client for User Feedback Collection
 ユーザーフィードバック収集クライアント
 """
 
-from typing import Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from .sqlite_client import SQLiteClient
 
 
@@ -19,7 +20,7 @@ class FeedbackClient(SQLiteClient):
         """フィードバックスキーマの適用"""
         schema_path = Path("db/feedback_schema.sql")
         if schema_path.exists():
-            with open(schema_path, 'r', encoding='utf-8') as f:
+            with open(schema_path, "r", encoding="utf-8") as f:
                 schema = f.read()
             with self.get_connection() as conn:
                 conn.executescript(schema)
@@ -46,7 +47,7 @@ class FeedbackClient(SQLiteClient):
         user_id: Optional[str] = None,
         rating: Optional[int] = None,
         feedback_type: Optional[str] = None,
-        comment: Optional[str] = None
+        comment: Optional[str] = None,
     ) -> int:
         """
         ナレッジへのフィードバックを追加
@@ -63,10 +64,13 @@ class FeedbackClient(SQLiteClient):
         """
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO knowledge_feedback (knowledge_id, user_id, rating, feedback_type, comment)
                 VALUES (?, ?, ?, ?, ?)
-            """, (knowledge_id, user_id, rating, feedback_type, comment))
+            """,
+                (knowledge_id, user_id, rating, feedback_type, comment),
+            )
             conn.commit()
             return cursor.lastrowid
 
@@ -74,21 +78,27 @@ class FeedbackClient(SQLiteClient):
         """特定ナレッジのフィードバックを取得"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM knowledge_feedback
                 WHERE knowledge_id = ?
                 ORDER BY created_at DESC
-            """, (knowledge_id,))
+            """,
+                (knowledge_id,),
+            )
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     def get_knowledge_rating(self, knowledge_id: int) -> Optional[Dict[str, Any]]:
         """ナレッジの評価サマリーを取得"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM knowledge_ratings
                 WHERE knowledge_id = ?
-            """, (knowledge_id,))
+            """,
+                (knowledge_id,),
+            )
             row = cursor.fetchone()
             return self._row_to_dict(row) if row else None
 
@@ -97,14 +107,17 @@ class FeedbackClient(SQLiteClient):
         knowledge_table = self._get_knowledge_table()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 SELECT k.*, r.avg_rating, r.feedback_count
                 FROM {knowledge_table} k
                 JOIN knowledge_ratings r ON k.id = r.knowledge_id
                 WHERE r.feedback_count >= 3
                 ORDER BY r.avg_rating DESC, r.feedback_count DESC
                 LIMIT ?
-            """, (limit,))
+            """,
+                (limit,),
+            )
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     # ========== システムフィードバック ==========
@@ -115,7 +128,7 @@ class FeedbackClient(SQLiteClient):
         description: str,
         feedback_category: str,
         user_id: Optional[str] = None,
-        priority: str = 'medium'
+        priority: str = "medium",
     ) -> int:
         """
         システムフィードバックを追加
@@ -132,10 +145,13 @@ class FeedbackClient(SQLiteClient):
         """
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO system_feedback (user_id, feedback_category, title, description, priority)
                 VALUES (?, ?, ?, ?, ?)
-            """, (user_id, feedback_category, title, description, priority))
+            """,
+                (user_id, feedback_category, title, description, priority),
+            )
             conn.commit()
             return cursor.lastrowid
 
@@ -143,7 +159,7 @@ class FeedbackClient(SQLiteClient):
         self,
         status: Optional[str] = None,
         category: Optional[str] = None,
-        limit: int = 50
+        limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """システムフィードバックを取得"""
         with self.get_connection() as conn:
@@ -167,32 +183,32 @@ class FeedbackClient(SQLiteClient):
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     def update_system_feedback_status(
-        self,
-        feedback_id: int,
-        status: str,
-        assigned_to: Optional[str] = None
+        self, feedback_id: int, status: str, assigned_to: Optional[str] = None
     ) -> bool:
         """システムフィードバックのステータスを更新"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            updates = ['status = ?']
+            updates = ["status = ?"]
             params = [status]
 
             if assigned_to:
-                updates.append('assigned_to = ?')
+                updates.append("assigned_to = ?")
                 params.append(assigned_to)
 
-            if status == 'completed':
-                updates.append('resolved_at = CURRENT_TIMESTAMP')
+            if status == "completed":
+                updates.append("resolved_at = CURRENT_TIMESTAMP")
 
             params.append(feedback_id)
 
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 UPDATE system_feedback
                 SET {', '.join(updates)}
                 WHERE id = ?
-            """, params)
+            """,
+                params,
+            )
             conn.commit()
             return cursor.rowcount > 0
 
@@ -203,15 +219,18 @@ class FeedbackClient(SQLiteClient):
         knowledge_id: int,
         action_type: str,
         user_id: Optional[str] = None,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
     ) -> int:
         """ナレッジ使用を記録"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO knowledge_usage_stats (knowledge_id, user_id, action_type, session_id)
                 VALUES (?, ?, ?, ?)
-            """, (knowledge_id, user_id, action_type, session_id))
+            """,
+                (knowledge_id, user_id, action_type, session_id),
+            )
             conn.commit()
             return cursor.lastrowid
 
@@ -221,24 +240,33 @@ class FeedbackClient(SQLiteClient):
             cursor = conn.cursor()
 
             # 総閲覧数
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) as view_count
                 FROM knowledge_usage_stats
                 WHERE knowledge_id = ? AND action_type = 'view'
-            """, (knowledge_id,))
-            view_count = cursor.fetchone()['view_count']
+            """,
+                (knowledge_id,),
+            )
+            view_count = cursor.fetchone()["view_count"]
 
             # アクション別統計
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT action_type, COUNT(*) as count
                 FROM knowledge_usage_stats
                 WHERE knowledge_id = ?
                 GROUP BY action_type
-            """, (knowledge_id,))
-            action_stats = {row['action_type']: row['count'] for row in cursor.fetchall()}
+            """,
+                (knowledge_id,),
+            )
+            action_stats = {
+                row["action_type"]: row["count"] for row in cursor.fetchall()
+            }
 
             # 最近30日の閲覧トレンド
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DATE(created_at) as date, COUNT(*) as count
                 FROM knowledge_usage_stats
                 WHERE knowledge_id = ?
@@ -246,21 +274,26 @@ class FeedbackClient(SQLiteClient):
                   AND created_at > datetime('now', '-30 days')
                 GROUP BY DATE(created_at)
                 ORDER BY date DESC
-            """, (knowledge_id,))
+            """,
+                (knowledge_id,),
+            )
             trend = [dict(row) for row in cursor.fetchall()]
 
             return {
-                'view_count': view_count,
-                'action_stats': action_stats,
-                'trend_30days': trend
+                "view_count": view_count,
+                "action_stats": action_stats,
+                "trend_30days": trend,
             }
 
-    def get_popular_knowledge(self, limit: int = 10, days: int = 30) -> List[Dict[str, Any]]:
+    def get_popular_knowledge(
+        self, limit: int = 10, days: int = 30
+    ) -> List[Dict[str, Any]]:
         """人気のナレッジを取得"""
         knowledge_table = self._get_knowledge_table()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 SELECT k.*, COUNT(u.id) as view_count
                 FROM {knowledge_table} k
                 JOIN knowledge_usage_stats u ON k.id = u.knowledge_id
@@ -269,7 +302,9 @@ class FeedbackClient(SQLiteClient):
                 GROUP BY k.id
                 ORDER BY view_count DESC
                 LIMIT ?
-            """, (days, limit))
+            """,
+                (days, limit),
+            )
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     # ========== 分析・レポート ==========
@@ -307,10 +342,12 @@ class FeedbackClient(SQLiteClient):
                 GROUP BY feedback_category
                 ORDER BY count DESC
             """)
-            feedback_by_category = {row['feedback_category']: row['count'] for row in cursor.fetchall()}
+            feedback_by_category = {
+                row["feedback_category"]: row["count"] for row in cursor.fetchall()
+            }
 
             return {
-                'knowledge_feedback': knowledge_feedback,
-                'system_feedback': system_feedback,
-                'feedback_by_category': feedback_by_category
+                "knowledge_feedback": knowledge_feedback,
+                "system_feedback": system_feedback,
+                "feedback_by_category": feedback_by_category,
             }
