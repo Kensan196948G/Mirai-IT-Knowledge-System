@@ -63,6 +63,190 @@ class FixResult:
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
+class StateManager:
+    """
+    Run間状態管理マネージャー
+
+    GitHub Actions（制御レイヤ）との連携用に state.json を管理。
+    - 読み取り: ✅ Run継続判断のため
+    - 書き込み: ✅ 修復結果を記録
+    - 判断: ❌ 判断はGitHub Actionsが行う
+
+    設計思想:
+    - 修復レイヤ（ClaudeCode）は「状態を更新するだけ」
+    - 制御レイヤ（GitHub Actions）が「retry_required を見て判断」
+    """
+
+    def __init__(self, state_file: str = "state.json"):
+        """
+        初期化
+
+        Args:
+            state_file: 状態ファイルパス（デフォルト: プロジェクトルート/state.json）
+        """
+        self.state_file = Path(state_file)
+        if not self.state_file.is_absolute():
+            self.state_file = PROJECT_ROOT / state_file
+
+    def load_state(self) -> Dict[str, Any]:
+        """
+        状態を読み込み
+
+        Returns:
+            状態辞書
+        """
+        if not self.state_file.exists():
+            return self._get_initial_state()
+
+        try:
+            with open(self.state_file, 'r', encoding='utf-8') as f:
+                state = json.load(f)
+                # 必須フィールドの検証
+                required_fields = [
+                    'retry_required', 'run_count', 'last_error_id',
+                    'last_error_summary', 'last_attempt_at', 'cooldown_until'
+                ]
+                for field in required_fields:
+                    if field not in state:
+                        return self._get_initial_state()
+                return state
+        except (json.JSONDecodeError, IOError):
+            # 壊れている場合は初期化
+            return self._get_initial_state()
+
+    def save_state(self, state: Dict[str, Any]):
+        """
+        状態を保存
+
+        Args:
+            state: 状態辞書
+        """
+        # updated_at を自動更新
+        state['updated_at'] = datetime.now().isoformat()
+
+        # バックアップ作成
+        if self.state_file.exists():
+            backup_path = self.state_file.with_suffix('.json.bak')
+            try:
+                shutil.copy2(self.state_file, backup_path)
+            except Exception:
+                pass  # バックアップ失敗は無視
+
+        # 保存
+        try:
+            with open(self.state_file, 'w', encoding='utf-8') as f:
+                json.dump(state, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            raise RuntimeError(f"Failed to save state: {e}")
+
+    def update_after_detection(
+        self,
+        error_id: str,
+        error_summary: str,
+        errors_detected: int = 1
+    ):
+        """
+        エラー検出後の状態更新
+
+        Args:
+            error_id: エラーID
+            error_summary: エラー要約
+            errors_detected: 検出されたエラー数
+        """
+        state = self.load_state()
+        state['last_error_id'] = error_id
+        state['last_error_summary'] = error_summary[:200]  # 最大200文字
+        state['last_attempt_at'] = datetime.now().isoformat()
+        state['total_errors_detected'] += errors_detected
+        state['retry_required'] = True  # エラー検出時は要リトライ
+        self.save_state(state)
+
+    def update_after_fix(
+        self,
+        error_id: str,
+        success: bool,
+        message: str = ""
+    ):
+        """
+        修復後の状態更新
+
+        Args:
+            error_id: エラーID
+            success: 修復成功フラグ
+            message: メッセージ
+        """
+        state = self.load_state()
+        state['run_count'] += 1
+        state['total_fixes_attempted'] += 1
+        state['last_attempt_at'] = datetime.now().isoformat()
+
+        if success:
+            # 修復成功
+            state['retry_required'] = False
+            state['total_fixes_succeeded'] += 1
+            state['continuous_failure_count'] = 0
+            state['last_health_status'] = 'healthy'
+            state['cooldown_until'] = ''
+        else:
+            # 修復失敗
+            state['retry_required'] = True
+            state['continuous_failure_count'] += 1
+            state['last_health_status'] = 'degraded'
+
+            # クールダウン設定（300秒 = 5分）
+            cooldown_end = datetime.now() + timedelta(seconds=300)
+            state['cooldown_until'] = cooldown_end.isoformat()
+
+            # 連続失敗3回で critical
+            if state['continuous_failure_count'] >= 3:
+                state['last_health_status'] = 'critical'
+
+        self.save_state(state)
+
+    def is_in_cooldown(self) -> bool:
+        """
+        クールダウン期間中かどうかを確認
+
+        Returns:
+            クールダウン中ならTrue
+        """
+        state = self.load_state()
+        cooldown_str = state.get('cooldown_until', '')
+
+        if not cooldown_str:
+            return False
+
+        try:
+            cooldown_until = datetime.fromisoformat(cooldown_str)
+            return datetime.now() < cooldown_until
+        except ValueError:
+            return False
+
+    def _get_initial_state(self) -> Dict[str, Any]:
+        """
+        初期状態を取得
+
+        Returns:
+            初期状態辞書
+        """
+        now = datetime.now().isoformat()
+        return {
+            'retry_required': False,
+            'run_count': 0,
+            'last_error_id': '',
+            'last_error_summary': '',
+            'last_attempt_at': '',
+            'cooldown_until': '',
+            'total_errors_detected': 0,
+            'total_fixes_attempted': 0,
+            'total_fixes_succeeded': 0,
+            'last_health_status': 'unknown',
+            'continuous_failure_count': 0,
+            'created_at': now,
+            'updated_at': now
+        }
+
+
 class AutoFixDaemon:
     """
     エラー自動検知・自動修復デーモン
@@ -107,6 +291,9 @@ class AutoFixDaemon:
         self.config = self._load_config()
         self.logger = self._setup_logger()
         self.health_monitor = HealthMonitor(config_path=self.config_path)
+
+        # 状態管理（Run間連携用）
+        self.state_manager = StateManager()
 
         # 修復履歴（クールダウン管理用）
         self.fix_history: Dict[str, datetime] = {}
@@ -612,6 +799,16 @@ class AutoFixDaemon:
         else:
             self.retry_counts[error.id] += 1
 
+        # state.json を更新（修復レイヤとしての責務）
+        try:
+            self.state_manager.update_after_fix(
+                error_id=error.id,
+                success=all_success,
+                message=f"Executed {len(actions_executed)} actions"
+            )
+        except Exception as e:
+            self.logger.warning(f"Failed to update state.json: {e}")
+
         return FixResult(
             error_id=error.id,
             success=all_success,
@@ -674,6 +871,18 @@ class AutoFixDaemon:
 
             if errors:
                 self.logger.warning(f"Detected {len(errors)} errors")
+
+                # エラー検出を state.json に記録
+                for error in errors:
+                    try:
+                        self.state_manager.update_after_detection(
+                            error_id=error.id,
+                            error_summary=f"{error.name}: {error.matched_line[:100]}",
+                            errors_detected=1
+                        )
+                    except Exception as e:
+                        self.logger.warning(f"Failed to update state after detection: {e}")
+                    break  # 最初のエラーだけ記録
 
             # 3. 自動修復
             for error in errors:
