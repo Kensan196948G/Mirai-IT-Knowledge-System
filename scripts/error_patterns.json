@@ -1,0 +1,298 @@
+{
+  "error_patterns": [
+    {
+      "id": "http_4xx",
+      "name": "HTTP 4xxエラー",
+      "pattern": "HTTP/[0-9.]+ 4[0-9]{2}|\\b4[0-9]{2}\\b.*(?:error|Error|ERROR)",
+      "severity": "warning",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "log_analysis",
+          "description": "4xxエラーのログ分析"
+        }
+      ]
+    },
+    {
+      "id": "http_5xx",
+      "name": "HTTP 5xxエラー",
+      "pattern": "HTTP/[0-9.]+ 5[0-9]{2}|\\b5[0-9]{2}\\b.*(?:error|Error|ERROR)|Internal Server Error",
+      "severity": "critical",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "service_restart",
+          "description": "Flaskサービス再起動",
+          "service": "mirai-knowledge"
+        },
+        {
+          "type": "alert",
+          "description": "管理者通知"
+        }
+      ]
+    },
+    {
+      "id": "database_connection_error",
+      "name": "DB接続エラー",
+      "pattern": "database connection|connection refused|sqlite3\\.OperationalError|unable to open database|database is locked",
+      "severity": "critical",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "database_vacuum",
+          "description": "SQLite VACUUM実行"
+        },
+        {
+          "type": "fix_permissions",
+          "description": "DBファイル権限修正",
+          "paths": ["db/knowledge.db", "db/knowledge_dev.db"],
+          "owner": "www-data",
+          "mode": "664"
+        },
+        {
+          "type": "service_restart",
+          "description": "アプリケーション再起動",
+          "service": "mirai-knowledge"
+        }
+      ]
+    },
+    {
+      "id": "python_exception",
+      "name": "Python例外",
+      "pattern": "Traceback \\(most recent call last\\)|Exception:|Error:|raise \\w+Error",
+      "severity": "error",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "log_analysis",
+          "description": "例外スタックトレース分析"
+        },
+        {
+          "type": "alert",
+          "description": "開発者通知"
+        }
+      ]
+    },
+    {
+      "id": "file_not_found",
+      "name": "ファイル不存在",
+      "pattern": "FileNotFoundError|No such file or directory|IOError.*not found",
+      "severity": "error",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "create_missing_dirs",
+          "description": "必要ディレクトリ作成",
+          "directories": [
+            "db",
+            "logs",
+            "data/knowledge",
+            "backups",
+            "certs"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "permission_denied",
+      "name": "権限エラー",
+      "pattern": "PermissionError|Permission denied|Access denied|EACCES",
+      "severity": "error",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "fix_permissions",
+          "description": "ファイル権限修正",
+          "paths": ["db/", "logs/", "data/"],
+          "owner": "www-data",
+          "mode": "755"
+        }
+      ]
+    },
+    {
+      "id": "memory_error",
+      "name": "メモリ不足",
+      "pattern": "MemoryError|Out of memory|OOM|Cannot allocate memory|killed.*memory",
+      "severity": "critical",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "cache_clear",
+          "description": "キャッシュクリア"
+        },
+        {
+          "type": "temp_file_cleanup",
+          "description": "一時ファイル削除",
+          "paths": ["/tmp/mirai-*", "logs/*.tmp"]
+        },
+        {
+          "type": "service_restart",
+          "description": "サービス再起動",
+          "service": "mirai-knowledge"
+        }
+      ]
+    },
+    {
+      "id": "disk_full",
+      "name": "ディスク容量不足",
+      "pattern": "No space left on device|disk.*full|ENOSPC|quota exceeded",
+      "severity": "critical",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "log_rotate",
+          "description": "ログローテーション（10MB超）"
+        },
+        {
+          "type": "old_file_cleanup",
+          "description": "古いバックアップ削除",
+          "paths": ["backups/"],
+          "days": 30
+        },
+        {
+          "type": "temp_file_cleanup",
+          "description": "一時ファイル削除",
+          "paths": ["/tmp/mirai-*", "logs/*.tmp", "*.pyc"]
+        },
+        {
+          "type": "alert",
+          "description": "緊急アラート送信"
+        }
+      ]
+    },
+    {
+      "id": "port_in_use",
+      "name": "ポート使用中",
+      "pattern": "Address already in use|port.*already.*use|bind.*failed|EADDRINUSE",
+      "severity": "error",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "check_port",
+          "description": "ポート使用状況確認",
+          "port": 8888
+        },
+        {
+          "type": "kill_process_on_port",
+          "description": "重複プロセス終了",
+          "port": 8888
+        },
+        {
+          "type": "service_restart",
+          "description": "サービス再起動",
+          "service": "mirai-knowledge"
+        }
+      ]
+    },
+    {
+      "id": "json_decode_error",
+      "name": "JSON解析エラー",
+      "pattern": "JSONDecodeError|Invalid JSON|json\\.decoder\\.JSONDecodeError|Expecting.*JSON",
+      "severity": "warning",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "backup_and_fix_json",
+          "description": "JSONファイルバックアップ・修復"
+        },
+        {
+          "type": "log_analysis",
+          "description": "エラー箇所の分析"
+        }
+      ]
+    },
+    {
+      "id": "ssl_certificate_error",
+      "name": "SSL証明書エラー",
+      "pattern": "SSL.*certificate|certificate.*expired|CERTIFICATE_VERIFY_FAILED|ssl\\.SSLError",
+      "severity": "error",
+      "auto_fix": false,
+      "actions": [
+        {
+          "type": "alert",
+          "description": "SSL証明書エラーは手動対応が必要"
+        }
+      ]
+    },
+    {
+      "id": "import_error",
+      "name": "モジュールインポートエラー",
+      "pattern": "ImportError|ModuleNotFoundError|No module named",
+      "severity": "error",
+      "auto_fix": true,
+      "actions": [
+        {
+          "type": "log_analysis",
+          "description": "不足モジュールの特定"
+        },
+        {
+          "type": "alert",
+          "description": "依存関係エラー通知"
+        }
+      ]
+    }
+  ],
+  "health_checks": [
+    {
+      "name": "database_connection",
+      "type": "sqlite",
+      "interval": 60,
+      "timeout": 5,
+      "db_path": "db/knowledge.db",
+      "critical": true
+    },
+    {
+      "name": "disk_space",
+      "type": "disk",
+      "interval": 300,
+      "threshold": 90,
+      "path": "/",
+      "critical": true
+    },
+    {
+      "name": "memory_usage",
+      "type": "memory",
+      "interval": 300,
+      "threshold": 85,
+      "critical": false
+    },
+    {
+      "name": "http_endpoint",
+      "type": "http",
+      "interval": 30,
+      "timeout": 10,
+      "url": "http://localhost:8888/api/health",
+      "critical": true
+    },
+    {
+      "name": "log_directory",
+      "type": "directory",
+      "interval": 300,
+      "path": "logs",
+      "critical": false
+    }
+  ],
+  "auto_fix_config": {
+    "max_retries": 3,
+    "retry_delay": 60,
+    "cooldown_period": 300,
+    "enable_notifications": true,
+    "notification_channels": ["log", "github_issue"],
+    "backup_before_fix": true,
+    "log_retention_days": 30,
+    "max_log_size_mb": 10
+  },
+  "monitored_log_files": [
+    "logs/app.log",
+    "logs/auto_fix.log",
+    "logs/workflow.log"
+  ],
+  "project_config": {
+    "name": "Mirai IT Knowledge System",
+    "environment": "production",
+    "service_name": "mirai-knowledge",
+    "api_port": 8888,
+    "db_type": "sqlite",
+    "db_path": "db/knowledge.db"
+  }
+}

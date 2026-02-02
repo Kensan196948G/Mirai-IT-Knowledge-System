@@ -60,3 +60,7 @@ Thumbs.db
 .env.development
 .env.production
 .env.test
+
+# State management (GitHub Actions runtime state)
+state.json
+state.json.bak

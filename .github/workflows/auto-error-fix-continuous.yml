@@ -1,0 +1,490 @@
+name: 🤖 自動エラー検知・修復システム（5分間隔・無限ループ）
+
+on:
+  schedule:
+    # 毎5分実行（GitHub Actions schedule は最小1分間隔だが、5分推奨）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      max_loops:
+        description: '最大ループ回数'
+        required: false
+        default: '15'
+        type: string
+      create_issue:
+        description: 'Issue作成有無'
+        required: false
+        default: 'yes'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+      dry_run:
+        description: 'ドライラン（修復アクション実行しない）'
+        required: false
+        default: 'no'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+
+# ワークフローの権限設定
+permissions:
+  contents: read
+  issues: write
+
+env:
+  MAX_LOOPS: ${{ github.event.inputs.max_loops || '15' }}
+  PYTHON_VERSION: '3.11'
+  CREATE_ISSUE: ${{ github.event.inputs.create_issue || 'yes' }}
+  # テスト環境用ダミーAPIキー
+  ANTHROPIC_API_KEY: 'test-key'
+  GEMINI_API_KEY: 'test-key'
+  PERPLEXITY_API_KEY: 'test-key'
+  # MCP無効化
+  MCP_AUTO_INIT: 'False'
+  MCP_CONTEXT7_ENABLED: 'False'
+  MCP_CLAUDE_MEM_ENABLED: 'False'
+  MCP_GITHUB_ENABLED: 'False'
+  ENVIRONMENT: 'test'
+
+jobs:
+  # ===== 環境セットアップ =====
+  setup:
+    name: 🔧 環境セットアップ
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.run_info.outputs.run_id }}
+      start_time: ${{ steps.run_info.outputs.start_time }}
+    steps:
+      - name: Run info
+        id: run_info
+        run: |
+          echo "run_id=${{ github.run_id }}" >> $GITHUB_OUTPUT
+          echo "start_time=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-autofix-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-autofix-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install psutil
+
+      - name: Verify setup
+        run: |
+          python --version
+          pip list | head -20
+          echo "✅ Setup complete"
+
+  # ===== エラー検知・修復ループ =====
+  auto-fix-loop:
+    name: 🔄 エラー検知・修復ループ
+    runs-on: ubuntu-latest
+    needs: setup
+    outputs:
+      total_errors: ${{ steps.summary.outputs.total_errors }}
+      total_fixes: ${{ steps.summary.outputs.total_fixes }}
+      success_rate: ${{ steps.summary.outputs.success_rate }}
+      overall_status: ${{ steps.summary.outputs.overall_status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-autofix-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-autofix-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install psutil pytest pytest-asyncio httpx jq
+
+      - name: Restore state from previous run
+        id: restore_state
+        uses: actions/download-artifact@v4
+        with:
+          name: auto-fix-state
+          path: .
+        continue-on-error: true
+
+      - name: Check state and decide execution
+        id: check_state
+        run: |
+          if [ -f state.json ]; then
+            echo "📋 Previous state found"
+            cat state.json | jq '.'
+
+            # state.json から retry_required を読み取り
+            retry_required=$(jq -r '.retry_required // true' state.json)
+            run_count=$(jq -r '.run_count // 0' state.json)
+            cooldown_until=$(jq -r '.cooldown_until // ""' state.json)
+
+            echo "retry_required=$retry_required" >> $GITHUB_OUTPUT
+            echo "run_count=$run_count" >> $GITHUB_OUTPUT
+            echo "cooldown_until=$cooldown_until" >> $GITHUB_OUTPUT
+
+            # クールダウン期間チェック
+            if [ -n "$cooldown_until" ]; then
+              current_time=$(date -u +%s)
+              cooldown_time=$(date -u -d "$cooldown_until" +%s 2>/dev/null || echo "0")
+
+              if [ "$current_time" -lt "$cooldown_time" ]; then
+                echo "⏸️  In cooldown period until $cooldown_until"
+                echo "should_run=false" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            fi
+
+            # retry_required が false ならスキップ
+            if [ "$retry_required" = "false" ]; then
+              echo "✅ No retry required (system healthy)"
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️  Retry required (errors detected)"
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "📋 No previous state, starting fresh"
+            echo "retry_required=true" >> $GITHUB_OUTPUT
+            echo "run_count=0" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare environment
+        if: steps.check_state.outputs.should_run != 'false'
+        run: |
+          mkdir -p db logs backups data/knowledge certs
+
+          # テスト用DB作成
+          python -c "
+          import sqlite3
+          conn = sqlite3.connect('db/knowledge.db')
+          cursor = conn.cursor()
+          cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title TEXT NOT NULL,
+              content TEXT,
+              itsm_type TEXT,
+              created_by TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )''')
+          conn.commit()
+          conn.close()
+          print('✅ Test database initialized')
+          "
+
+          # ログファイル初期化
+          echo "# Auto-fix log started at $(date)" > logs/app.log
+          echo "# Auto-fix log started at $(date)" > logs/auto_fix.log
+
+      - name: Run health check
+        if: steps.check_state.outputs.should_run != 'false'
+        id: health_check
+        run: |
+          cd $GITHUB_WORKSPACE
+          python scripts/health_monitor.py --json > health_result.json || true
+          cat health_result.json
+
+          # ヘルスチェック結果を解析
+          if python -c "import json; data=json.load(open('health_result.json')); exit(0 if data.get('overall_status') == 'healthy' else 1)" 2>/dev/null; then
+            echo "health_status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "health_status=degraded" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Run unit tests
+        if: steps.check_state.outputs.should_run != 'false'
+        id: unit_tests
+        run: |
+          cd $GITHUB_WORKSPACE
+          python -m pytest tests/ -v --tb=short -x 2>&1 | tee test_result.txt || true
+
+          # テスト結果を解析
+          if grep -q "passed" test_result.txt && ! grep -q "failed\|error" test_result.txt; then
+            echo "test_status=passed" >> $GITHUB_OUTPUT
+          else
+            echo "test_status=failed" >> $GITHUB_OUTPUT
+            # テスト失敗をログに記録
+            echo "$(date) - [ERROR] - Unit tests failed" >> logs/app.log
+          fi
+        continue-on-error: true
+
+      - name: Run error detection loop
+        if: steps.check_state.outputs.should_run != 'false'
+        id: detection_loop
+        run: |
+          cd $GITHUB_WORKSPACE
+
+          echo "🔄 Starting error detection loop (max 3 cycles for CI)"
+
+          # 検知・修復ループ実行（CI環境では3回に制限、タイムアウト5分）
+          timeout 300 python scripts/auto_fix_daemon.py --once 2>&1 | tee auto_fix_output.txt || true
+
+          echo "✅ Detection loop completed"
+        continue-on-error: true
+        timeout-minutes: 5
+
+      - name: Generate summary
+        if: steps.check_state.outputs.should_run != 'false'
+        id: summary
+        run: |
+          cd $GITHUB_WORKSPACE
+
+          # 結果を集計（改行を除去）
+          total_errors=$(grep -c "エラー検出\|Detected.*errors\|ERROR" auto_fix_output.txt 2>/dev/null | tr -d '\n' || echo "0")
+          total_fixes=$(grep -c "修復アクション実行\|Fixed:\|Action.*success" auto_fix_output.txt 2>/dev/null | tr -d '\n' || echo "0")
+
+          # 数値に変換（空の場合は0）
+          total_errors=${total_errors:-0}
+          total_fixes=${total_fixes:-0}
+
+          # 成功率計算
+          if [ "$total_errors" -gt 0 ] 2>/dev/null; then
+            success_rate=$((total_fixes * 100 / total_errors))
+          else
+            success_rate=100
+          fi
+
+          # 全体ステータス判定
+          health_status="${{ steps.health_check.outputs.health_status }}"
+          test_status="${{ steps.unit_tests.outputs.test_status }}"
+
+          if [ "$health_status" = "healthy" ] && [ "$test_status" = "passed" ]; then
+            overall_status="healthy"
+          elif [ "$total_errors" -gt 0 ] 2>/dev/null && [ "$success_rate" -lt 50 ] 2>/dev/null; then
+            overall_status="critical"
+          else
+            overall_status="degraded"
+          fi
+
+          echo "total_errors=$total_errors" >> $GITHUB_OUTPUT
+          echo "total_fixes=$total_fixes" >> $GITHUB_OUTPUT
+          echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
+          echo "overall_status=$overall_status" >> $GITHUB_OUTPUT
+
+          echo "📊 Summary:"
+          echo "   Total errors detected: $total_errors"
+          echo "   Total fixes applied: $total_fixes"
+          echo "   Success rate: $success_rate%"
+          echo "   Overall status: $overall_status"
+
+      - name: Upload logs artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auto-fix-logs-${{ github.run_id }}
+          path: |
+            logs/
+            auto_fix_output.txt
+            health_result.json
+            test_result.txt
+          retention-days: 30
+
+      - name: Save state for next run
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auto-fix-state
+          path: state.json
+          retention-days: 7
+          overwrite: true
+
+  # ===== レポート生成 =====
+  report:
+    name: 📝 レポート生成
+    runs-on: ubuntu-latest
+    needs: [setup, auto-fix-loop]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate markdown report
+        id: report
+        run: |
+          cat << 'EOF' > report.md
+          # 🤖 自動エラー検知・修復システム レポート
+
+          ## 📋 実行情報
+          | 項目 | 値 |
+          |------|-----|
+          | **Run ID** | ${{ needs.setup.outputs.run_id }} |
+          | **開始時刻** | ${{ needs.setup.outputs.start_time }} |
+          | **終了時刻** | $(date -u '+%Y-%m-%dT%H:%M:%SZ') |
+          | **ループ回数** | ${{ env.MAX_LOOPS }} |
+          | **トリガー** | ${{ github.event_name }} |
+
+          ## 📊 実行結果
+          | 指標 | 値 |
+          |------|-----|
+          | **検出エラー数** | ${{ needs.auto-fix-loop.outputs.total_errors }} |
+          | **修復試行数** | ${{ needs.auto-fix-loop.outputs.total_fixes }} |
+          | **成功率** | ${{ needs.auto-fix-loop.outputs.success_rate }}% |
+          | **全体ステータス** | ${{ needs.auto-fix-loop.outputs.overall_status }} |
+
+          ## 🔍 詳細
+
+          ### ヘルスチェック結果
+          - ステータス: 実行済み
+
+          ### テスト結果
+          - ステータス: 実行済み
+
+          ---
+          *このレポートは GitHub Actions により自動生成されました*
+          *Workflow: ${{ github.workflow }}*
+          EOF
+
+          cat report.md
+          echo "report_generated=true" >> $GITHUB_OUTPUT
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-fix-report-${{ github.run_id }}
+          path: report.md
+          retention-days: 30
+
+      - name: Add summary to job
+        run: |
+          cat report.md >> $GITHUB_STEP_SUMMARY
+
+  # ===== Issue 作成（エラー検出時） =====
+  create-issue:
+    name: 📌 Issue 作成
+    runs-on: ubuntu-latest
+    needs: [setup, auto-fix-loop, report]
+    if: |
+      always() &&
+      needs.auto-fix-loop.outputs.overall_status != 'healthy' &&
+      (github.event.inputs.create_issue == 'yes' || github.event.inputs.create_issue == '')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create issue for critical errors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const totalErrors = '${{ needs.auto-fix-loop.outputs.total_errors }}';
+            const totalFixes = '${{ needs.auto-fix-loop.outputs.total_fixes }}';
+            const successRate = '${{ needs.auto-fix-loop.outputs.success_rate }}';
+            const overallStatus = '${{ needs.auto-fix-loop.outputs.overall_status }}';
+            const runId = '${{ needs.setup.outputs.run_id }}';
+
+            // 既存の同様のIssueを検索
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'auto-fix,bot',
+              state: 'open',
+              per_page: 5
+            });
+
+            // 24時間以内の同様のIssueがあればスキップ
+            const recentIssue = existingIssues.data.find(issue => {
+              const createdAt = new Date(issue.created_at);
+              const now = new Date();
+              const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+              return hoursDiff < 24;
+            });
+
+            if (recentIssue) {
+              console.log(`Similar issue exists: #${recentIssue.number}, skipping...`);
+
+              // 既存Issueにコメント追加
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: recentIssue.number,
+                body: `## 🔄 自動検知更新 (Run #${runId})
+
+            | 指標 | 値 |
+            |------|-----|
+            | 検出エラー | ${totalErrors} |
+            | 修復試行 | ${totalFixes} |
+            | 成功率 | ${successRate}% |
+            | ステータス | ${overallStatus} |
+
+            [詳細ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})`
+              });
+              return;
+            }
+
+            // 新規Issue作成
+            const statusEmoji = overallStatus === 'critical' ? '🔴' : '🟡';
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `${statusEmoji} [Auto-Fix] システムエラー検知 (${new Date().toISOString().split('T')[0]})`,
+              body: `## 🤖 自動エラー検知・修復システム レポート
+
+            ### 📊 検知結果
+            | 指標 | 値 |
+            |------|-----|
+            | **検出エラー数** | ${totalErrors} |
+            | **修復試行数** | ${totalFixes} |
+            | **成功率** | ${successRate}% |
+            | **全体ステータス** | ${overallStatus} |
+
+            ### 🔗 関連リンク
+            - [GitHub Actions ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})
+
+            ### 📝 対応方法
+            1. 上記ログを確認してエラー詳細を把握
+            2. 自動修復で解決できなかった問題を手動で対応
+            3. 対応完了後、このIssueをクローズ
+
+            ---
+            *このIssueは自動エラー検知・修復システムにより自動作成されました*`,
+              labels: ['auto-fix', 'bot', overallStatus === 'critical' ? 'priority:high' : 'priority:medium']
+            });
+
+  # ===== 完了通知 =====
+  notify:
+    name: ✅ 完了通知
+    runs-on: ubuntu-latest
+    needs: [setup, auto-fix-loop, report, create-issue]
+    if: always()
+    steps:
+      - name: Final summary
+        run: |
+          echo "## 🏁 自動エラー検知・修復システム 完了" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 項目 | 結果 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| セットアップ | ${{ needs.setup.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 検知・修復ループ | ${{ needs.auto-fix-loop.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| レポート生成 | ${{ needs.report.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Issue作成 | ${{ needs.create-issue.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Overall Status**: ${{ needs.auto-fix-loop.outputs.overall_status }}" >> $GITHUB_STEP_SUMMARY

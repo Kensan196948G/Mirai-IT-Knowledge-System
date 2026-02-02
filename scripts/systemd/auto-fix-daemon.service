@@ -1,0 +1,52 @@
+[Unit]
+Description=Mirai IT Knowledge System - Auto Error Fix Daemon
+Documentation=https://github.com/Kensan196948G/Mirai-IT-Knowledge-System
+After=network.target
+After=mirai-knowledge-prod.service
+Wants=mirai-knowledge-prod.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/mirai-knowledge-system
+
+# 環境変数
+Environment=PYTHONUNBUFFERED=1
+Environment=ENVIRONMENT=production
+Environment=PATH=/opt/mirai-knowledge-system/venv/bin:/usr/local/bin:/usr/bin:/bin
+
+# 実行コマンド（15回ループ→5分待機の無限ループ）
+ExecStart=/opt/mirai-knowledge-system/venv/bin/python3 /opt/mirai-knowledge-system/scripts/auto_fix_daemon.py --continuous --loop-count 15 --wait-minutes 5
+
+# 再起動設定
+Restart=always
+RestartSec=30
+
+# リソース制限
+MemoryLimit=512M
+CPUQuota=50%
+
+# セキュリティ設定
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+
+# 書き込み許可ディレクトリ
+ReadWritePaths=/opt/mirai-knowledge-system/logs
+ReadWritePaths=/opt/mirai-knowledge-system/db
+ReadWritePaths=/opt/mirai-knowledge-system/backups
+ReadWritePaths=/tmp
+
+# タイムアウト設定
+TimeoutStartSec=30
+TimeoutStopSec=60
+
+# ログ設定
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=auto-fix-daemon
+
+[Install]
+WantedBy=multi-user.target

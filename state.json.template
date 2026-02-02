@@ -1,0 +1,15 @@
+{
+  "retry_required": false,
+  "run_count": 0,
+  "last_error_id": "",
+  "last_error_summary": "",
+  "last_attempt_at": "",
+  "cooldown_until": "",
+  "total_errors_detected": 0,
+  "total_fixes_attempted": 0,
+  "total_fixes_succeeded": 0,
+  "last_health_status": "unknown",
+  "continuous_failure_count": 0,
+  "created_at": "",
+  "updated_at": ""
+}
