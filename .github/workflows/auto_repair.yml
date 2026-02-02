@@ -22,6 +22,8 @@ jobs:
     name: Auto Repair Loop (Max 15 iterations per Run)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     
     steps:
       - name: 📥 Checkout repository
@@ -200,6 +202,8 @@ jobs:
       
       - name: 💾 Commit state changes
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Auto-Repair"
@@ -211,7 +215,7 @@ jobs:
             echo "No state changes to commit"
           else
             git commit -m "🤖 Auto-repair: Run #${{ steps.load_state.outputs.run_count }} - ${{ steps.repair_loop.outputs.test_passed == 'true' && '✅ Success' || '❌ Failed' }}"
-            git push
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
           fi
       
       - name: 📊 Summary
