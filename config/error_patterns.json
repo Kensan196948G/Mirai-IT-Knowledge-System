@@ -1,0 +1,144 @@
+{
+  "patterns": [
+    {
+      "id": "database_connection_error",
+      "name": "Database Connection Error",
+      "patterns": [
+        "sqlite3.OperationalError",
+        "database is locked",
+        "unable to open database file",
+        "connection refused.*database"
+      ],
+      "severity": "critical",
+      "auto_repair": true,
+      "actions": [
+        {
+          "type": "restart_service",
+          "service": "database",
+          "wait_seconds": 5
+        },
+        {
+          "type": "check_file_permissions",
+          "path": "db/knowledge.db"
+        }
+      ],
+      "cooldown_seconds": 300
+    },
+    {
+      "id": "redis_connection_error",
+      "name": "Redis Connection Error",
+      "patterns": [
+        "ConnectionRefusedError.*redis",
+        "Redis connection error",
+        "ECONNREFUSED.*6379"
+      ],
+      "severity": "high",
+      "auto_repair": true,
+      "actions": [
+        {
+          "type": "restart_service",
+          "service": "redis",
+          "wait_seconds": 3
+        }
+      ],
+      "cooldown_seconds": 300
+    },
+    {
+      "id": "disk_space_error",
+      "name": "Disk Space Full",
+      "patterns": [
+        "No space left on device",
+        "Disk quota exceeded",
+        "ENOSPC"
+      ],
+      "severity": "critical",
+      "auto_repair": true,
+      "actions": [
+        {
+          "type": "cleanup_temp_files",
+          "paths": ["/tmp", "logs/*.log"]
+        },
+        {
+          "type": "rotate_logs"
+        }
+      ],
+      "cooldown_seconds": 600
+    },
+    {
+      "id": "import_error",
+      "name": "Python Import Error",
+      "patterns": [
+        "ModuleNotFoundError",
+        "ImportError:",
+        "No module named"
+      ],
+      "severity": "high",
+      "auto_repair": true,
+      "actions": [
+        {
+          "type": "install_dependencies",
+          "file": "requirements.txt"
+        }
+      ],
+      "cooldown_seconds": 300
+    },
+    {
+      "id": "http_timeout",
+      "name": "HTTP Request Timeout",
+      "patterns": [
+        "HTTPConnectionPool.*timed out",
+        "Read timed out",
+        "Connection timeout"
+      ],
+      "severity": "medium",
+      "auto_repair": true,
+      "actions": [
+        {
+          "type": "wait_and_retry",
+          "wait_seconds": 10,
+          "max_retries": 3
+        }
+      ],
+      "cooldown_seconds": 180
+    },
+    {
+      "id": "test_failure",
+      "name": "Test Failure",
+      "patterns": [
+        "FAILED.*test_",
+        "AssertionError",
+        "Test failed"
+      ],
+      "severity": "medium",
+      "auto_repair": false,
+      "actions": [],
+      "cooldown_seconds": 300
+    }
+  ],
+  "health_checks": [
+    {
+      "name": "database",
+      "type": "file_exists",
+      "path": "db/knowledge.db",
+      "required": true
+    },
+    {
+      "name": "database_writable",
+      "type": "file_writable",
+      "path": "db/knowledge.db",
+      "required": true
+    },
+    {
+      "name": "disk_space",
+      "type": "disk_space",
+      "min_free_mb": 100,
+      "required": true
+    },
+    {
+      "name": "python_dependencies",
+      "type": "python_imports",
+      "modules": ["flask", "yaml"],
+      "required": true
+    }
+  ]
+}

@@ -41,6 +41,10 @@ ENV/
 *.log
 data/logs/*.log
 
+# Auto-repair system state (tracked for CI/CD coordination)
+# data/state.json - Tracked intentionally
+# data/repair_log.json - Tracked intentionally
+
 # OS
 .DS_Store
 Thumbs.db

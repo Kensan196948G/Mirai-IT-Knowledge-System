@@ -1,0 +1,12 @@
+{
+  "retry_required": false,
+  "run_count": 0,
+  "last_error_id": null,
+  "last_error_summary": null,
+  "last_attempt_at": "2026-02-02T06:48:05.988812",
+  "cooldown_until": "2026-02-02T06:53:05.988662",
+  "last_run_at": null,
+  "last_run_result": null,
+  "last_iterations": 0,
+  "last_repairs_made": 0
+}
