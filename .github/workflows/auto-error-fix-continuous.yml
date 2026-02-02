@@ -124,9 +124,61 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install psutil pytest pytest-asyncio httpx
+          pip install psutil pytest pytest-asyncio httpx jq
+
+      - name: Restore state from previous run
+        id: restore_state
+        uses: actions/download-artifact@v4
+        with:
+          name: auto-fix-state
+          path: .
+        continue-on-error: true
+
+      - name: Check state and decide execution
+        id: check_state
+        run: |
+          if [ -f state.json ]; then
+            echo "📋 Previous state found"
+            cat state.json | jq '.'
+
+            # state.json から retry_required を読み取り
+            retry_required=$(jq -r '.retry_required // true' state.json)
+            run_count=$(jq -r '.run_count // 0' state.json)
+            cooldown_until=$(jq -r '.cooldown_until // ""' state.json)
+
+            echo "retry_required=$retry_required" >> $GITHUB_OUTPUT
+            echo "run_count=$run_count" >> $GITHUB_OUTPUT
+            echo "cooldown_until=$cooldown_until" >> $GITHUB_OUTPUT
+
+            # クールダウン期間チェック
+            if [ -n "$cooldown_until" ]; then
+              current_time=$(date -u +%s)
+              cooldown_time=$(date -u -d "$cooldown_until" +%s 2>/dev/null || echo "0")
+
+              if [ "$current_time" -lt "$cooldown_time" ]; then
+                echo "⏸️  In cooldown period until $cooldown_until"
+                echo "should_run=false" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            fi
+
+            # retry_required が false ならスキップ
+            if [ "$retry_required" = "false" ]; then
+              echo "✅ No retry required (system healthy)"
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️  Retry required (errors detected)"
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "📋 No previous state, starting fresh"
+            echo "retry_required=true" >> $GITHUB_OUTPUT
+            echo "run_count=0" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Prepare environment
+        if: steps.check_state.outputs.should_run != 'false'
         run: |
           mkdir -p db logs backups data/knowledge certs
 
@@ -153,6 +205,7 @@ jobs:
           echo "# Auto-fix log started at $(date)" > logs/auto_fix.log
 
       - name: Run health check
+        if: steps.check_state.outputs.should_run != 'false'
         id: health_check
         run: |
           cd $GITHUB_WORKSPACE
@@ -168,6 +221,7 @@ jobs:
         continue-on-error: true
 
       - name: Run unit tests
+        if: steps.check_state.outputs.should_run != 'false'
         id: unit_tests
         run: |
           cd $GITHUB_WORKSPACE
@@ -184,6 +238,7 @@ jobs:
         continue-on-error: true
 
       - name: Run error detection loop
+        if: steps.check_state.outputs.should_run != 'false'
         id: detection_loop
         run: |
           cd $GITHUB_WORKSPACE
@@ -198,6 +253,7 @@ jobs:
         timeout-minutes: 5
 
       - name: Generate summary
+        if: steps.check_state.outputs.should_run != 'false'
         id: summary
         run: |
           cd $GITHUB_WORKSPACE
@@ -251,6 +307,15 @@ jobs:
             health_result.json
             test_result.txt
           retention-days: 30
+
+      - name: Save state for next run
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auto-fix-state
+          path: state.json
+          retention-days: 7
+          overwrite: true
 
   # ===== レポート生成 =====
   report:
