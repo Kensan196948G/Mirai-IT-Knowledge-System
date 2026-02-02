@@ -265,30 +265,183 @@ class StateManager:
 
 ---
 
+## CLI 管理ツール（state_manager_cli.py）
+
+### 概要
+
+`scripts/state_manager_cli.py` は、state.json を簡単に管理するための CLI ツールです。
+
+### 主要機能
+
+| コマンド | 説明 | 使用例 |
+|---------|------|-------|
+| **init** | state.json を初期化 | `python state_manager_cli.py init` |
+| **show** | 現在の状態を表示 | `python state_manager_cli.py show` |
+| **reset** | 強制リセット | `python state_manager_cli.py reset --confirm` |
+| **stats** | 統計情報を可視化 | `python state_manager_cli.py stats` |
+| **validate** | スキーマ検証 | `python state_manager_cli.py validate` |
+
+### 使用例
+
+#### 1. 状態の確認
+
+```bash
+# 基本表示
+python scripts/state_manager_cli.py show
+
+# 詳細表示（JSON 含む）
+python scripts/state_manager_cli.py show --verbose
+```
+
+**出力例**:
+```
+============================================================
+state.json 現在の状態
+============================================================
+
+📋 基本情報
+  ファイルパス: /path/to/state.json
+  作成日時: 2026-02-02T10:00:00+09:00
+  更新日時: 2026-02-02T15:00:00+09:00
+
+🔄 実行状態
+  retry_required: False
+  run_count: 5
+
+🐛 最後のエラー
+  error_id: database_connection_error
+  error_summary: PostgreSQL connection refused
+  last_attempt_at: 2026-02-02T14:55:00+09:00
+
+⏸️  クールダウン
+  cooldown_until: 2026-02-02T15:00:00+09:00
+  status: 解除
+
+📊 統計情報
+  total_errors_detected: 3
+  total_fixes_attempted: 3
+  total_fixes_succeeded: 2
+  success_rate: 66%
+
+🏥 ヘルスステータス
+  last_health_status: DEGRADED
+  continuous_failure_count: 1
+```
+
+#### 2. 初期化
+
+```bash
+# 初めて state.json を作成
+python scripts/state_manager_cli.py init
+
+# 既存ファイルを上書き
+python scripts/state_manager_cli.py init --force
+```
+
+#### 3. リセット
+
+```bash
+# 確認付きリセット（本番推奨）
+python scripts/state_manager_cli.py reset --confirm
+
+# 確認なし（失敗する）
+python scripts/state_manager_cli.py reset
+```
+
+⚠️ リセット時は自動的にバックアップ（`.json.reset_backup`）が作成されます。
+
+#### 4. 統計情報の表示
+
+```bash
+# テキスト形式（デフォルト）
+python scripts/state_manager_cli.py stats
+
+# JSON 形式（プログラムから利用）
+python scripts/state_manager_cli.py stats --format json
+
+# CSV 形式（エクスポート用）
+python scripts/state_manager_cli.py stats --format csv
+```
+
+**JSON 出力例**:
+```json
+{
+  "run_count": 5,
+  "total_errors_detected": 3,
+  "total_fixes_attempted": 3,
+  "total_fixes_succeeded": 2,
+  "continuous_failure_count": 1,
+  "last_health_status": "degraded",
+  "retry_required": true,
+  "success_rate": 66,
+  "fix_coverage": 100
+}
+```
+
+#### 5. スキーマ検証
+
+```bash
+# state.json の整合性チェック
+python scripts/state_manager_cli.py validate
+```
+
+検証項目:
+- 必須フィールドの存在確認
+- データ型の正確性確認
+- JSON フォーマットの正当性確認
+
+---
+
 ## トラブルシューティング
 
 ### state.json が壊れた場合
 
+#### 方法 1: CLI ツールでリセット（推奨）
+
 ```bash
-# バックアップから復元
+# 安全なリセット（バックアップ付き）
+python scripts/state_manager_cli.py reset --confirm
+```
+
+#### 方法 2: バックアップから復元
+
+```bash
+# 自動バックアップから復元
 cp state.json.bak state.json
 
-# 初期化
-echo '{
-  "retry_required": false,
-  "run_count": 0,
-  "last_error_id": "",
-  "last_error_summary": "",
-  "last_attempt_at": "",
-  "cooldown_until": "",
-  "total_errors_detected": 0,
-  "total_fixes_attempted": 0,
-  "total_fixes_succeeded": 0,
-  "last_health_status": "unknown",
-  "continuous_failure_count": 0,
-  "created_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'",
-  "updated_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
-}' > state.json
+# または reset バックアップから
+cp state.json.reset_backup state.json
+```
+
+#### 方法 3: 手動初期化
+
+```bash
+# テンプレートから作成
+cp state.json.template state.json
+
+# または CLI で初期化
+python scripts/state_manager_cli.py init --force
+```
+
+### state.json が見つからない場合
+
+```bash
+# 初期化で作成
+python scripts/state_manager_cli.py init
+
+# 存在確認
+python scripts/state_manager_cli.py show
+```
+
+### スキーマ検証エラーの場合
+
+```bash
+# 検証実行
+python scripts/state_manager_cli.py validate
+
+# エラーがあれば詳細を確認して修正
+# または初期化
+python scripts/state_manager_cli.py init --force
 ```
 
 ---
@@ -298,6 +451,7 @@ echo '{
 | バージョン | 日付 | 変更内容 |
 |----------|------|---------|
 | 1.0.0 | 2026-02-02 | 初版作成 |
+| 1.1.0 | 2026-02-02 | CLI 管理ツール（state_manager_cli.py）追加 |
 
 ---
 
