@@ -64,6 +64,12 @@ cat data/state.json
 
 詳細な情報は以下のドキュメントを参照してください：
 
+### 自動エラー検知・修復システム（新版 - 推奨）
+- **[🚀 クイックスタート](docs/auto-error-fix-quickstart.md)** - 5分で理解、すぐに使える！
+- **[📖 完全ガイド](docs/auto-error-fix-continuous-guide.md)** - 詳細な使い方とトラブルシューティング
+- **[🔍 技術レポート](WORKFLOW_REVIEW.md)** - セキュリティ・機能性の精査レポート
+
+### 自動修復システム（旧版）
 - **[AUTO_REPAIR_SYSTEM.md](docs/AUTO_REPAIR_SYSTEM.md)** - システム全体の詳細設計
 - **[AUTO_REPAIR_QUICKSTART.md](docs/AUTO_REPAIR_QUICKSTART.md)** - クイックスタートガイド
 - **[AUTO_REPAIR_IMPLEMENTATION.md](docs/AUTO_REPAIR_IMPLEMENTATION.md)** - 実装サマリー
