@@ -238,7 +238,50 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 14. [STATE_JSON_SCHEMA.md](STATE_JSON_SCHEMA.md) 🆕
+### 14. [自動エラー検知・修復システム完全ガイド](auto-error-fix-continuous-guide.md) 🆕
+**カテゴリ**: 運用ガイド・チュートリアル
+**対象読者**: 全員（特に運用担当者）
+**内容**:
+- 自動エラー検知・修復システムの全体像と仕組み
+- 5つのジョブの詳細説明（図解付き）
+- 実際の使用方法（手動実行、自動実行、ローカルテスト）
+- トラブルシューティングガイド（5つの問題パターンと解決方法）
+- よくある質問（FAQ）10項目
+- セキュリティ対策の詳細
+- 運用チェックリスト
+
+**こんな時に読む**:
+- 自動エラー検知・修復システムを初めて使う時
+- システムの動作を詳しく理解したい時
+- エラーが発生して対処方法を知りたい時
+- 運用方法を確認したい時
+
+**関連ファイル**:
+- `.github/workflows/auto-error-fix-continuous.yml`
+- `scripts/health_monitor.py`
+- `scripts/auto_fix_daemon.py`
+- `WORKFLOW_REVIEW.md`（技術レポート）
+
+---
+
+### 15. [自動エラー検知・修復システムクイックスタート](auto-error-fix-quickstart.md) 🆕
+**カテゴリ**: クイックスタートガイド
+**対象読者**: 全員
+**内容**:
+- 5分で理解できる簡潔な説明
+- 3ステップですぐに使える手順
+- 実行結果の見方
+- 基本的な設定方法
+- 困った時の対処法（簡易版）
+
+**こんな時に読む**:
+- すぐに使い始めたい時
+- 概要だけ把握したい時
+- 基本的な使い方だけ知りたい時
+
+---
+
+### 16. [STATE_JSON_SCHEMA.md](STATE_JSON_SCHEMA.md)
 **カテゴリ**: 状態管理・スキーマ定義
 **対象読者**: 開発者、運用担当者
 **内容**:
@@ -262,7 +305,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 15. [STATE_JSON_OPERATIONS.md](STATE_JSON_OPERATIONS.md) 🆕
+### 17. [STATE_JSON_OPERATIONS.md](STATE_JSON_OPERATIONS.md)
 **カテゴリ**: 運用ガイド
 **対象読者**: 運用担当者、SRE
 **内容**:
@@ -291,7 +334,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 セットアップ、デプロイ、実装のガイド。
 
-### 14. [SETUP_GUIDE.md](../SETUP_GUIDE.md)
+### 18. [SETUP_GUIDE.md](../SETUP_GUIDE.md)
 **カテゴリ**: セットアップガイド
 **対象読者**: 全員
 **内容**:
@@ -307,7 +350,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 15. [デプロイメントガイド(DEPLOYMENT).md](デプロイメントガイド(DEPLOYMENT).md)
+### 19. [デプロイメントガイド(DEPLOYMENT).md](デプロイメントガイド(DEPLOYMENT).md)
 **カテゴリ**: デプロイメント
 **対象読者**: 運用担当者、開発者
 **内容**:
@@ -323,7 +366,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 16. [GitHub設定ガイド(GITHUB_SETUP).md](GitHub設定ガイド(GITHUB_SETUP).md)
+### 20. [GitHub設定ガイド(GITHUB_SETUP).md](GitHub設定ガイド(GITHUB_SETUP).md)
 **カテゴリ**: GitHub設定
 **対象読者**: 開発者
 **内容**:
@@ -338,7 +381,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 17. [実装ロードマップ(IMPLEMENTATION_ROADMAP).md](実装ロードマップ(IMPLEMENTATION_ROADMAP).md)
+### 21. [実装ロードマップ(IMPLEMENTATION_ROADMAP).md](実装ロードマップ(IMPLEMENTATION_ROADMAP).md)
 **カテゴリ**: 実装ロードマップ
 **対象読者**: プロジェクトマネージャー、開発者
 **内容**:
@@ -356,7 +399,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 その他の参考情報。
 
-### 18. [新機能ガイド(NEW_FEATURES).md](新機能ガイド(NEW_FEATURES).md)
+### 22. [新機能ガイド(NEW_FEATURES).md](新機能ガイド(NEW_FEATURES).md)
 **カテゴリ**: 新機能ガイド
 **対象読者**: 全員
 **内容**:
@@ -372,7 +415,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 19. [最終サマリー(FINAL_SUMMARY).md](最終サマリー(FINAL_SUMMARY).md)
+### 23. [最終サマリー(FINAL_SUMMARY).md](最終サマリー(FINAL_SUMMARY).md)
 **カテゴリ**: プロジェクトサマリー
 **対象読者**: 全員
 **内容**:
@@ -386,7 +429,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 20. [RELEASE_NOTES_V2.md](../RELEASE_NOTES_V2.md)
+### 24. [RELEASE_NOTES_V2.md](../RELEASE_NOTES_V2.md)
 **カテゴリ**: リリースノート
 **対象読者**: 全員
 **内容**:
@@ -401,7 +444,7 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-### 21. [CONTRIBUTING.md](../CONTRIBUTING.md)
+### 25. [CONTRIBUTING.md](../CONTRIBUTING.md)
 **カテゴリ**: 貢献ガイド
 **対象読者**: 貢献者
 **内容**:
@@ -413,6 +456,30 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 **こんな時に読む**:
 - プロジェクトに貢献したい時
 - コーディング規約を確認したい時
+
+---
+
+### 26. [タスク完了レポート.md](タスク完了レポート.md) 🆕
+**カテゴリ**: タスク完了報告
+**対象読者**: 全員（特にプロジェクト管理者）
+**内容**:
+- auto-error-fix-continuous.yml ワークフロー精査タスクの完了報告
+- レビュー結果の詳細な日本語解説
+- セキュリティ、機能性、コード品質の評価
+- トークンの使用方法と理由
+- PRマージの手順（Web UI / コマンドライン）
+- 期待される効果
+
+**こんな時に読む**:
+- タスク完了の詳細を確認したい時
+- ワークフロー精査結果を日本語で理解したい時
+- PRマージの手順を確認したい時
+- システム導入による効果を知りたい時
+
+**関連ファイル**:
+- `WORKFLOW_REVIEW.md` (技術的な精査レポート)
+- `docs/auto-error-fix-continuous-guide.md` (完全ガイド)
+- `docs/auto-error-fix-quickstart.md` (クイックスタート)
 
 ---
 
@@ -507,6 +574,9 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 | やりたいこと | 読むべきドキュメント |
 |------------|-------------------|
 | プロジェクトを始める | README.md → SETUP_GUIDE.md |
+| 自動エラー検知を使う | auto-error-fix-quickstart.md |
+| 自動エラー検知を詳しく知る | auto-error-fix-continuous-guide.md |
+| タスク完了報告を確認 | タスク完了レポート.md |
 | 次のタスクを確認 | 開発ステップ管理.md |
 | 進捗を確認 | 開発フェーズ定義.md |
 | 過去の変更を確認 | 変更履歴.md |
@@ -516,19 +586,21 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 | AI統合する | AIとAPI利用ガイド.md |
 | 問題を解決 | SETUP_GUIDE.md（トラブルシューティング） |
 | 変更を記録 | 変更履歴.md |
+| state.json を理解 | STATE_JSON_SCHEMA.md |
+| state.json を運用 | STATE_JSON_OPERATIONS.md |
 
 ---
 
 ## ドキュメント統計
 
-**総ドキュメント数**: 18ファイル
+**総ドキュメント数**: 26ファイル
 
 **カテゴリ別内訳**:
 - プロジェクト概要: 3ファイル
 - 開発管理: 4ファイル
-- 技術ドキュメント: 3ファイル
-- ガイド・チュートリアル: 4ファイル
-- 補足ドキュメント: 4ファイル
+- 技術ドキュメント: 6ファイル
+- ガイド・チュートリアル: 8ファイル
+- 補足ドキュメント: 5ファイル
 
 **言語**:
 - 日本語: 100%（すべて日本語対応）
@@ -547,5 +619,14 @@ Mirai IT Knowledge Systemsプロジェクトの全ドキュメント索引です
 
 ---
 
-**最終更新日**: 2026-01-20
+**最終更新日**: 2026-02-02
 **次回レビュー予定**: 2026-02-20（月次レビュー）
+
+**🆕 本日の更新（2026-02-02）**:
+- タスク完了レポート（英語レポートの日本語解説）
+
+**📝 最近の追加ドキュメント（2026-02-02）**:
+- 自動エラー検知・修復システム完全ガイド
+- 自動エラー検知・修復システムクイックスタート
+- WORKFLOW_REVIEW.md（技術レポート）
+- タスク完了レポート（日本語解説）
