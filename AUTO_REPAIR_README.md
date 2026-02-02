@@ -68,6 +68,7 @@ cat data/state.json
 - **[🚀 クイックスタート](docs/auto-error-fix-quickstart.md)** - 5分で理解、すぐに使える！
 - **[📖 完全ガイド](docs/auto-error-fix-continuous-guide.md)** - 詳細な使い方とトラブルシューティング
 - **[🔍 技術レポート](WORKFLOW_REVIEW.md)** - セキュリティ・機能性の精査レポート
+- **[🎉 タスク完了レポート](docs/タスク完了レポート.md)** - ワークフロー精査完了報告（日本語解説）
 
 ### 自動修復システム（旧版）
 - **[AUTO_REPAIR_SYSTEM.md](docs/AUTO_REPAIR_SYSTEM.md)** - システム全体の詳細設計
