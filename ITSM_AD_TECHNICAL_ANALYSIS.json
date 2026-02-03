@@ -1,0 +1,488 @@
+{
+  "analysis_metadata": {
+    "analysis_date": "2026-02-03",
+    "analyzer_role": "ITSMExpertSubAgent",
+    "analysis_depth": "detailed",
+    "knowledge_item": {
+      "id": "ad_account_lock_response",
+      "title": "ADアカウントロック対応",
+      "itsm_type": "Incident",
+      "content": "Active Directoryでユーザーアカウントがロックされた際の確認・解除手順",
+      "technology_tags": [
+        "Active Directory",
+        "Identity Management",
+        "Windows"
+      ],
+      "severity": "Medium"
+    },
+    "analysis_framework": "ITIL V3/V4 + 技術要件"
+  },
+  "executive_summary": {
+    "overall_itsm_compliance_score": 0.25,
+    "compliance_percentage": "25%",
+    "status_rating": "critical",
+    "readiness_level": "初期段階",
+    "recommendation": "このナレッジは基本的な手順は含まれていますが、ITSM要件の多くが未充足です。ITIL準拠のIncident Management プロセスに基づいて、大幅な拡張が必要です。"
+  },
+  "itsm_principle_assessment": {
+    "framework": "ITIL V3/V4 Incident Management",
+    "total_principles": 6,
+    "principles": [
+      {
+        "name": "インシデント検知と報告",
+        "description": "インシデントの検知・報告プロセスが文書化されているか",
+        "weight": "20%",
+        "current_implementation_level": "0%",
+        "compliance_criteria": [
+          "検知方法（アラート、ユーザー報告、etc）が記載されているか",
+          "報告先・エスカレーションパスが明確か",
+          "初期対応時刻が記録されているか",
+          "優先度分類が定義されているか"
+        ],
+        "status": "non-compliant",
+        "gap_analysis": "要改善"
+      },
+      {
+        "name": "影響評価と優先度付け",
+        "description": "インシデントの影響範囲と優先度が評価されているか",
+        "weight": "20%",
+        "current_implementation_level": "25%",
+        "compliance_criteria": [
+          "影響を受けるユーザー数が明確か",
+          "影響を受けるビジネスプロセスが特定されているか",
+          "優先度レベルが設定されているか",
+          "SLAが定義されているか"
+        ],
+        "status": "non-compliant",
+        "gap_analysis": "要改善"
+      },
+      {
+        "name": "初期診断と一時対応",
+        "description": "迅速な一時対応と初期診断が実施されているか",
+        "weight": "20%",
+        "current_implementation_level": "50%",
+        "compliance_criteria": [
+          "初期診断チェックリストが用意されているか",
+          "一時対応の手順が詳細に記載されているか",
+          "対応実施者が記録されているか",
+          "対応実施時刻が記録されているか"
+        ],
+        "status": "non-compliant",
+        "gap_analysis": "要改善"
+      },
+      {
+        "name": "解決と復旧",
+        "description": "インシデントの解決確認と復旧検証が実施されているか",
+        "weight": "15%",
+        "current_implementation_level": "50%",
+        "compliance_criteria": [
+          "解決確認の手順が定義されているか",
+          "ユーザー確認が実施されているか",
+          "復旧検証プロセスが記載されているか",
+          "クローズ基準が明確か"
+        ],
+        "status": "non-compliant",
+        "gap_analysis": "要改善"
+      },
+      {
+        "name": "根本原因分析",
+        "description": "インシデント後の根本原因分析が計画されているか",
+        "weight": "15%",
+        "current_implementation_level": "0%",
+        "compliance_criteria": [
+          "Problem Managementへのエスカレーション基準が定義されているか",
+          "根本原因分析の責任者が指定されているか",
+          "再発防止策の検討プロセスが記載されているか",
+          "ナレッジベース更新が計画されているか"
+        ],
+        "status": "non-compliant",
+        "gap_analysis": "要改善"
+      },
+      {
+        "name": "ドキュメンテーション",
+        "description": "インシデント対応が適切に記録されているか",
+        "weight": "10%",
+        "current_implementation_level": "25%",
+        "compliance_criteria": [
+          "対応内容が時系列で記録されているか",
+          "実施コマンドや設定変更が記載されているか",
+          "トラブルシューティング結果が記載されているか",
+          "今後の対応が明記されているか"
+        ],
+        "status": "non-compliant",
+        "gap_analysis": "要改善"
+      }
+    ]
+  },
+  "ad_technical_requirements_assessment": {
+    "total_requirement_areas": 4,
+    "requirements": [
+      {
+        "area": "technical_diagnostic",
+        "requirement_title": "ADアカウントロック診断方法が記載されているか",
+        "importance_level": "critical",
+        "compliance_status": "missing",
+        "required_items": [
+          "ロック状態の確認方法（Get-ADUser -Filter コマンド等）",
+          "ロック原因の特定方法（パスワード推測攻撃、期限切れ、etc）",
+          "ロック発生時刻の確認方法（イベントログ確認）",
+          "関連ユーザー・デバイスの確認方法"
+        ],
+        "assessment": {
+          "status": "非準拠",
+          "priority": "緊急"
+        }
+      },
+      {
+        "area": "resolution_steps",
+        "requirement_title": "ADアカウント解除手順が詳細に記載されているか",
+        "importance_level": "critical",
+        "compliance_status": "partial",
+        "required_items": [
+          "Unlock-ADAccount コマンドの使用方法",
+          "ActiveDirectory PowerShell モジュールの要件",
+          "必要な権限レベル（Domain Admin等）",
+          "解除前の検証チェックリスト",
+          "解除後の動作確認"
+        ],
+        "assessment": {
+          "status": "部分準拠",
+          "priority": "緊急"
+        }
+      },
+      {
+        "area": "preventive_measures",
+        "requirement_title": "再発防止策が記載されているか",
+        "importance_level": "high",
+        "compliance_status": "missing",
+        "required_items": [
+          "アカウントロック閾値の設定（Threshold）",
+          "ロック時間の設定（LockoutDuration）",
+          "観察ウィンドウの設定（ResetCounterAfter）",
+          "アラート設定（Smart Card、VPN失敗等）",
+          "ユーザー教育（パスワード管理）"
+        ],
+        "assessment": {
+          "status": "非準拠",
+          "priority": "高"
+        }
+      },
+      {
+        "area": "security_considerations",
+        "requirement_title": "セキュリティ上の注意点が記載されているか",
+        "importance_level": "high",
+        "compliance_status": "missing",
+        "required_items": [
+          "セキュリティログの確認",
+          "不正なロック解除の防止",
+          "権限管理（Delegation of Control）",
+          "監査ログの記録",
+          "緊急対応時の手順と承認フロー"
+        ],
+        "assessment": {
+          "status": "非準拠",
+          "priority": "高"
+        }
+      }
+    ]
+  },
+  "gap_analysis": {
+    "total_gaps_identified": 10,
+    "critical_gaps": 2,
+    "high_gaps": 6,
+    "medium_gaps": 2,
+    "gaps_detail": [
+      {
+        "category": "ITSM原則",
+        "principle": "インシデント検知と報告",
+        "gap_severity": "high",
+        "current_level": "0%",
+        "required_level": "80%"
+      },
+      {
+        "category": "ITSM原則",
+        "principle": "影響評価と優先度付け",
+        "gap_severity": "high",
+        "current_level": "25%",
+        "required_level": "80%"
+      },
+      {
+        "category": "ITSM原則",
+        "principle": "初期診断と一時対応",
+        "gap_severity": "medium",
+        "current_level": "50%",
+        "required_level": "80%"
+      },
+      {
+        "category": "ITSM原則",
+        "principle": "解決と復旧",
+        "gap_severity": "medium",
+        "current_level": "50%",
+        "required_level": "80%"
+      },
+      {
+        "category": "ITSM原則",
+        "principle": "根本原因分析",
+        "gap_severity": "high",
+        "current_level": "0%",
+        "required_level": "80%"
+      },
+      {
+        "category": "ITSM原則",
+        "principle": "ドキュメンテーション",
+        "gap_severity": "high",
+        "current_level": "25%",
+        "required_level": "80%"
+      },
+      {
+        "category": "AD技術要件",
+        "requirement": "ADアカウントロック診断方法が記載されているか",
+        "gap_severity": "critical",
+        "missing_items": [
+          "ロック状態の確認方法（Get-ADUser -Filter コマンド等）",
+          "ロック原因の特定方法（パスワード推測攻撃、期限切れ、etc）",
+          "ロック発生時刻の確認方法（イベントログ確認）",
+          "関連ユーザー・デバイスの確認方法"
+        ],
+        "current_status": "missing"
+      },
+      {
+        "category": "AD技術要件",
+        "requirement": "ADアカウント解除手順が詳細に記載されているか",
+        "gap_severity": "critical",
+        "missing_items": [
+          "Unlock-ADAccount コマンドの使用方法",
+          "ActiveDirectory PowerShell モジュールの要件",
+          "必要な権限レベル（Domain Admin等）",
+          "解除前の検証チェックリスト",
+          "解除後の動作確認"
+        ],
+        "current_status": "partial"
+      },
+      {
+        "category": "AD技術要件",
+        "requirement": "再発防止策が記載されているか",
+        "gap_severity": "high",
+        "missing_items": [
+          "アカウントロック閾値の設定（Threshold）",
+          "ロック時間の設定（LockoutDuration）",
+          "観察ウィンドウの設定（ResetCounterAfter）",
+          "アラート設定（Smart Card、VPN失敗等）",
+          "ユーザー教育（パスワード管理）"
+        ],
+        "current_status": "missing"
+      },
+      {
+        "category": "AD技術要件",
+        "requirement": "セキュリティ上の注意点が記載されているか",
+        "gap_severity": "high",
+        "missing_items": [
+          "セキュリティログの確認",
+          "不正なロック解除の防止",
+          "権限管理（Delegation of Control）",
+          "監査ログの記録",
+          "緊急対応時の手順と承認フロー"
+        ],
+        "current_status": "missing"
+      }
+    ]
+  },
+  "specific_recommendations": {
+    "immediate_actions": [
+      {
+        "priority": 1,
+        "action": "ADアカウントロック診断コマンドの記載を追加",
+        "description": "Get-ADUser, Search-ADAccount等のPowerShellコマンドをナレッジに追加し、具体的な診断手順を文書化",
+        "effort_estimate": "小（1-2時間）"
+      },
+      {
+        "priority": 2,
+        "action": "Unlock-ADAccountコマンドの実装手順を拡張",
+        "description": "コマンド構文、必要な権限、実行前チェックリスト、実行後検証を詳細に記載",
+        "effort_estimate": "中（2-4時間）"
+      },
+      {
+        "priority": 3,
+        "action": "セキュリティ考慮事項を追加",
+        "description": "権限管理、監査ログ、不正アクセス防止等のセキュリティ面を強化",
+        "effort_estimate": "中（2-4時間）"
+      }
+    ],
+    "medium_term_improvements": [
+      {
+        "action": "再発防止策セクションを追加",
+        "description": "アカウントロック閾値、観察ウィンドウ、スマートロック等の設定方法を文書化",
+        "timeline": "1-2週間"
+      },
+      {
+        "action": "Problem Managementへのリンクを確立",
+        "description": "根本原因分析プロセスとの連携を明記し、RCA（根本原因分析）への進め方を定義",
+        "timeline": "1-2週間"
+      },
+      {
+        "action": "ユーザーコミュニケーション方法を追加",
+        "description": "ユーザーへの事前連絡、対応完了通知、フィードバック収集方法を定義",
+        "timeline": "1週間"
+      }
+    ],
+    "long_term_enhancements": [
+      {
+        "action": "自動化スクリプトの提供",
+        "description": "PowerShellスクリプトを作成し、診断と解除を効率化。ただし適切な権限管理と監査ログを必須とする"
+      },
+      {
+        "action": "監視・アラート設定の統合",
+        "description": "継続的なADアカウント監視、異常ロック検知、エスカレーション自動化を実装"
+      },
+      {
+        "action": "業界標準との整合性確保",
+        "description": "Microsoft Best Practices、NIST Cyber Security Framework等との整合性を定期的に確認"
+      }
+    ]
+  },
+  "compliance_checklist": {
+    "incident_management_process": [
+      {
+        "item": "インシデント検知プロセスの文書化",
+        "status": "未実装",
+        "priority": "高"
+      },
+      {
+        "item": "優先度分類基準の定義",
+        "status": "未実装",
+        "priority": "高"
+      },
+      {
+        "item": "影響評価方法の定義",
+        "status": "実装中",
+        "priority": "中"
+      },
+      {
+        "item": "初期対応手順の詳細化",
+        "status": "実装中",
+        "priority": "中"
+      },
+      {
+        "item": "解決検証プロセスの定義",
+        "status": "実装中",
+        "priority": "中"
+      },
+      {
+        "item": "根本原因分析への連携",
+        "status": "未実装",
+        "priority": "高"
+      },
+      {
+        "item": "対応記録の標準化",
+        "status": "部分実装",
+        "priority": "中"
+      },
+      {
+        "item": "クローズ基準の明確化",
+        "status": "未実装",
+        "priority": "中"
+      }
+    ],
+    "technical_controls": [
+      {
+        "item": "AD診断コマンド一覧",
+        "status": "未実装",
+        "priority": "緊急"
+      },
+      {
+        "item": "解除手順の詳細化",
+        "status": "実装中",
+        "priority": "緊急"
+      },
+      {
+        "item": "セキュリティチェック",
+        "status": "未実装",
+        "priority": "高"
+      },
+      {
+        "item": "監査ログ確認方法",
+        "status": "未実装",
+        "priority": "高"
+      },
+      {
+        "item": "エスカレーション条件",
+        "status": "未実装",
+        "priority": "高"
+      },
+      {
+        "item": "再発防止設定",
+        "status": "未実装",
+        "priority": "中"
+      },
+      {
+        "item": "自動化スクリプト",
+        "status": "未実装",
+        "priority": "中"
+      }
+    ]
+  },
+  "quality_metrics": {
+    "itsm_completeness": {
+      "score": "25%",
+      "target": "85%",
+      "gap": "60%"
+    },
+    "technical_depth": {
+      "score": "35%",
+      "target": "80%",
+      "gap": "45%"
+    },
+    "documentation_quality": {
+      "score": "40%",
+      "target": "90%",
+      "gap": "50%"
+    },
+    "process_maturity": {
+      "current_level": "レベル1（初期段階）",
+      "target_level": "レベル4（管理段階）",
+      "capability_gaps": [
+        "プロセス定義が不十分",
+        "測定・監視の仕組みがない",
+        "自動化レベルが低い",
+        "業界標準との整合性がない"
+      ]
+    }
+  },
+  "audit_findings": {
+    "summary": "このナレッジはIncident Managementの基本要素を含んでいますが、ITIL準拠のための多くの要件が未充足です。",
+    "findings": [
+      {
+        "finding_id": "F001",
+        "category": "Process Gap",
+        "severity": "High",
+        "description": "初動対応プロセスの記録が不十分",
+        "evidence": "発生時刻、検知方法、初期対応者の情報が記載されていない",
+        "remediation": "インシデント報告フォーマットを定義し、最小限の必須情報を明記"
+      },
+      {
+        "finding_id": "F002",
+        "category": "Technical Gap",
+        "severity": "Critical",
+        "description": "具体的なADコマンド・手順が不足",
+        "evidence": "PowerShellコマンド、確認方法、トラブルシューティング手順が記載されていない",
+        "remediation": "Active Directory管理者による実践的な手順追加"
+      },
+      {
+        "finding_id": "F003",
+        "category": "Management Gap",
+        "severity": "High",
+        "description": "根本原因分析プロセスの連携がない",
+        "evidence": "Problem Managementへのリンク、RCA実施者、再発防止策の検討方法が不明",
+        "remediation": "Root Cause Analysis プロセスの組み込み"
+      },
+      {
+        "finding_id": "F004",
+        "category": "Security Gap",
+        "severity": "High",
+        "description": "セキュリティ考慮事項の記載がない",
+        "evidence": "権限管理、監査、不正な操作防止に関する情報がない",
+        "remediation": "セキュリティ要件を追加し、権限管理方針を明記"
+      }
+    ]
+  }
+}

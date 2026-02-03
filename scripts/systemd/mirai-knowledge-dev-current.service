@@ -1,0 +1,66 @@
+[Unit]
+Description=Mirai IT Knowledge System - Development Environment
+Documentation=https://github.com/Kensan196948G/Mirai-IT-Knowledge-System
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=kensan
+Group=kensan
+WorkingDirectory=/mnt/d/Mirai-IT-Knowledge-System
+
+# 環境変数
+Environment="ENVIRONMENT=development"
+Environment="FLASK_ENV=development"
+Environment="FLASK_APP=src/webui/app.py"
+Environment="PYTHONPATH=/mnt/d/Mirai-IT-Knowledge-System"
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/mnt/d/Mirai-IT-Knowledge-System/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# 環境変数ファイル読み込み（存在する場合）
+EnvironmentFile=-/mnt/d/Mirai-IT-Knowledge-System/.env.development
+
+# 起動前準備
+ExecStartPre=/bin/bash -c 'mkdir -p /mnt/d/Mirai-IT-Knowledge-System/db /mnt/d/Mirai-IT-Knowledge-System/data/logs/dev /mnt/d/Mirai-IT-Knowledge-System/backups'
+
+# 起動コマンド（仮想環境を使用）
+ExecStart=/bin/bash -c 'cd /mnt/d/Mirai-IT-Knowledge-System && source venv/bin/activate && set -a && source .env.development && set +a && python3 src/webui/app.py'
+
+# 停止設定
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStartSec=120
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# 再起動設定
+Restart=on-failure
+RestartSec=10
+RestartPreventExitStatus=0
+
+# ログ設定
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mirai-knowledge-dev
+
+# リソース制限（開発環境）
+MemoryMax=2G
+MemoryHigh=1536M
+CPUQuota=200%
+TasksMax=128
+
+# セキュリティ設定（開発環境向け - /mnt配下のため緩め）
+NoNewPrivileges=true
+PrivateTmp=true
+
+# ネットワーク制限
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# ファイルディスクリプタ制限
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -12,8 +12,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
-from src.core.workflow import WorkflowEngine
 from src.core.itsm_classifier import ITSMClassifier
+from src.core.workflow import WorkflowEngine
 from src.mcp.sqlite_client import SQLiteClient
 from src.workflows.intelligent_search import IntelligentSearchAssistant
 

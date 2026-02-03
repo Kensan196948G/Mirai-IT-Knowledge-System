@@ -3,8 +3,8 @@ MCP Integration Module
 実際のMCP連携を有効化するモジュール
 """
 
-from typing import Dict, Any, List, Optional
 import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,7 @@ class MCPIntegration:
             return False
 
     def query_context7_docs(
-        self,
-        library_name: str,
-        query: str
+        self, library_name: str, query: str
     ) -> List[Dict[str, Any]]:
         """
         Context7で技術ドキュメントを検索
@@ -69,7 +67,9 @@ class MCPIntegration:
             logger.error(f"Context7検索エラー: {e}")
             return []
 
-    def _demo_context7_results(self, library_name: str, query: str) -> List[Dict[str, Any]]:
+    def _demo_context7_results(
+        self, library_name: str, query: str
+    ) -> List[Dict[str, Any]]:
         """デモ用のContext7結果"""
         demo_docs = {
             "flask": [
@@ -77,7 +77,7 @@ class MCPIntegration:
                     "title": "Flask Routing",
                     "url": "https://flask.palletsprojects.com/routing/",
                     "snippet": "Use the route() decorator to bind a function to a URL",
-                    "source": "Context7"
+                    "source": "Context7",
                 }
             ],
             "sqlite": [
@@ -85,7 +85,7 @@ class MCPIntegration:
                     "title": "SQLite Full-Text Search",
                     "url": "https://www.sqlite.org/fts5.html",
                     "snippet": "FTS5 is a full-text search extension",
-                    "source": "Context7"
+                    "source": "Context7",
                 }
             ],
             "python": [
@@ -93,9 +93,9 @@ class MCPIntegration:
                     "title": "Python Error Handling",
                     "url": "https://docs.python.org/3/tutorial/errors.html",
                     "snippet": "Handle exceptions with try-except blocks",
-                    "source": "Context7"
+                    "source": "Context7",
                 }
-            ]
+            ],
         }
         return demo_docs.get(library_name, [])
 
@@ -109,11 +109,7 @@ class MCPIntegration:
             logger.error(f"Claude-Mem MCP有効化エラー: {e}")
             return False
 
-    def search_claude_mem(
-        self,
-        query: str,
-        limit: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search_claude_mem(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Claude-Memで過去の記憶を検索
 
@@ -149,19 +145,23 @@ class MCPIntegration:
                 "title": "データベース接続プール設定のベストプラクティス",
                 "content": "接続プール最大数は、データベースmax_connectionsを超えないように設定",
                 "timestamp": "2025-12-15T10:00:00",
-                "source": "Claude-Mem"
+                "source": "Claude-Mem",
             },
             {
                 "title": "ITSMプロセスのエスカレーション基準",
                 "content": "同じ事象が3回以上発生した場合は問題管理へエスカレーション",
                 "timestamp": "2025-11-20T14:30:00",
-                "source": "Claude-Mem"
-            }
+                "source": "Claude-Mem",
+            },
         ]
 
         # 簡易フィルタリング
         query_lower = query.lower()
-        filtered = [m for m in demo_memories if query_lower in m['title'].lower() or query_lower in m['content'].lower()]
+        filtered = [
+            m
+            for m in demo_memories
+            if query_lower in m["title"].lower() or query_lower in m["content"].lower()
+        ]
         return filtered if filtered else demo_memories[:2]
 
     def enable_github(self, repository: str) -> bool:
@@ -180,14 +180,11 @@ class MCPIntegration:
         return {
             "context7": self.context7_enabled,
             "claude_mem": self.claude_mem_enabled,
-            "github": self.github_enabled
+            "github": self.github_enabled,
         }
 
     def enrich_knowledge_with_mcps(
-        self,
-        knowledge_content: str,
-        detected_technologies: List[str],
-        itsm_type: str
+        self, knowledge_content: str, detected_technologies: List[str], itsm_type: str
     ) -> Dict[str, Any]:
         """
         全てのMCPを使用してナレッジを補強
@@ -209,7 +206,7 @@ class MCPIntegration:
                 docs = self.query_context7_docs(tech, f"{tech} best practices")
                 if docs:
                     tech_docs[tech] = docs
-            enrichments['technical_documentation'] = tech_docs
+            enrichments["technical_documentation"] = tech_docs
 
         # Claude-Memで過去の記憶を補強
         if self.claude_mem_enabled:
@@ -219,19 +216,27 @@ class MCPIntegration:
             for keyword in keywords[:2]:  # 上位2キーワード
                 mems = self.search_claude_mem(keyword)
                 memories.extend(mems)
-            enrichments['related_memories'] = memories[:5]
+            enrichments["related_memories"] = memories[:5]
 
         # GitHub情報（オプション）
         if self.github_enabled:
-            enrichments['github_repository'] = self.github_repository
+            enrichments["github_repository"] = self.github_repository
 
         return enrichments
 
     def _extract_keywords(self, content: str) -> List[str]:
         """キーワード抽出（簡易版）"""
         important_terms = [
-            "データベース", "サーバー", "ネットワーク", "接続", "エラー",
-            "障害", "問題", "対策", "設定", "プール"
+            "データベース",
+            "サーバー",
+            "ネットワーク",
+            "接続",
+            "エラー",
+            "障害",
+            "問題",
+            "対策",
+            "設定",
+            "プール",
         ]
         content_lower = content.lower()
         return [term for term in important_terms if term in content_lower]
@@ -239,6 +244,7 @@ class MCPIntegration:
 
 # グローバルインスタンス
 mcp_integration = MCPIntegration()
+
 
 # 自動初期化
 def auto_initialize():
@@ -254,6 +260,7 @@ def auto_initialize():
         logger.info(f"✅ MCP連携有効化: {', '.join(enabled_mcps)}")
     else:
         logger.warning("⚠️  MCP連携が有効化されていません")
+
 
 # 自動初期化実行
 auto_initialize()

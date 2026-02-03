@@ -3,10 +3,10 @@ SubAgent Base Class
 サブエージェント基底クラス
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
-from datetime import datetime
 import time
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 
 class SubAgentResult:
@@ -17,7 +17,7 @@ class SubAgentResult:
         status: str,  # 'success', 'failed', 'warning'
         data: Dict[str, Any],
         message: Optional[str] = None,
-        execution_time_ms: Optional[int] = None
+        execution_time_ms: Optional[int] = None,
     ):
         self.status = status
         self.data = data
@@ -27,17 +27,17 @@ class SubAgentResult:
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'status': self.status,
-            'data': self.data,
-            'message': self.message,
-            'execution_time_ms': self.execution_time_ms
+            "status": self.status,
+            "data": self.data,
+            "message": self.message,
+            "execution_time_ms": self.execution_time_ms,
         }
 
 
 class BaseSubAgent(ABC):
     """サブエージェント基底クラス"""
 
-    def __init__(self, name: str, role: str, priority: str = 'medium'):
+    def __init__(self, name: str, role: str, priority: str = "medium"):
         """
         Args:
             name: サブエージェント名
@@ -81,10 +81,10 @@ class BaseSubAgent(ABC):
         except Exception as e:
             execution_time_ms = int((time.time() - start_time) * 1000)
             return SubAgentResult(
-                status='failed',
+                status="failed",
                 data={},
                 message=f"エラーが発生しました: {str(e)}",
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
     def validate_input(self, input_data: Dict[str, Any], required_keys: list) -> bool:

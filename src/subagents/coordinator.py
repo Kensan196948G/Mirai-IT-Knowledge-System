@@ -3,7 +3,8 @@ Coordinator SubAgent
 全体調整と抜け漏れ確認を担当
 """
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from .base import BaseSubAgent, SubAgentResult
 
 

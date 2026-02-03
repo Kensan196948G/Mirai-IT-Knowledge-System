@@ -3,12 +3,7 @@
 SubAgent and Hooks management module
 """
 
+from .executor import HookExecutor, SubAgentExecutor
 from .loader import AgentLoader, HookLoader
-from .executor import SubAgentExecutor, HookExecutor
 
-__all__ = [
-    'AgentLoader',
-    'HookLoader',
-    'SubAgentExecutor',
-    'HookExecutor'
-]
+__all__ = ["AgentLoader", "HookLoader", "SubAgentExecutor", "HookExecutor"]

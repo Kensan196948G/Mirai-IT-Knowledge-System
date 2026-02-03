@@ -3,11 +3,11 @@ SQLite MCP Client for Knowledge Management
 ナレッジ管理用SQLiteクライアント
 """
 
-import sqlite3
 import json
+import sqlite3
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class SQLiteClient:
@@ -562,8 +562,7 @@ class SQLiteClient:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT * FROM knowledge_entries WHERE id = ?",
-                (knowledge_id,)
+                "SELECT * FROM knowledge_entries WHERE id = ?", (knowledge_id,)
             )
             row = cursor.fetchone()
             return self._row_to_dict(row) if row else None
@@ -590,25 +589,33 @@ class SQLiteClient:
         if not kwargs:
             return False
 
-        allowed_fields = {'title', 'content', 'itsm_type', 'markdown_path', 'status', 'tags', 'updated_at'}
+        allowed_fields = {
+            "title",
+            "content",
+            "itsm_type",
+            "markdown_path",
+            "status",
+            "tags",
+            "updated_at",
+        }
         update_fields = {k: v for k, v in kwargs.items() if k in allowed_fields}
 
         if not update_fields:
             return False
 
         # 自動的にupdated_atを更新
-        if 'updated_at' not in update_fields:
+        if "updated_at" not in update_fields:
             from datetime import datetime
-            update_fields['updated_at'] = datetime.now().isoformat()
 
-        set_clause = ', '.join([f'{k} = ?' for k in update_fields.keys()])
+            update_fields["updated_at"] = datetime.now().isoformat()
+
+        set_clause = ", ".join([f"{k} = ?" for k in update_fields.keys()])
         values = list(update_fields.values()) + [knowledge_id]
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                f"UPDATE knowledge_entries SET {set_clause} WHERE id = ?",
-                values
+                f"UPDATE knowledge_entries SET {set_clause} WHERE id = ?", values
             )
             conn.commit()
             return cursor.rowcount > 0

@@ -23,16 +23,16 @@ AI Orchestrator - マルチAI役割分担オーケストレーター
 4. 根拠分離出力: 回答本文とエビデンスを分離して出力
 """
 
-import os
 import asyncio
-import logging
 import hashlib
-import time
-from enum import Enum
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, field
 import json
+import logging
+import os
+import time
+from dataclasses import dataclass, field
+from enum import Enum
 from functools import lru_cache
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ GENERAL_CACHE_TTL = 3600  # 1時間
 @dataclass
 class CacheEntry:
     """キャッシュエントリ"""
+
     value: Any
     expires_at: float
     hit_count: int = 0
@@ -74,7 +75,9 @@ class ResponseCache:
         self._max_size = max_size
         self._stats = {"hits": 0, "misses": 0}
 
-    def _make_key(self, query: str, query_type: str, context: Optional[Dict] = None) -> str:
+    def _make_key(
+        self, query: str, query_type: str, context: Optional[Dict] = None
+    ) -> str:
         """キャッシュキーを生成"""
         # クエリとタイプをハッシュ化
         key_data = f"{query.lower().strip()}:{query_type}"
@@ -82,7 +85,9 @@ class ResponseCache:
             key_data += f":{json.dumps(context, sort_keys=True)}"
         return hashlib.sha256(key_data.encode()).hexdigest()[:32]
 
-    def get(self, query: str, query_type: str, context: Optional[Dict] = None) -> Optional[Any]:
+    def get(
+        self, query: str, query_type: str, context: Optional[Dict] = None
+    ) -> Optional[Any]:
         """キャッシュから取得"""
         key = self._make_key(query, query_type, context)
         entry = self._cache.get(key)
@@ -102,7 +107,14 @@ class ResponseCache:
         logger.info(f"キャッシュヒット: {key[:8]}... (hit_count={entry.hit_count})")
         return entry.value
 
-    def set(self, query: str, query_type: str, value: Any, ttl: int, context: Optional[Dict] = None) -> None:
+    def set(
+        self,
+        query: str,
+        query_type: str,
+        value: Any,
+        ttl: int,
+        context: Optional[Dict] = None,
+    ) -> None:
         """キャッシュに保存"""
         # サイズ制限チェック
         if len(self._cache) >= self._max_size:
@@ -111,10 +123,7 @@ class ResponseCache:
                 self._evict_lru()
 
         key = self._make_key(query, query_type, context)
-        self._cache[key] = CacheEntry(
-            value=value,
-            expires_at=time.time() + ttl
-        )
+        self._cache[key] = CacheEntry(value=value, expires_at=time.time() + ttl)
         logger.info(f"キャッシュ保存: {key[:8]}... (ttl={ttl}s)")
 
     def _evict_expired(self) -> None:
@@ -144,7 +153,7 @@ class ResponseCache:
             "max_size": self._max_size,
             "hits": self._stats["hits"],
             "misses": self._stats["misses"],
-            "hit_rate": round(hit_rate * 100, 2)
+            "hit_rate": round(hit_rate * 100, 2),
         }
 
     def clear(self) -> None:
@@ -168,6 +177,7 @@ def get_cache() -> ResponseCache:
 
 class QueryType(Enum):
     """問い合わせタイプ"""
+
     FAQ = "faq"
     INVESTIGATION = "investigation"
     EVIDENCE = "evidence"
@@ -177,6 +187,7 @@ class QueryType(Enum):
 @dataclass
 class AIResult:
     """AI処理結果"""
+
     provider: str
     role: str
     content: str
@@ -188,6 +199,7 @@ class AIResult:
 @dataclass
 class OrchestratedResponse:
     """オーケストレーション結果"""
+
     answer: str
     evidence: List[Dict[str, Any]]
     sources: List[str]
@@ -211,30 +223,49 @@ class AIOrchestrator:
 
     def __init__(self):
         # APIキー読み込み
-        self.openai_api_key = os.getenv('OPENAI_API_KEY')
-        self.anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
-        self.gemini_api_key = os.getenv('GEMINI_API_KEY')
-        self.perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        self.perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
 
         # クライアント初期化
         self._init_clients()
 
         # FAQ パターン
         self.faq_patterns = [
-            'パスワード', 'リセット', 'アカウント', '申請',
-            '権限', 'ログイン', '作成', '削除', '変更依頼'
+            "パスワード",
+            "リセット",
+            "アカウント",
+            "申請",
+            "権限",
+            "ログイン",
+            "作成",
+            "削除",
+            "変更依頼",
         ]
 
         # 調査パターン
         self.investigation_patterns = [
-            'エラー', '障害', 'トラブル', '原因', '調査',
-            '分析', '遅い', '動かない', '接続できない'
+            "エラー",
+            "障害",
+            "トラブル",
+            "原因",
+            "調査",
+            "分析",
+            "遅い",
+            "動かない",
+            "接続できない",
         ]
 
         # 根拠要求パターン
         self.evidence_patterns = [
-            'なぜ', '理由', '根拠', 'ベストプラクティス',
-            '推奨', '標準', 'セキュリティ'
+            "なぜ",
+            "理由",
+            "根拠",
+            "ベストプラクティス",
+            "推奨",
+            "標準",
+            "セキュリティ",
         ]
 
     def _init_clients(self):
@@ -244,6 +275,7 @@ class AIOrchestrator:
         if self.openai_api_key:
             try:
                 from openai import OpenAI
+
                 self._openai = OpenAI(api_key=self.openai_api_key)
                 logger.info("OpenAI クライアント初期化完了")
             except Exception as e:
@@ -254,6 +286,7 @@ class AIOrchestrator:
         if self.anthropic_api_key:
             try:
                 import anthropic
+
                 self._anthropic = anthropic.Anthropic(api_key=self.anthropic_api_key)
                 logger.info("Anthropic クライアント初期化完了")
             except Exception as e:
@@ -264,9 +297,10 @@ class AIOrchestrator:
         if self.gemini_api_key:
             try:
                 import google.generativeai as genai
+
                 genai.configure(api_key=self.gemini_api_key)
                 # gemini-2.0-flash を使用（最新の安定版）
-                self._gemini = genai.GenerativeModel('gemini-2.0-flash')
+                self._gemini = genai.GenerativeModel("gemini-2.0-flash")
                 logger.info("Gemini クライアント初期化完了")
             except Exception as e:
                 logger.warning(f"Gemini 初期化失敗: {e}")
@@ -276,9 +310,10 @@ class AIOrchestrator:
         if self.perplexity_api_key:
             try:
                 from openai import OpenAI
+
                 self._perplexity = OpenAI(
                     api_key=self.perplexity_api_key,
-                    base_url="https://api.perplexity.ai"
+                    base_url="https://api.perplexity.ai",
                 )
                 logger.info("Perplexity クライアント初期化完了")
             except Exception as e:
@@ -326,7 +361,12 @@ class AIOrchestrator:
         }
         return ttl_map.get(query_type, GENERAL_CACHE_TTL)
 
-    async def process(self, query: str, context: Optional[Dict[str, Any]] = None, use_cache: bool = True) -> OrchestratedResponse:
+    async def process(
+        self,
+        query: str,
+        context: Optional[Dict[str, Any]] = None,
+        use_cache: bool = True,
+    ) -> OrchestratedResponse:
         """
         マルチAIオーケストレーション処理
 
@@ -360,13 +400,13 @@ class AIOrchestrator:
                 processing_time = int((time.time() - start_time) * 1000)
                 logger.info(f"[キャッシュ] ヒット - 処理時間 {processing_time}ms")
                 return OrchestratedResponse(
-                    answer=cached.get('answer', ''),
-                    evidence=cached.get('evidence', []),
-                    sources=cached.get('sources', []),
-                    confidence=cached.get('confidence', 0.0),
+                    answer=cached.get("answer", ""),
+                    evidence=cached.get("evidence", []),
+                    sources=cached.get("sources", []),
+                    confidence=cached.get("confidence", 0.0),
                     query_type=query_type,
-                    ai_used=cached.get('ai_used', ['cached']),
-                    processing_time_ms=processing_time
+                    ai_used=cached.get("ai_used", ["cached"]),
+                    processing_time_ms=processing_time,
                 )
 
         # ステップ3: 並列処理タスク準備（Claude + Gemini + Perplexity構成）
@@ -381,7 +421,10 @@ class AIOrchestrator:
             ai_used.append("gemini")
 
         # Perplexity: 根拠・エビデンス収集（根拠要求時または調査時）
-        if self._perplexity and query_type in [QueryType.EVIDENCE, QueryType.INVESTIGATION]:
+        if self._perplexity and query_type in [
+            QueryType.EVIDENCE,
+            QueryType.INVESTIGATION,
+        ]:
             logger.info("  → Perplexity: 根拠・エビデンス収集タスク追加")
             tasks.append(self._perplexity_evidence(query))
             ai_used.append("perplexity")
@@ -405,26 +448,28 @@ class AIOrchestrator:
         logger.info("[ステップ5] 根拠分離出力")
         if use_cache:
             cache_data = {
-                'answer': final_response.get('answer', ''),
-                'evidence': final_response.get('evidence', []),
-                'sources': final_response.get('sources', []),
-                'confidence': final_response.get('confidence', 0.0),
-                'ai_used': ai_used
+                "answer": final_response.get("answer", ""),
+                "evidence": final_response.get("evidence", []),
+                "sources": final_response.get("sources", []),
+                "confidence": final_response.get("confidence", 0.0),
+                "ai_used": ai_used,
             }
             ttl = self._get_cache_ttl(query_type)
             cache.set(query, query_type.value, cache_data, ttl, context)
 
-        logger.info(f"[完了] 処理時間: {processing_time}ms | AI使用: {' → '.join(ai_used)}")
+        logger.info(
+            f"[完了] 処理時間: {processing_time}ms | AI使用: {' → '.join(ai_used)}"
+        )
         logger.info("=" * 50)
 
         return OrchestratedResponse(
-            answer=final_response.get('answer', ''),
-            evidence=final_response.get('evidence', []),
-            sources=final_response.get('sources', []),
-            confidence=final_response.get('confidence', 0.0),
+            answer=final_response.get("answer", ""),
+            evidence=final_response.get("evidence", []),
+            sources=final_response.get("sources", []),
+            confidence=final_response.get("confidence", 0.0),
             query_type=query_type,
             ai_used=ai_used,
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
 
     async def _gemini_investigate(self, query: str) -> AIResult:
@@ -450,7 +495,7 @@ class AIOrchestrator:
                 role="investigation",
                 content=response.text,
                 metadata={"model": "gemini-2.0-flash"},
-                success=True
+                success=True,
             )
         except Exception as e:
             logger.error(f"Gemini エラー: {e}")
@@ -460,7 +505,7 @@ class AIOrchestrator:
                 content="",
                 metadata={},
                 success=False,
-                error=str(e)
+                error=str(e),
             )
 
     async def _gpt_format_faq(self, query: str) -> AIResult:
@@ -477,12 +522,12 @@ class AIOrchestrator:
 回答形式:
 1. 回答の要約（1-2文）
 2. 具体的な手順（番号付きリスト）
-3. 注意点（あれば）"""
+3. 注意点（あれば）""",
                     },
-                    {"role": "user", "content": query}
+                    {"role": "user", "content": query},
                 ],
                 max_tokens=1000,
-                temperature=0.3
+                temperature=0.3,
             )
 
             return AIResult(
@@ -491,9 +536,9 @@ class AIOrchestrator:
                 content=response.choices[0].message.content,
                 metadata={
                     "model": "gpt-4o-mini",
-                    "tokens": response.usage.total_tokens
+                    "tokens": response.usage.total_tokens,
                 },
-                success=True
+                success=True,
             )
         except Exception as e:
             logger.error(f"GPT FAQ エラー: {e}")
@@ -503,7 +548,7 @@ class AIOrchestrator:
                 content="",
                 metadata={},
                 success=False,
-                error=str(e)
+                error=str(e),
             )
 
     async def _perplexity_evidence(self, query: str) -> AIResult:
@@ -520,11 +565,11 @@ class AIOrchestrator:
 出力形式:
 1. 根拠の要約
 2. 参照元（URL付き）
-3. 信頼度評価"""
+3. 信頼度評価""",
                     },
-                    {"role": "user", "content": query}
+                    {"role": "user", "content": query},
                 ],
-                max_tokens=1000
+                max_tokens=1000,
             )
 
             return AIResult(
@@ -532,7 +577,7 @@ class AIOrchestrator:
                 role="evidence",
                 content=response.choices[0].message.content,
                 metadata={"model": "sonar"},
-                success=True
+                success=True,
             )
         except Exception as e:
             logger.error(f"Perplexity エラー: {e}")
@@ -542,14 +587,11 @@ class AIOrchestrator:
                 content="",
                 metadata={},
                 success=False,
-                error=str(e)
+                error=str(e),
             )
 
     async def _codex_integrate(
-        self,
-        query: str,
-        query_type: QueryType,
-        results: List[AIResult]
+        self, query: str, query_type: QueryType, results: List[AIResult]
     ) -> Dict[str, Any]:
         """
         Claude最終統合: 収集情報を統合し最終回答を生成
@@ -572,7 +614,7 @@ class AIOrchestrator:
                 "answer": combined or "回答を生成できませんでした。",
                 "evidence": [],
                 "sources": [],
-                "confidence": 0.5
+                "confidence": 0.5,
             }
 
         # Anthropic（Claude）で統合
@@ -587,21 +629,20 @@ class AIOrchestrator:
             "answer": combined or "回答を生成できませんでした。",
             "evidence": [],
             "sources": [],
-            "confidence": 0.3
+            "confidence": 0.3,
         }
 
     async def _try_openai_integrate(
-        self,
-        query: str,
-        query_type: QueryType,
-        results: List[AIResult]
+        self, query: str, query_type: QueryType, results: List[AIResult]
     ) -> Optional[Dict[str, Any]]:
         """OpenAI (GPT-4o) で統合を試行"""
         try:
             # 収集情報をまとめる
             collected_info = ""
             for result in results:
-                collected_info += f"\n【{result.role}（{result.provider}）】\n{result.content}\n"
+                collected_info += (
+                    f"\n【{result.role}（{result.provider}）】\n{result.content}\n"
+                )
 
             system_prompt = """あなたはITサポートの統合エージェントです。
 収集された情報を統合し、情シス担当者向けの最終回答を生成してください。
@@ -638,10 +679,10 @@ class AIOrchestrator:
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
+                    {"role": "user", "content": user_content},
                 ],
                 max_tokens=2000,
-                temperature=0.5
+                temperature=0.5,
             )
 
             # JSON抽出
@@ -658,7 +699,7 @@ class AIOrchestrator:
                     "answer": response.choices[0].message.content,
                     "evidence": [],
                     "sources": [],
-                    "confidence": 0.7
+                    "confidence": 0.7,
                 }
 
         except Exception as e:
@@ -666,17 +707,16 @@ class AIOrchestrator:
             return None  # フォールバックを促す
 
     async def _try_anthropic_integrate(
-        self,
-        query: str,
-        query_type: QueryType,
-        results: List[AIResult]
+        self, query: str, query_type: QueryType, results: List[AIResult]
     ) -> Optional[Dict[str, Any]]:
         """Anthropic (Claude) で統合を試行"""
         try:
             # 収集情報をまとめる
             collected_info = ""
             for result in results:
-                collected_info += f"\n【{result.role}（{result.provider}）】\n{result.content}\n"
+                collected_info += (
+                    f"\n【{result.role}（{result.provider}）】\n{result.content}\n"
+                )
 
             prompt = f"""あなたはITサポートの統合エージェントです。
 収集された情報を統合し、情シス担当者向けの最終回答を生成してください。
@@ -709,7 +749,7 @@ JSON形式で回答してください（説明文は不要）:"""
             response = self._anthropic.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=2000,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             content = response.content[0].text
@@ -727,7 +767,7 @@ JSON形式で回答してください（説明文は不要）:"""
                     "answer": response.content[0].text,
                     "evidence": [],
                     "sources": [],
-                    "confidence": 0.7
+                    "confidence": 0.7,
                 }
 
         except Exception as e:
@@ -748,7 +788,9 @@ def get_orchestrator() -> AIOrchestrator:
 
 
 # 同期ラッパー
-def process_query(query: str, context: Optional[Dict[str, Any]] = None, use_cache: bool = True) -> OrchestratedResponse:
+def process_query(
+    query: str, context: Optional[Dict[str, Any]] = None, use_cache: bool = True
+) -> OrchestratedResponse:
     """同期的に問い合わせを処理"""
     orchestrator = get_orchestrator()
     return asyncio.run(orchestrator.process(query, context, use_cache))
