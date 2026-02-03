@@ -1,0 +1,11 @@
+{"type":"entity","name":"Mirai-IT-Knowledge-System","entityType":"Project","observations":["AI支援型社内ITナレッジシステム","7つのSubAgent並列実行対応","5つのHooks品質保証機能","SQLite FTS5全文検索対応","ITSM 5タイプ分類（Incident/Problem/Change/Release/Request）","開発環境整備完了: 2026-02-03","Python仮想環境: .venv作成済み","テスト結果: 299 passed / 2 failed (98.7%)","ナレッジファイル: 18個存在","データベース登録: 1件（開発DB）"]}
+{"type":"entity","name":"MCP-Configuration","entityType":"Configuration","observations":["WSL2/Linux用に設定完了","7サーバー中6サーバー接続OK","brave-searchはBRAVE_API_KEY設定後再起動で有効化","sqlite-dev: /mnt/d/Mirai-IT-Knowledge-System/db/knowledge_dev.db","sqlite-prod: /mnt/d/Mirai-IT-Knowledge-System/db/knowledge.db","GITHUB_TOKEN環境変数設定完了","BRAVE_API_KEY環境変数設定完了","再起動後に全MCPサーバーが有効化される","Playwright MCP追加: @playwright/mcp@latest","8つのMCPサーバー構成に拡張","Brave Search APIキーを.mcp.jsonに直接設定済み"]}
+{"type":"entity","name":"Database-Schema","entityType":"Schema","observations":["11テーブル作成完了","12インデックス作成完了","15個のITSMタグ初期データ挿入済み","開発DB・本番DB両方に適用完了"]}
+{"type":"entity","name":"GitHub-Repository","entityType":"Repository","observations":["Kensan196948G/Mirai-IT-Knowledge-System","Open Issues: 5件","Open PRs: 3件 (Copilotによる自動修復PR)","Auto-Repair Workflowが動作中","最終更新: 2026-02-02"]}
+{"type":"entity","name":"Knowledge_00018","entityType":"KnowledgeEntry","observations":["ADアカウントロック対応ナレッジ","ITSMタイプ: Incident","品質スコア: 0.52 (要改善)","ITSM準拠度: 35%","ステータス: draft (改善中)","作成日: 2026-02-03","7 SubAgents分析完了","5 Hooks実行完了","PowerShellスクリプト提供済み"]}
+{"type":"entity","name":"Memory-MCP-Config","entityType":"Configuration","observations":["2つのメモリMCPを使い分け","memory: 知識グラフベース、エンティティ・関係管理","claude-mem: 会話履歴、セマンティック検索、決定追跡","memory保存先: .memory/project-memory.json","claude-mem保存先: .memory/claude-mem/conversations.db","cccmemoryパッケージ使用"]}
+{"type":"relation","from":"Mirai-IT-Knowledge-System","to":"MCP-Configuration","relationType":"uses"}
+{"type":"relation","from":"Mirai-IT-Knowledge-System","to":"Database-Schema","relationType":"contains"}
+{"type":"relation","from":"Mirai-IT-Knowledge-System","to":"GitHub-Repository","relationType":"hosted_on"}
+{"type":"relation","from":"Knowledge_00018","to":"Knowledge_00017","relationType":"related_to"}
+{"type":"relation","from":"Mirai-IT-Knowledge-System","to":"Memory-MCP-Config","relationType":"uses"}

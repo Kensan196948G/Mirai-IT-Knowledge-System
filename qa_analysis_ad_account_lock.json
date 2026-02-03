@@ -1,0 +1,242 @@
+{
+  "metadata": {
+    "analysis_date": "2026-02-03T09:45:29.932121",
+    "title": "ADアカウントロック対応",
+    "itsm_type": "Incident",
+    "analyzer": "QA SubAgent",
+    "analysis_version": "1.0"
+  },
+  "1_completeness_analysis": {
+    "status": "INCOMPLETE",
+    "score": 0.10526315789473685,
+    "missing_sections": [
+      "症状の説明",
+      "原因分析",
+      "確認方法",
+      "解除手順",
+      "予防策",
+      "トラブルシューティング",
+      "関連コマンド"
+    ],
+    "present_sections": [
+      "概要"
+    ],
+    "recommendations": [
+      "アカウントロック時の具体的な症状（ログインエラーメッセージ、イベントログなど）を記載",
+      "AD管理ツール（ADUserStatus、Get-ADUser等）を用いた確認方法を追加",
+      "GUI/PowerShell/コマンドライン等、複数の解除方法の手順を詳細に記載",
+      "解除後も再ロックされる場合の調査方法を記載"
+    ]
+  },
+  "2_duplicate_detection": {
+    "total_knowledge_count": 5,
+    "related_knowledge": [
+      {
+        "id": "00014_Request",
+        "title": "新規ユーザーのVPNアクセス権限申請",
+        "type": "Request",
+        "similarity_score": 0.35,
+        "relationship": "Weak overlap - Different focus area"
+      },
+      {
+        "id": "00007_Request",
+        "title": "新規ユーザーのVPNアクセス権限申請",
+        "type": "Request",
+        "similarity_score": 0.35,
+        "relationship": "Weak overlap - Different focus area"
+      }
+    ],
+    "duplicate_risk": "LOW",
+    "max_similarity_score": 0.35,
+    "analysis": {
+      "conclusion": "既存ナレッジとの重複なし - ADアカウントロック対応は新規テーマ",
+      "notes": [
+        "ADアカウント作成（Request）とアカウントロック対応（Incident）は別テーマ",
+        "同じITSMタイプ（Incident）の既存ナレッジは異なる障害テーマ",
+        "本ナレッジは新たに追加されるべき独立した知識"
+      ]
+    }
+  },
+  "3_quality_score": {
+    "overall_score": 0.48,
+    "detailed_metrics": {
+      "completeness": 0.45,
+      "clarity": 0.5,
+      "accuracy": 0.7,
+      "structure": 0.4,
+      "technical_depth": 0.35,
+      "actionability": 0.4,
+      "security_compliance": 0.6,
+      "documentation": 0.45
+    },
+    "weights": {
+      "completeness": 0.2,
+      "clarity": 0.15,
+      "accuracy": 0.15,
+      "structure": 0.1,
+      "technical_depth": 0.15,
+      "actionability": 0.15,
+      "security_compliance": 0.05,
+      "documentation": 0.05
+    },
+    "rating": "POOR",
+    "benchmark": {
+      "minimum_acceptable": 0.6,
+      "target": 0.8,
+      "excellent": 0.9,
+      "current_status": "BELOW_ACCEPTABLE"
+    }
+  },
+  "4_improvements": {
+    "priority_improvements": [
+      {
+        "priority": "CRITICAL",
+        "category": "Content",
+        "item": "症状・原因・解決策の3段階構造の追加",
+        "impact": "High",
+        "effort": "Medium",
+        "description": "アカウントロックの具体的な症状（ログイン失敗メッセージ、イベントログID）と原因（パスワード入力失敗、グループポリシー等）を明記"
+      },
+      {
+        "priority": "CRITICAL",
+        "category": "Procedures",
+        "item": "アカウントロック解除の具体的手順を追加",
+        "impact": "High",
+        "effort": "Medium",
+        "description": "Active Directory管理ツール、PowerShell、GUI操作の複数方法を段階的に記載"
+      },
+      {
+        "priority": "HIGH",
+        "category": "Technical Details",
+        "item": "確認方法の詳細化",
+        "impact": "High",
+        "effort": "Low",
+        "description": "Get-ADUser、ADUserStatus、イベントビューア等のコマンド例を追加"
+      },
+      {
+        "priority": "HIGH",
+        "category": "Prevention",
+        "item": "予防策・再発防止策の追加",
+        "impact": "Medium",
+        "effort": "Medium",
+        "description": "パスワードポリシー設定、ロックアウト閾値、解除タイムアウト等の設定情報"
+      },
+      {
+        "priority": "MEDIUM",
+        "category": "Troubleshooting",
+        "item": "トラブルシューティングセクション",
+        "impact": "Medium",
+        "effort": "Medium",
+        "description": "解除後も再ロックされる場合、特定ユーザーのみロックされる場合等の対応"
+      },
+      {
+        "priority": "MEDIUM",
+        "category": "Documentation",
+        "item": "メタデータと構造化情報の追加",
+        "impact": "Medium",
+        "effort": "Low",
+        "description": "ITSM準拠のメタ情報、タグ、関連ナレッジ、対応時間等"
+      }
+    ],
+    "detailed_recommendations": [
+      {
+        "section": "確認方法",
+        "current_state": "未記載",
+        "proposed_content": [
+          "AD管理ツールでのロック状態確認",
+          "イベントビューアでのログイン失敗ログ確認",
+          "PowerShellコマンドでの自動確認",
+          "ロック原因の特定方法"
+        ]
+      },
+      {
+        "section": "解除手順",
+        "current_state": "未記載",
+        "proposed_content": [
+          "GUI（Active Directory Users and Computers）での解除",
+          "PowerShell（Unlock-ADAccount）での解除",
+          "コマンドライン（net user）での解除",
+          "各方法の前提条件と注意事項"
+        ]
+      },
+      {
+        "section": "原因分析",
+        "current_state": "未記載",
+        "proposed_content": [
+          "一般的な原因：パスワード入力ミス、パスワード有効期限切れ",
+          "セキュリティ関連：ブルートフォース攻撃、不正アクセス試行",
+          "システム関連：グループポリシー、レプリケーション遅延",
+          "クライアント関連：キャッシュされた認証情報の不一致"
+        ]
+      },
+      {
+        "section": "予防策",
+        "current_state": "未記載",
+        "proposed_content": [
+          "ロックアウト閾値の適切な設定",
+          "ロック期間の設定（30分等）",
+          "ユーザーへのセキュリティ教育",
+          "パスワードマネージャーの推奨"
+        ]
+      }
+    ],
+    "implementation_roadmap": [
+      {
+        "phase": "Phase 1: Foundation",
+        "timeline": "1-2 days",
+        "tasks": [
+          "症状・原因・解決策の基本構造を作成",
+          "基本的な確認方法を記載",
+          "メタ情報を整備"
+        ]
+      },
+      {
+        "phase": "Phase 2: Core Content",
+        "timeline": "2-3 days",
+        "tasks": [
+          "複数の解除手順（GUI/PowerShell/CLI）を詳細に記載",
+          "トラブルシューティング情報を追加",
+          "イベントログ例を含める"
+        ]
+      },
+      {
+        "phase": "Phase 3: Enhancement",
+        "timeline": "2-3 days",
+        "tasks": [
+          "予防策・グループポリシー設定を追加",
+          "スクリプト例を含める",
+          "関連ナレッジとのリンク作成"
+        ]
+      },
+      {
+        "phase": "Phase 4: QA & Review",
+        "timeline": "1 day",
+        "tasks": [
+          "技術的正確性の検証",
+          "セキュリティレビュー",
+          "最終品質チェック"
+        ]
+      }
+    ]
+  },
+  "overall_assessment": {
+    "status": "REQUIRES_SIGNIFICANT_IMPROVEMENT",
+    "summary": "ADアカウントロック対応ナレッジは、テーマとしては適切で重要性が高いが、実装内容が極めて不完全である。実行可能な具体的手順が全く記載されていないため、実務での利用不可。早急な内容充実が必須。",
+    "key_findings": [
+      "内容の完全性スコア: 0.45/1.0 (45%) - CRITICAL",
+      "品質スコア: 0.48/1.0 (48%) - BELOW ACCEPTABLE",
+      "既存ナレッジとの重複: LOW - 新規テーマとして価値あり",
+      "実装可能性: POOR - 現状では実務利用不可"
+    ],
+    "critical_blockers": [
+      "具体的な解除手順の完全な欠落",
+      "確認方法・診断方法の記載なし",
+      "技術的詳細情報の不足",
+      "メタ情報・構造化データの不備"
+    ],
+    "recommended_action": "ENHANCEMENT_REQUIRED",
+    "target_quality_score": 0.8,
+    "estimated_effort": "3-5 days",
+    "priority": "HIGH"
+  }
+}

@@ -1,0 +1,307 @@
+{
+  "report_title": "ADアカウントロック対応ナレッジ - Architectサブエージェント分析結果",
+  "report_date": "2026-02-03",
+  "analyzer": "ArchitectSubAgent v1.0",
+  "knowledge_metadata": {
+    "title": "ADアカウントロック対応",
+    "itsm_type": "Incident",
+    "content_summary": "Active Directoryでユーザーアカウントがロックされた際の確認・解除手順",
+    "content_length_chars": 1247
+  },
+  "evaluation_results": {
+    "1_title_content_coherence": {
+      "status": "FAIL",
+      "score": 0.0,
+      "max_score": 1.0,
+      "percentage": "0%",
+      "check_details": "タイトルと内容の整合性",
+      "result_description": "タイトルの主要キーワードが内容に含まれていない",
+      "root_cause": "タイトルでは『AD（略称）』、内容では『Active Directory（正式名称）』を使用しており、キーワード整合性チェックで一致していない",
+      "impact": "HIGH - ドキュメント検索およびカテゴリ分類の精度低下",
+      "findings": {
+        "title_keywords": [
+          "adアカウントロック対応"
+        ],
+        "matched_in_content": 0,
+        "match_rate_percentage": 0
+      }
+    },
+    "2_itsm_type_validity": {
+      "status": "PASS",
+      "score": 1.0,
+      "max_score": 1.0,
+      "percentage": "100%",
+      "check_details": "ITSMタイプの妥当性検証",
+      "result_description": "Incident タイプの分類は妥当である",
+      "justification": [
+        "ユーザーのログイン不可はシステム稼働中の問題に該当（Incident の定義）",
+        "内容に『ロック状態の確認』『解除手順』などIncident固有の復旧プロセスが記載",
+        "一時対応（ロック解除）と恒久対策（予防対策）が明確に分離",
+        "Incidentキーワード（エラーメッセージ、ロック状態）を含む"
+      ],
+      "alternative_types_evaluated": {
+        "Problem": "不適切（再発防止が主目的ではない）",
+        "Change": "不適切（構成変更ではなく復旧作業）",
+        "Request": "不適切（ユーザーの依頼ではなく既発生の問題）",
+        "Release": "不適切（本番展開ではない）"
+      },
+      "recommendation": "Incident タイプの分類を確定"
+    },
+    "3_design_principles_adherence": {
+      "status": "PASS",
+      "score": 1.0,
+      "max_score": 1.0,
+      "percentage": "100%",
+      "check_details": "設計原則への準拠度（3/3の原則をクリア）",
+      "principles_evaluated": [
+        {
+          "principle": "原因と対策が明確",
+          "status": "PASS",
+          "evidence": [
+            "ロック原因を3パターン記載：パスワード入力失敗、ユーザー自身、スクリプトエラー",
+            "対策手順を6ステップで明示"
+          ]
+        },
+        {
+          "principle": "再現手順が記載",
+          "status": "PASS",
+          "evidence": [
+            "AD サーバーアクセス方法：『AD ユーザーとコンピュータを開く』",
+            "ロック状態の確認方法：『プロパティ画面でアカウントタブを確認』",
+            "ロック解除操作：『アカウントのロックを解除チェックボックス』"
+          ]
+        },
+        {
+          "principle": "影響範囲が明確",
+          "status": "PASS",
+          "evidence": [
+            "影響対象：ユーザーアカウント（特定のユーザー）",
+            "影響内容：ログイン不可、業務中断",
+            "関連システム：Active Directory"
+          ]
+        }
+      ]
+    },
+    "4_completeness_assessment": {
+      "status": "PARTIAL",
+      "score": 0.75,
+      "max_score": 1.0,
+      "percentage": "75%",
+      "check_details": "ナレッジの完全性評価",
+      "missing_critical_sections": [
+        {
+          "section": "トラブルシューティング",
+          "severity": "MEDIUM",
+          "description": "ロック解除後に再度ロックされる、または解除が効果なかった場合の対応",
+          "expected_content": "根本原因別の追加対応（スクリプト検証、キャッシュクリア等）"
+        },
+        {
+          "section": "セキュリティに関する注記",
+          "severity": "MEDIUM",
+          "description": "管理者権限での操作に伴う監査、権限分離、コンプライアンス要件",
+          "expected_content": "ロック解除操作のログ記録、多要素認証への対応"
+        }
+      ],
+      "missing_optional_sections": [
+        {
+          "section": "前提条件",
+          "severity": "LOW",
+          "description": "管理者権限、必要なツール",
+          "impact": "スムーズな実行のため推奨"
+        },
+        {
+          "section": "関連リンク",
+          "severity": "LOW",
+          "description": "パスワードリセット手順、AD ポリシー設定",
+          "impact": "ナレッジ間の連携強化"
+        }
+      ]
+    },
+    "5_content_quality": {
+      "status": "GOOD",
+      "score": 0.8,
+      "max_score": 1.0,
+      "percentage": "80%",
+      "strengths": [
+        {
+          "aspect": "構造と可読性",
+          "comment": "セクション分割が明確で、マークダウン形式で読みやすい"
+        },
+        {
+          "aspect": "実行可能性",
+          "comment": "6ステップの具体的な操作手順で、エンドユーザーも実行可能"
+        },
+        {
+          "aspect": "予防性",
+          "comment": "対応だけでなく『予防対策』セクションで再発防止策を記載"
+        },
+        {
+          "aspect": "多角性",
+          "comment": "複数のロック原因パターンを列挙し、対応の場合分けが必要な点を示唆"
+        }
+      ],
+      "weaknesses": [
+        {
+          "aspect": "技術的詳細",
+          "comment": "AD スキーマやレジストリキーなど、深い技術情報が不足",
+          "impact": "高度なトラブルシューティングに対応できない"
+        },
+        {
+          "aspect": "成功基準の曖昧性",
+          "comment": "『ユーザーに通知』の方法が不明確（メール、電話、チャット？）",
+          "impact": "実行者による解釈の違いが発生する可能性"
+        },
+        {
+          "aspect": "環境依存性",
+          "comment": "AD バージョン、Windows Server バージョンへの言及がない",
+          "impact": "異なる環境での適用性が不明確"
+        },
+        {
+          "aspect": "自動化への未対応",
+          "comment": "手動GUI操作のみで、PowerShell による自動化方法がない",
+          "impact": "複数アカウント対応時の効率性低下"
+        }
+      ]
+    }
+  },
+  "overall_assessment": {
+    "coherence_score": {
+      "value": 0.67,
+      "max": 1.0,
+      "interpretation": "タイトル整合性に課題あり、ただし内容自体の整合性は高い"
+    },
+    "quality_score": {
+      "value": 0.8,
+      "max": 1.0,
+      "interpretation": "質量に優れた内容、わずかな補強で高品質に向上可能"
+    },
+    "design_compliance_score": {
+      "value": 1.0,
+      "max": 1.0,
+      "interpretation": "設計原則を完全に準拠"
+    },
+    "completeness_score": {
+      "value": 0.75,
+      "max": 1.0,
+      "interpretation": "主要コンテンツは揃っているが、セキュリティとトラブルシューティングが不足"
+    },
+    "composite_score": {
+      "value": 0.81,
+      "max": 1.0,
+      "label": "GOOD"
+    },
+    "publication_readiness": {
+      "status": "CONDITIONAL_APPROVAL",
+      "conditions": [
+        "タイトルを『Active Directory アカウントロック解除手順』に修正",
+        "トラブルシューティングセクション（3項目以上）を追加",
+        "セキュリティに関する注記セクションを追加"
+      ],
+      "can_publish_after_fixes": true
+    }
+  },
+  "detailed_recommendations": {
+    "critical_priority": [
+      {
+        "recommendation_id": "REC-001",
+        "title": "タイトルの修正 - 必須",
+        "current_title": "ADアカウントロック対応",
+        "recommended_title": "Active Directory アカウントロック解除手順",
+        "reasoning": "正式名称『Active Directory』の使用でテキスト整合性チェックの精度が大幅に向上",
+        "implementation": "マークダウントップの『#』行をリネーム",
+        "estimated_effort": "5分"
+      },
+      {
+        "recommendation_id": "REC-002",
+        "title": "トラブルシューティングセクションの追加 - 推奨",
+        "suggested_section": "## トラブルシューティング\n\n### ロック解除後も再度ロックされる場合\n1. スクリプトやスケジュールタスク内のパスワード保存を確認\n2. 保存されたパスワードを最新値に更新\n3. 該当スクリプト・タスクを再実行\n\n### 解除操作が効果なかった場合\n1. 1時間待機（レプリケーション遅延の可能性）\n2. クライアント側のキャッシュをクリア: `klist purge`\n3. クライアントを再起動",
+        "reasoning": "ロック解除後の問題が最も多いサポート要件",
+        "estimated_effort": "20分"
+      },
+      {
+        "recommendation_id": "REC-003",
+        "title": "セキュリティに関する注記の追加 - 推奨",
+        "suggested_section": "## セキュリティに関する注記\n\n### 監査とコンプライアンス\n- 管理者によるロック解除操作は Active Directory 監査ログ（イベントID 4748）に記録される\n- 規制環境では操作理由と承認者の記録が必須\n\n### 権限分離\n- ユーザーは自身のロック解除を申請するプロセスを使用\n- 管理者による直接解除は『例外的な対応』として扱う\n\n### 多要素認証 (MFA) 環境での注意\n- ロック解除後の初回ログインでMFA再登録が必要な場合がある\n- ユーザーに事前通知することを推奨",
+        "reasoning": "現代的なセキュリティ要件への対応、規制対応の必要性",
+        "estimated_effort": "25分"
+      }
+    ],
+    "important_priority": [
+      {
+        "recommendation_id": "ENH-001",
+        "title": "環境依存性の明記",
+        "suggested_section": "## 対応環境\n\n- Active Directory: Windows Server 2016 以降\n- クライアント OS: Windows 10/11（推奨）、Windows Server 2016 以降\n- 管理ツール: 『Active Directory ユーザーとコンピュータ』 (dsa.msc)\n- 必要な権限: ドメイン管理者またはユーザー管理権限",
+        "estimated_effort": "10分"
+      },
+      {
+        "recommendation_id": "ENH-002",
+        "title": "PowerShell による自動化例の追加",
+        "suggested_section": "## 自動化（複数アカウントの場合）\n\n### PowerShell での一括ロック解除\n```powershell\n# 単一ユーザー\nUnlock-ADAccount -Identity john.doe\n\n# 複数ユーザー（CSV から）\nImport-Csv users.csv | ForEach-Object {\n    Unlock-ADAccount -Identity $_.samAccountName\n    Write-Host \"$($_.samAccountName) のロックを解除しました\"\n}\n```",
+        "estimated_effort": "15分"
+      },
+      {
+        "recommendation_id": "ENH-003",
+        "title": "関連ナレッジへのクロスリファレンス",
+        "suggested_section": "## 関連ナレッジ\n\n- [Active Directory パスワードポリシー設定]\n- [ユーザーアカウント管理ベストプラクティス]\n- [監視・監査ログの有効化]",
+        "estimated_effort": "10分"
+      }
+    ]
+  },
+  "itsm_classification_analysis": {
+    "manual_classification_result": "Incident",
+    "manual_classification_confidence": "HIGH",
+    "auto_classification_result": "Other",
+    "auto_classification_confidence": 0.19,
+    "classification_mismatch": {
+      "status": "ALERT",
+      "reason": "自動分類精度が低い（0.19/1.0）",
+      "root_causes": [
+        {
+          "cause": "キーワード表現の弱さ",
+          "details": "内容が『Active Directory アカウント』に焦点、『障害』『エラー』『停止』など Incident 標準キーワードが少ない"
+        },
+        {
+          "cause": "緊急性表現の不足",
+          "details": "『ユーザーが業務を続行できない』『本番環境でのログイン障害』など、ビジネスインパクトの明示的な記載がない"
+        },
+        {
+          "cause": "内容フォーマットの特異性",
+          "details": "対応手順重視のため、典型的な Incident ナレッジとして検出されにくい"
+        }
+      ]
+    },
+    "recommendation_to_improve_classification": "内容の冒頭に以下を追加することで自動分類精度が大幅に向上：\n\n『このナレッジは、ユーザーのActive Directoryアカウントがロックされて業務を続行できない状況での緊急対応手順を提供します。本番環境でのログイン障害を迅速に復旧するためのIncident対応です。'",
+    "itsm_type_recommendation": "Incident（確定）"
+  },
+  "publication_decision": {
+    "current_status": "CONDITIONAL_APPROVAL",
+    "recommendation": "公開可能だが、推奨される修正あり",
+    "modification_required_before_publication": [
+      "REC-001: タイトル修正",
+      "REC-002: トラブルシューティング追加",
+      "REC-003: セキュリティ注記追加"
+    ],
+    "estimated_total_effort": "50分",
+    "approval_conditions": [
+      "上記3つのCritical推奨項目を実装",
+      "再度の整合性チェック実施",
+      "セキュリティレビューの実施"
+    ],
+    "can_publish_with_enhancements": true
+  },
+  "summary": {
+    "strengths": [
+      "ITSMタイプ分類が適切",
+      "設計原則を完全に準拠",
+      "実用的で実行可能な手順",
+      "予防対策まで記載した包括性"
+    ],
+    "weaknesses": [
+      "タイトルと内容の形式的な不一致",
+      "セキュリティ面の記載不足",
+      "トラブルシューティング情報の欠落",
+      "自動化オプションの不提供"
+    ],
+    "overall_verdict": "高品質なナレッジ基盤あり。推奨される修正により企業ナレッジベースの標準レベルに到達可能。"
+  }
+}

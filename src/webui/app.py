@@ -90,6 +90,11 @@ def _translate_texts(texts, api_key, target_lang, api_url):
     if not api_key:
         return texts, False
 
+    # 改行コードやスペースを除去
+    api_key = api_key.strip()
+    target_lang = target_lang.strip() if target_lang else "JA"
+    api_url = api_url.strip() if api_url else "https://api-free.deepl.com/v2/translate"
+
     results = list(texts)
     index_map = []
     payload_texts = []
@@ -112,11 +117,12 @@ def _translate_texts(texts, api_key, target_lang, api_url):
         batch = payload_texts[start : start + batch_size]
         batch_indices = index_map[start : start + batch_size]
         try:
-            data = [("auth_key", api_key), ("target_lang", target_lang)]
+            data = [("target_lang", target_lang)]
             for text in batch:
                 data.append(("text", text))
             body = urllib.parse.urlencode(data, doseq=True).encode("utf-8")
             req = urllib.request.Request(api_url, data=body, method="POST")
+            req.add_header("Authorization", f"DeepL-Auth-Key {api_key}")
             req.add_header("Content-Type", "application/x-www-form-urlencoded")
             with urllib.request.urlopen(req, timeout=15) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
@@ -1209,6 +1215,21 @@ if __name__ == "__main__":
     env_badge = "🔧 開発" if ENVIRONMENT == "development" else "🚀 本番"
     protocol = "https" if SSL_ENABLED else "http"
 
+    # ローカルIPアドレスを自動検出
+    def get_local_ip():
+        """ローカルIPアドレスを取得"""
+        try:
+            # UDPソケットを使用（実際には接続しない）
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+        except Exception:
+            return "127.0.0.1"
+
+    local_ip = get_local_ip()
+
     print("")
     print("=" * 60)
     print(f"🌐 Mirai IT Knowledge Systems - WebUI [{env_badge}]")
@@ -1218,9 +1239,11 @@ if __name__ == "__main__":
     print(f"   デバッグ: {DEBUG}")
     print(f"   SSL/HTTPS: {SSL_ENABLED}")
     print("")
-    print(f"   アクセスURL:")
-    print(f"   {protocol}://{HOST}:{PORT}")
+    print(f"   🌐 アクセスURL:")
     print(f"   {protocol}://localhost:{PORT}")
+    print(f"   {protocol}://{local_ip}:{PORT}")
+    if HOST not in ["0.0.0.0", "127.0.0.1", local_ip]:
+        print(f"   {protocol}://{HOST}:{PORT}")
     print("")
 
     if ENVIRONMENT == "development":

@@ -1,0 +1,75 @@
+{
+  "status": "warning",
+  "message": "品質スコアが低いです: 40%",
+  "analysis": {
+    "1_completeness_check": {
+      "overall_rate": 0.4,
+      "passed_count": 2,
+      "total_count": 5,
+      "details": [
+        {
+          "item": "タイトル",
+          "passed": true,
+          "message": "タイトルの長さが適切"
+        },
+        {
+          "item": "内容",
+          "passed": false,
+          "message": "内容が不足しています（最低100文字を推奨）"
+        },
+        {
+          "item": "構造化",
+          "passed": false,
+          "message": "見出しやリストを使って構造化することを推奨します"
+        },
+        {
+          "item": "具体性",
+          "passed": false,
+          "message": "時刻、対象システム、エラーメッセージなど具体的な情報を追加してください"
+        },
+        {
+          "item": "対応結果",
+          "passed": true,
+          "message": "対応結果が記載されています"
+        }
+      ]
+    },
+    "2_duplicate_detection": {
+      "high_similarity_count": 0,
+      "total_similar_count": 0,
+      "similar_knowledge": []
+    },
+    "3_quality_score": {
+      "score": 0.4,
+      "level": "acceptable",
+      "factors": [
+        {
+          "factor": "完全性",
+          "weight": 0.4,
+          "contribution": 0.16
+        },
+        {
+          "factor": "内容の充実度",
+          "weight": 0.3,
+          "contribution": 0.04
+        },
+        {
+          "factor": "可読性",
+          "weight": 0.2,
+          "contribution": 0.12
+        },
+        {
+          "factor": "有用性",
+          "weight": 0.1,
+          "contribution": 0.08
+        }
+      ]
+    },
+    "4_improvement_suggestions": [
+      "内容が不足しています（最低100文字を推奨）",
+      "見出しやリストを使って構造化することを推奨します",
+      "時刻、対象システム、エラーメッセージなど具体的な情報を追加してください",
+      "内容をより詳細に記載し、具体的な情報を追加してください"
+    ]
+  }
+}

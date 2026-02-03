@@ -2,50 +2,59 @@
   "mcpServers": {
     "github": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-github"],
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
     },
     "sqlite-dev": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-sqlite", "--db-path", "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/db/knowledge_dev.db"],
+      "args": ["-y", "mcp-server-sqlite", "--db", "/mnt/d/Mirai-IT-Knowledge-System/db/knowledge_dev.db"],
       "description": "開発環境データベース"
     },
     "sqlite-prod": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-sqlite", "--db-path", "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/db/knowledge.db"],
+      "args": ["-y", "mcp-server-sqlite", "--db", "/mnt/d/Mirai-IT-Knowledge-System/db/knowledge.db"],
       "description": "本番環境データベース"
     },
     "brave-search": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-brave-search"],
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
       "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      }
+        "BRAVE_API_KEY": "BSAg8mI-C1724Gro5K1UHthSdPNurDT"
+      },
+      "description": "Web検索（Brave Search API）"
     },
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"],
       "description": "ライブラリドキュメント取得"
     },
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-playwright"],
-      "description": "ブラウザ自動化テスト"
-    },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {
-        "MEMORY_FILE_PATH": "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/.memory/project-memory.json"
+        "MEMORY_FILE_PATH": "/mnt/d/Mirai-IT-Knowledge-System/.memory/project-memory.json"
       },
-      "description": "プロジェクト固有の永続メモリ"
+      "description": "知識グラフベースメモリ（エンティティ・関係管理、短期〜中期コンテキスト）"
+    },
+    "claude-mem": {
+      "command": "npx",
+      "args": ["-y", "cccmemory"],
+      "env": {
+        "CCCMEMORY_DB_PATH": "/mnt/d/Mirai-IT-Knowledge-System/.memory/claude-mem/conversations.db"
+      },
+      "description": "会話履歴メモリ（セマンティック検索、決定追跡、長期記憶）"
     },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "description": "複雑な問題の段階的思考"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--browser", "chromium", "--headless"],
+      "description": "ブラウザ自動化（Playwright - Chromium Headless）"
     }
   },
   "projectConfig": {

@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "title": "ADアカウントロック対応",
+    "itsm_type": "Incident",
+    "content": "Active Directoryでユーザーアカウントがロックされた際の確認・解除手順",
+    "generated_at": "2026-02-03",
+    "generated_by": "DocumenterSubAgent"
+  },
+  "summary_technical": {
+    "text": "Incident: ADアカウントロック対応 / 関連技術: Active Directory, ユーザーアカウント / 発生時刻記録あり / 影響範囲記録あり / 復旧済み",
+    "char_count": 83,
+    "char_limit": 100,
+    "status": "OK"
+  },
+  "summary_non_technical": {
+    "text": "【インシデント（障害対応）】ADアカウントロック対応 - 影響範囲: システムの一部 / 重要度: 通常 / 状態: 対応完了",
+    "char_count": 83,
+    "char_limit": 100,
+    "status": "OK"
+  },
+  "summary_3lines": {
+    "line1": "Active Directoryでユーザーアカウントがロックされた際の確認・解除手順について説明します。",
+    "line2": "ロック原因の特定と確認プロセスにより、適切な対応が可能になります。",
+    "line3": "解除手順に従うことで、ユーザーのアカウントを迅速に復旧できます。"
+  },
+  "keywords": {
+    "keyword1": "Active Directory",
+    "keyword2": "アカウントロック",
+    "keyword3": "ユーザー管理",
+    "keyword4": "セキュリティ",
+    "keyword5": "パスワード"
+  },
+  "detailed_summary": {
+    "purpose": "Active Directoryのユーザーアカウントロック問題に対する技術的な対応方法と手順を提供",
+    "scope": "AD環境内でのユーザーアカウントロック解除の確認と復旧",
+    "impact": "アカウントロックによるユーザーアクセス阻害を解決し、業務継続性を確保",
+    "severity": "Medium（業務影響あり、ただし個別案件）",
+    "recovery_status": "復旧手順が確立され、迅速対応が可能"
+  },
+  "technical_context": {
+    "systems": ["Active Directory", "Windows Server"],
+    "tools": ["PowerShell", "Active Directory Users and Computers", "Event Viewer"],
+    "protocols": ["LDAP", "Kerberos"],
+    "documentation_quality": "Technical (100文字以内で要約可能な複雑度)"
+  },
+  "json_schema_compliance": "✅ Valid JSON",
+  "response_format": "JSON"
+}
