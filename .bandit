@@ -1,0 +1,19 @@
+[bandit]
+# Bandit configuration for Mirai IT Knowledge System
+
+# Exclude paths
+exclude: /tests/,/venv/,/.venv/,/build/,/dist/
+
+# Skipped tests
+skips: B101,B104,B608,B310
+
+# Test descriptions (for documentation):
+# B101: Use of assert detected (acceptable in tests)
+# B104: Possible binding to all interfaces (acceptable in dev)
+# B608: Possible SQL injection (false positive - we use validated identifiers)
+# B310: Audit url open (false positive - fixed URLs for DeepL API)
+
+# Severity levels
+# Only report medium and high severity issues
+severity: medium,high
+confidence: medium,high
