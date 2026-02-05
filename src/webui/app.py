@@ -1235,28 +1235,85 @@ def api_settings_save():
 @app.route("/kpi")
 def kpi_dashboard():
     """KPIダッシュボードページ"""
-    # KPIメトリクスを取得（仮データまたはDB）
-    kpi_data = {
-        "automation_rate": 70.0,
-        "reduction_rate": 20.0,
-        "avg_response_time": 12.5,
-        "resolution_rate": 80.0,
-        "satisfaction_score": 4.0
-    }
-    return render_template("kpi.html", kpi_data=kpi_data)
+    # 統計情報を取得
+    stats = db_client.get_statistics()
+
+    # KPI目標を取得
+    with db_client.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT metric_name, target_value, current_value,
+                   threshold_warning, threshold_critical, description
+            FROM kpi_targets
+            WHERE is_active = 1
+            ORDER BY metric_name
+        """)
+        targets = [dict(row) for row in cursor.fetchall()]
+
+        # KPIメトリクス（最近30日分）
+        cursor.execute("""
+            SELECT metric_name, metric_value, metric_unit,
+                   category, period_type, created_at
+            FROM kpi_metrics
+            WHERE created_at >= date('now', '-30 days')
+            ORDER BY created_at DESC
+        """)
+        metrics = [dict(row) for row in cursor.fetchall()]
+
+    return render_template("kpi.html", stats=stats, targets=targets, metrics=metrics)
 
 
 @app.route("/api/kpi/metrics")
 def get_kpi_metrics():
     """KPIメトリクス取得API"""
-    metrics = {
-        "automation_rate": 70.0,
-        "reduction_rate": 20.0,
-        "avg_response_time": 12.5,
-        "resolution_rate": 80.0,
-        "satisfaction_score": 4.0
-    }
-    return jsonify(metrics)
+    try:
+        with db_client.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # 最新のメトリクスを取得
+            cursor.execute("""
+                SELECT metric_name, metric_value, metric_unit, category
+                FROM kpi_metrics
+                WHERE created_at >= date('now', '-30 days')
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
+
+            # メトリクス名をキーとした辞書に変換（最新の値を優先）
+            metrics = {}
+            for row in rows:
+                metric_name = row[0]
+                if metric_name not in metrics:
+                    metrics[metric_name] = {
+                        "value": row[1],
+                        "unit": row[2],
+                        "category": row[3]
+                    }
+
+            # レガシー形式（互換性のため）
+            legacy_metrics = {
+                "automation_rate": metrics.get("knowledge_usage_rate", {}).get("value", 0),
+                "reduction_rate": 20.0,  # デフォルト値
+                "avg_response_time": metrics.get("avg_resolution_time", {}).get("value", 0),
+                "resolution_rate": 80.0,  # デフォルト値
+                "satisfaction_score": metrics.get("user_satisfaction", {}).get("value", 0)
+            }
+
+            # 詳細メトリクスも含める
+            legacy_metrics["detailed_metrics"] = metrics
+
+            return jsonify(legacy_metrics)
+
+    except Exception as e:
+        logger.error(f"KPIメトリクス取得エラー: {e}")
+        # エラー時はデフォルト値を返す
+        return jsonify({
+            "automation_rate": 70.0,
+            "reduction_rate": 20.0,
+            "avg_response_time": 12.5,
+            "resolution_rate": 80.0,
+            "satisfaction_score": 4.0
+        })
 
 
 # ========== FAQ管理 ==========
@@ -1265,13 +1322,52 @@ def get_kpi_metrics():
 @app.route("/faq")
 def faq_list():
     """FAQ一覧ページ"""
-    # FAQデータを取得（仮データまたはDB）
-    faqs = [
-        {"id": 1, "question": "VPN接続できない", "category": "ネットワーク"},
-        {"id": 2, "question": "パスワードリセット方法", "category": "アカウント"},
-        {"id": 3, "question": "メール設定方法", "category": "アプリケーション"},
-    ]
-    return render_template("faq.html", faqs=faqs)
+    search_query = request.args.get("q", "")
+    selected_category = request.args.get("category", "")
+
+    # FAQデータを取得
+    with db_client.get_connection() as conn:
+        cursor = conn.cursor()
+
+        # カテゴリ一覧を取得
+        cursor.execute("""
+            SELECT DISTINCT category
+            FROM faq_entries
+            WHERE status = 'active' AND category IS NOT NULL
+            ORDER BY category
+        """)
+        categories = [row[0] for row in cursor.fetchall()]
+
+        # FAQを検索
+        query = """
+            SELECT id, question, answer, category, tags,
+                   view_count, helpful_count, not_helpful_count,
+                   created_at, updated_at
+            FROM faq_entries
+            WHERE status = 'active'
+        """
+        params = []
+
+        if search_query:
+            query += " AND (question LIKE ? OR answer LIKE ?)"
+            params.extend([f"%{search_query}%", f"%{search_query}%"])
+
+        if selected_category:
+            query += " AND category = ?"
+            params.append(selected_category)
+
+        query += " ORDER BY helpful_count DESC, created_at DESC"
+
+        cursor.execute(query, params)
+        faqs = [dict(row) for row in cursor.fetchall()]
+
+    return render_template(
+        "faq.html",
+        faqs=faqs,
+        categories=categories,
+        search_query=search_query,
+        selected_category=selected_category
+    )
 
 
 @app.route("/faq/manage")
@@ -1280,12 +1376,83 @@ def faq_manage():
     return render_template("faq_manage.html")
 
 
-@app.route("/api/faq/search")
+@app.route("/api/faq/search", methods=["GET", "POST"])
 def search_faq():
     """FAQ検索API"""
-    query = request.args.get("q", "")
-    # 簡易実装
-    return jsonify({"results": [], "count": 0})
+    if request.method == "POST":
+        data = request.get_json() or {}
+        query = data.get("q", "")
+    else:
+        query = request.args.get("q", "")
+
+    if not query:
+        return jsonify({"results": [], "count": 0})
+
+    # FAQ検索
+    with db_client.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, question, answer, category, tags,
+                   view_count, helpful_count
+            FROM faq_entries
+            WHERE status = 'active'
+              AND (question LIKE ? OR answer LIKE ?)
+            ORDER BY helpful_count DESC
+            LIMIT 10
+        """, (f"%{query}%", f"%{query}%"))
+        results = [dict(row) for row in cursor.fetchall()]
+
+    return jsonify({"results": results, "count": len(results)})
+
+
+@app.route("/api/faq/<int:faq_id>/feedback", methods=["POST"])
+def faq_feedback(faq_id):
+    """FAQフィードバック追加"""
+    data = request.get_json() or {}
+    is_helpful = data.get("is_helpful", True)
+    comment = data.get("comment", "")
+    user_id = data.get("user_id", "webui_user")
+
+    try:
+        with db_client.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # フィードバックを記録
+            cursor.execute("""
+                INSERT INTO faq_feedback (faq_id, is_helpful, comment, user_id)
+                VALUES (?, ?, ?, ?)
+            """, (faq_id, is_helpful, comment, user_id))
+
+            # FAQのカウントを更新
+            if is_helpful:
+                cursor.execute("""
+                    UPDATE faq_entries
+                    SET helpful_count = helpful_count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (faq_id,))
+            else:
+                cursor.execute("""
+                    UPDATE faq_entries
+                    SET not_helpful_count = not_helpful_count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (faq_id,))
+
+            # 閲覧数も更新
+            cursor.execute("""
+                UPDATE faq_entries
+                SET view_count = view_count + 1
+                WHERE id = ?
+            """, (faq_id,))
+
+            conn.commit()
+
+        return jsonify({"success": True, "message": "フィードバックを記録しました"})
+
+    except Exception as e:
+        logger.error(f"FAQフィードバックエラー: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":
