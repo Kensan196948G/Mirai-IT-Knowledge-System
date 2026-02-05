@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}エラー - Mirai IT Knowledge System{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-16">
+    <div class="max-w-2xl mx-auto text-center">
+        <div class="mb-8">
+            <span class="text-8xl">⚠️</span>
+        </div>
+
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">
+            エラーが発生しました
+        </h1>
+
+        <p class="text-lg text-gray-600 mb-8">
+            申し訳ございません。リクエストの処理中にエラーが発生しました。
+        </p>
+
+        {% if error %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-8 text-left">
+            <h2 class="text-lg font-semibold text-red-800 mb-2">エラー詳細:</h2>
+            <pre class="text-sm text-red-700 whitespace-pre-wrap">{{ error }}</pre>
+        </div>
+        {% endif %}
+
+        <div class="space-x-4">
+            <a
+                href="javascript:history.back()"
+                class="inline-block px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+                ← 戻る
+            </a>
+            <a
+                href="/"
+                class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+                🏠 ホームに戻る
+            </a>
+        </div>
+
+        <div class="mt-12 text-sm text-gray-500">
+            <p>問題が解決しない場合は、システム管理者にお問い合わせください。</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

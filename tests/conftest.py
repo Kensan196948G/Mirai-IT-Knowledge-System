@@ -113,3 +113,55 @@ def sample_hook_results():
             "details": {"line_count": 3},
         },
     ]
+
+
+# ========== 新規追加フィクスチャ ==========
+
+
+@pytest.fixture
+def test_sqlite_client(tmp_path):
+    """テスト用SQLiteClient（一時ファイルDB）"""
+    from src.mcp.sqlite_client import SQLiteClient
+
+    # 一時ディレクトリにDBファイルを作成
+    db_file = tmp_path / "test_knowledge.db"
+    client = SQLiteClient(db_path=str(db_file))
+
+    # スキーマ初期化
+    schema_path = Path(__file__).parent.parent / "db" / "schema.sql"
+    if schema_path.exists():
+        with open(schema_path, encoding="utf-8") as f:
+            schema_sql = f.read()
+        with client.get_connection() as conn:
+            conn.executescript(schema_sql)
+
+    yield client
+
+    # クリーンアップ（一時ファイルはpytestが自動削除）
+
+
+@pytest.fixture
+def mock_ai_environment(monkeypatch):
+    """AI APIキー環境変数モック"""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "test-key")
+    monkeypatch.setenv("MCP_AUTO_INIT", "False")
+    monkeypatch.setenv("MCP_CONTEXT7_ENABLED", "False")
+    monkeypatch.setenv("MCP_CLAUDE_MEM_ENABLED", "False")
+    monkeypatch.setenv("MCP_GITHUB_ENABLED", "False")
+
+
+@pytest.fixture
+def mock_anthropic_response():
+    """Anthropic API応答のモック"""
+    from unittest.mock import MagicMock
+
+    mock_response = MagicMock()
+    mock_response.content = [
+        MagicMock(
+            text='{"title": "テストナレッジ", "when": "2024-01-01", "system": "Webサーバー", "symptom": "503エラー"}'
+        )
+    ]
+    return mock_response

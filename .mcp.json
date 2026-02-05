@@ -9,12 +9,12 @@
     },
     "sqlite-dev": {
       "command": "npx",
-      "args": ["-y", "mcp-server-sqlite", "--db", "/mnt/d/Mirai-IT-Knowledge-System/db/knowledge_dev.db"],
+      "args": ["-y", "mcp-server-sqlite", "--db", "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/db/knowledge_dev.db"],
       "description": "開発環境データベース"
     },
     "sqlite-prod": {
       "command": "npx",
-      "args": ["-y", "mcp-server-sqlite", "--db", "/mnt/d/Mirai-IT-Knowledge-System/db/knowledge.db"],
+      "args": ["-y", "mcp-server-sqlite", "--db", "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/db/knowledge.db"],
       "description": "本番環境データベース"
     },
     "brave-search": {
@@ -34,7 +34,7 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {
-        "MEMORY_FILE_PATH": "/mnt/d/Mirai-IT-Knowledge-System/.memory/project-memory.json"
+        "MEMORY_FILE_PATH": "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/.memory/project-memory.json"
       },
       "description": "知識グラフベースメモリ（エンティティ・関係管理、短期〜中期コンテキスト）"
     },
@@ -42,7 +42,7 @@
       "command": "npx",
       "args": ["-y", "cccmemory"],
       "env": {
-        "CCCMEMORY_DB_PATH": "/mnt/d/Mirai-IT-Knowledge-System/.memory/claude-mem/conversations.db"
+        "CCCMEMORY_DB_PATH": "/mnt/LinuxHDD/Mirai-IT-Knowledge-System/.memory/claude-mem/conversations.db"
       },
       "description": "会話履歴メモリ（セマンティック検索、決定追跡、長期記憶）"
     },

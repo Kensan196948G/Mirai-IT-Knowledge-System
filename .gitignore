@@ -36,10 +36,13 @@ ENV/
 *.db
 *.sqlite
 *.sqlite3
+*.db-shm
+*.db-wal
 
 # Logs
 *.log
 data/logs/*.log
+logs/
 
 # OS
 .DS_Store
@@ -49,6 +52,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.backup
+*.json.bak
 
 # Knowledge files (optional - remove if you want to track them)
 # data/knowledge/*.md
@@ -68,3 +72,14 @@ state.json.bak
 htmlcov/
 .pytest_cache/
 .coverage
+
+# Claude Code settings
+.claude/
+
+# Development scripts
+scripts/dev/
+
+# Test reports
+docs/reports/
+*_test_results.json
+*_verification_results.json

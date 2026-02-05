@@ -281,8 +281,8 @@ class SQLiteClient:
 
     def create_conversation_session(
         self, session_id: str, user_id: Optional[str] = None
-    ) -> int:
-        """対話セッションを作成"""
+    ) -> str:
+        """対話セッションを作成（session_idを返す）"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -294,12 +294,9 @@ class SQLiteClient:
             )
             conn.commit()
 
-            cursor.execute(
-                "SELECT id FROM conversation_sessions WHERE session_id = ?",
-                (session_id,),
-            )
-            row = cursor.fetchone()
-            return row["id"] if row else 0
+            # session_idが主キーなので、session_idをそのまま返す
+            # （戻り値の型をintからstrに変更する必要があるが、呼び出し側では使用されていないため影響なし）
+            return session_id
 
     def add_conversation_message(
         self, session_id: str, role: str, content: str, created_at: Optional[str] = None
