@@ -13,6 +13,13 @@ from typing import Any, Dict, List, Optional, Tuple
 class SQLiteClient:
     """SQLiteデータベース操作クライアント"""
 
+    # セキュリティ: 許可されたカラム名のホワイトリスト（update用）
+    ALLOWED_UPDATE_COLUMNS = {
+        'title', 'content', 'itsm_type', 'summary_technical', 'summary_non_technical',
+        'insights', 'tags', 'related_ids', 'markdown_path', 'status', 'updated_at',
+        'updated_by', 'quality_score', 'priority', 'assignee', 'notes', 'resolved_at'
+    }
+
     def __init__(self, db_path: str = "db/knowledge.db"):
         """
         Args:
@@ -20,6 +27,13 @@ class SQLiteClient:
         """
         self.db_path = db_path
         self._ensure_db_exists()
+
+    def _validate_update_columns(self, column_names: List[str]) -> List[str]:
+        """更新カラム名を検証（SQL injection対策）"""
+        for col in column_names:
+            if col not in self.ALLOWED_UPDATE_COLUMNS:
+                raise ValueError(f"Invalid column name for update: {col}")
+        return column_names
 
     def _ensure_db_exists(self):
         """データベースの存在確認と初期化"""
@@ -35,9 +49,18 @@ class SQLiteClient:
                 conn.executescript(schema)
 
     def get_connection(self) -> sqlite3.Connection:
-        """データベース接続を取得"""
-        conn = sqlite3.connect(self.db_path)
+        """データベース接続を取得（WALモード最適化）"""
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+
+        # SQLite最適化設定（Phase 8）
+        conn.execute("PRAGMA journal_mode = WAL")           # Write-Ahead Logging
+        conn.execute("PRAGMA synchronous = NORMAL")         # パフォーマンス重視
+        conn.execute("PRAGMA cache_size = -64000")          # 64MB キャッシュ
+        conn.execute("PRAGMA temp_store = MEMORY")          # 一時ファイルをメモリに
+        conn.execute("PRAGMA mmap_size = 268435456")        # 256MB mmap
+        conn.execute("PRAGMA busy_timeout = 5000")          # 5秒タイムアウト
+
         return conn
 
     # ========== ナレッジエントリ操作 ==========
@@ -609,13 +632,17 @@ class SQLiteClient:
 
             update_fields["updated_at"] = datetime.now().isoformat()
 
-        set_clause = ", ".join([f"{k} = ?" for k in update_fields.keys()])
+        # セキュリティ: カラム名を検証
+        column_names = list(update_fields.keys())
+        self._validate_update_columns(column_names)
+
+        # セキュリティ: 検証済みカラム名を使用（SQL injection対策）
+        set_clause = ", ".join(["{} = ?".format(k) for k in column_names])
         values = list(update_fields.values()) + [knowledge_id]
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"UPDATE knowledge_entries SET {set_clause} WHERE id = ?", values
-            )
+            query = "UPDATE knowledge_entries SET {} WHERE id = ?".format(set_clause)
+            cursor.execute(query, values)
             conn.commit()
             return cursor.rowcount > 0
