@@ -296,10 +296,15 @@ def index():
     # 統計情報を取得
     stats = db_client.get_statistics()
 
-    # 最近のナレッジを取得
-    recent_knowledge = db_client.search_knowledge(limit=5)
+    # 最近のナレッジを10件取得
+    recent_knowledge = db_client.search_knowledge(limit=10)
 
-    return render_template("index.html", stats=stats, recent_knowledge=recent_knowledge)
+    # AI作成を優先表示
+    ai_created = [k for k in recent_knowledge if k.get('source_type') == 'ai_chat']
+    others = [k for k in recent_knowledge if k.get('source_type') != 'ai_chat']
+    recent_knowledge = ai_created + others
+
+    return render_template("index.html", stats=stats, recent_knowledge=recent_knowledge[:10])
 
 
 @app.route("/knowledge/search", methods=["GET", "POST"])
@@ -666,9 +671,21 @@ def chat_message():
     session_id = data.get("session_id")
     message = data.get("message")
     user_id = data.get("user_id", "webui_user")
+    session_type = data.get("session_type", "knowledge")
 
     if not session_id or not message:
         return jsonify({"error": "session_idとmessageが必要です"}), 400
+
+    # セッションタイプを記録（初回メッセージ時）
+    try:
+        with db_client.get_connection() as conn:
+            conn.execute(
+                "UPDATE conversation_sessions SET session_type = ? WHERE session_id = ?",
+                (session_type, session_id)
+            )
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"セッションタイプ更新エラー: {e}")
 
     result = _process_chat_message(session_id, message, user_id)
 
@@ -855,10 +872,22 @@ def handle_socket_chat_message(data):
     session_id = data.get("session_id")
     message = data.get("message")
     user_id = data.get("user_id", "webui_user")
+    session_type = data.get("session_type", "knowledge")
 
     if not session_id or not message:
         emit("chat_error", {"error": "session_idとmessageが必要です"})
         return
+
+    # セッションタイプを記録（初回メッセージ時）
+    try:
+        with db_client.get_connection() as conn:
+            conn.execute(
+                "UPDATE conversation_sessions SET session_type = ? WHERE session_id = ?",
+                (session_type, session_id)
+            )
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"セッションタイプ更新エラー: {e}")
 
     result = _process_chat_message(session_id, message, user_id)
 
