@@ -123,10 +123,18 @@
         <div class="card-body">
             <div class="content-grid" id="recent-knowledge-list">
                 {% if recent_knowledge %}
-                    {% for knowledge in recent_knowledge[:3] %}
+                    {% for knowledge in recent_knowledge[:10] %}
                     <article class="knowledge-card {{ knowledge.itsm_type|lower }}" tabindex="0" role="button" onclick="location.href='/knowledge/{{ knowledge.id }}'">
                         <div class="card-header">
-                            <h3 class="card-title">{{ knowledge.title }}</h3>
+                            <h3 class="card-title">
+                                {{ knowledge.title }}
+                                {% if knowledge.is_sample %}
+                                <span class="badge badge-sample" style="background: #f0f0f0; color: #666; margin-left: 0.5rem;">📋 サンプルデータ</span>
+                                {% endif %}
+                                {% if knowledge.source_type == 'ai_chat' %}
+                                <span class="badge badge-ai" style="background: #4CAF50; color: white; margin-left: 0.5rem;">🤖 AI作成</span>
+                                {% endif %}
+                            </h3>
                             <span class="badge badge-{{ knowledge.itsm_type|lower }}" role="status">
                                 {% if knowledge.itsm_type == 'Incident' %}インシデント
                                 {% elif knowledge.itsm_type == 'Problem' %}問題管理

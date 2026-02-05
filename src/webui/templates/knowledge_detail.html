@@ -12,7 +12,15 @@
 
 <div class="card">
     <div class="card-header" style="align-items: flex-start;">
-        <h2 class="card-title">{{ knowledge.title }}</h2>
+        <h2 class="card-title">
+            {{ knowledge.title }}
+            {% if knowledge.is_sample %}
+            <span class="badge badge-sample" style="background: #f0f0f0; color: #666; margin-left: 0.5rem;">📋 サンプルデータ</span>
+            {% endif %}
+            {% if knowledge.source_type == 'ai_chat' %}
+            <span class="badge badge-ai" style="background: #4CAF50; color: white; margin-left: 0.5rem;">🤖 AI作成</span>
+            {% endif %}
+        </h2>
         <span class="badge badge-{{ knowledge.itsm_type.lower() }}">
             {% if knowledge.itsm_type == 'Incident' %}インシデント
             {% elif knowledge.itsm_type == 'Problem' %}問題管理

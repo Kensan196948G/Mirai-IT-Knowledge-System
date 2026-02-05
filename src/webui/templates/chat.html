@@ -16,6 +16,45 @@
     .ai-pipeline { flex-wrap: nowrap; align-items: stretch; }
     .pipeline-stage { min-width: 170px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.25rem; }
     .pipeline-arrow { white-space: nowrap; }
+
+    /* Chat Mode Selector */
+    .chat-mode-selector {
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+        border-radius: 12px;
+        border: 2px solid rgba(102, 126, 234, 0.1);
+    }
+
+    .mode-buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .mode-btn {
+        padding: 1.5rem;
+        border: 2px solid #ddd;
+        background: white;
+        cursor: pointer;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        text-align: center;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    .mode-btn:hover {
+        border-color: var(--color-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .mode-btn.active {
+        border-color: #4CAF50;
+        background: #E8F5E9;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+    }
     .pulse-dot {
         width: 8px;
         height: 8px;
@@ -75,6 +114,22 @@
     <div>
         <h1 class="page-title">AI対話アシスタント</h1>
         <p class="page-subtitle">AIと対話してナレッジを作成</p>
+    </div>
+</div>
+
+<div class="chat-mode-selector">
+    <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">AI対話の目的を選択してください</h3>
+    <div class="mode-buttons">
+        <button class="mode-btn active" data-mode="knowledge" onclick="setSessionType('knowledge')">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📚</div>
+            <strong>ナレッジ作成</strong>
+            <small style="display: block; margin-top: 0.25rem; opacity: 0.8;">問題解決・手順書作成</small>
+        </button>
+        <button class="mode-btn" data-mode="faq" onclick="setSessionType('faq')">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">❓</div>
+            <strong>FAQ作成</strong>
+            <small style="display: block; margin-top: 0.25rem; opacity: 0.8;">よくある質問・回答</small>
+        </button>
     </div>
 </div>
 
@@ -167,7 +222,8 @@
 {% block extra_js %}
 <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" crossorigin="anonymous"></script>
 <script>
-let sessionId = 'session_' + Date.now();
+let sessionType = 'knowledge';
+let sessionId = 'session_knowledge_' + Date.now();
 let conversationHistory = [];
 let messageCounter = 0;
 let collectedData = {
@@ -226,6 +282,21 @@ const quickAnswerMap = {
         note: '繁忙期は事前相談の上、早めに申請してください。'
     }
 };
+
+function setSessionType(type) {
+    sessionType = type;
+
+    // ボタンのアクティブ状態更新
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-mode="${type}"]`).classList.add('active');
+
+    // セッションID再生成（モード変更時）
+    sessionId = 'session_' + type + '_' + Date.now();
+
+    console.log(`セッションタイプを ${type} に変更しました (ID: ${sessionId})`);
+}
 
 const socket = io({
     transports: ['polling'],
@@ -315,7 +386,8 @@ function sendMessage() {
                 body: JSON.stringify({
                     session_id: sessionId,
                     message: message,
-                    user_id: 'webui_user'
+                    user_id: 'webui_user',
+                    session_type: sessionType
                 })
             });
             const data = await response.json();
@@ -328,7 +400,8 @@ function sendMessage() {
     socket.emit('chat_message', {
         session_id: sessionId,
         message: message,
-        user_id: 'webui_user'
+        user_id: 'webui_user',
+        session_type: sessionType
     });
 }
 
@@ -606,7 +679,7 @@ function editKnowledge() {
 }
 
 document.getElementById('newChatBtn').addEventListener('click', () => {
-    sessionId = 'session_' + Date.now();
+    sessionId = 'session_' + sessionType + '_' + Date.now();
     conversationHistory = [];
     socket.emit('join_chat', { session_id: sessionId });
     document.getElementById('aiChatMessages').innerHTML = `
