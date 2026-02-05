@@ -12,9 +12,37 @@ from .sqlite_client import SQLiteClient
 class FeedbackClient(SQLiteClient):
     """フィードバック管理クライアント"""
 
+    # セキュリティ: 許可されたテーブル名のホワイトリスト
+    ALLOWED_TABLES = {
+        'knowledge_entries',
+        'knowledge_feedback',
+        'system_feedback',
+        'knowledge_usage_stats',
+        'knowledge_ratings'
+    }
+
+    # セキュリティ: 許可されたカラム名のホワイトリスト
+    ALLOWED_COLUMNS = {
+        'status', 'priority', 'assignee', 'notes', 'resolved_at',
+        'id', 'title', 'content', 'itsm_type', 'created_at', 'updated_at'
+    }
+
     def __init__(self, db_path: str = "db/knowledge.db"):
         super().__init__(db_path)
         self._ensure_feedback_schema()
+
+    def _validate_table_name(self, table_name: str) -> str:
+        """テーブル名を検証（SQL injection対策）"""
+        if table_name not in self.ALLOWED_TABLES:
+            raise ValueError(f"Invalid table name: {table_name}")
+        return table_name
+
+    def _validate_column_names(self, column_names: List[str]) -> List[str]:
+        """カラム名を検証（SQL injection対策）"""
+        for col in column_names:
+            if col not in self.ALLOWED_COLUMNS:
+                raise ValueError(f"Invalid column name: {col}")
+        return column_names
 
     def _ensure_feedback_schema(self):
         """フィードバックスキーマの適用"""
@@ -105,19 +133,22 @@ class FeedbackClient(SQLiteClient):
     def get_top_rated_knowledge(self, limit: int = 10) -> List[Dict[str, Any]]:
         """評価の高いナレッジを取得"""
         knowledge_table = self._get_knowledge_table()
+        # セキュリティ: テーブル名を検証
+        knowledge_table = self._validate_table_name(knowledge_table)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"""
+            # セキュリティ: 検証済みテーブル名を使用（SQL injection対策）
+            query = """
                 SELECT k.*, r.avg_rating, r.feedback_count
-                FROM {knowledge_table} k
+                FROM {} k
                 JOIN knowledge_ratings r ON k.id = r.knowledge_id
                 WHERE r.feedback_count >= 3
                 ORDER BY r.avg_rating DESC, r.feedback_count DESC
                 LIMIT ?
-            """,
-                (limit,),
-            )
+            """.format(knowledge_table)  # 検証済みなので format() 使用は安全
+
+            cursor.execute(query, (limit,))
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     # ========== システムフィードバック ==========
@@ -201,14 +232,13 @@ class FeedbackClient(SQLiteClient):
 
             params.append(feedback_id)
 
-            cursor.execute(
-                f"""
-                UPDATE system_feedback
-                SET {', '.join(updates)}
-                WHERE id = ?
-            """,
-                params,
-            )
+            # セキュリティ: カラム名を検証
+            update_columns = [u.split(' = ')[0] for u in updates]
+            self._validate_column_names(update_columns)
+
+            # セキュリティ: 検証済みカラム名を使用（SQL injection対策）
+            query = "UPDATE system_feedback SET {} WHERE id = ?".format(', '.join(updates))
+            cursor.execute(query, params)
             conn.commit()
             return cursor.rowcount > 0
 
@@ -290,21 +320,24 @@ class FeedbackClient(SQLiteClient):
     ) -> List[Dict[str, Any]]:
         """人気のナレッジを取得"""
         knowledge_table = self._get_knowledge_table()
+        # セキュリティ: テーブル名を検証
+        knowledge_table = self._validate_table_name(knowledge_table)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                f"""
+            # セキュリティ: 検証済みテーブル名を使用（SQL injection対策）
+            query = """
                 SELECT k.*, COUNT(u.id) as view_count
-                FROM {knowledge_table} k
+                FROM {} k
                 JOIN knowledge_usage_stats u ON k.id = u.knowledge_id
                 WHERE u.action_type = 'view'
                   AND u.created_at > datetime('now', '-' || ? || ' days')
                 GROUP BY k.id
                 ORDER BY view_count DESC
                 LIMIT ?
-            """,
-                (days, limit),
-            )
+            """.format(knowledge_table)  # 検証済みなので format() 使用は安全
+
+            cursor.execute(query, (days, limit))
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     # ========== 分析・レポート ==========
