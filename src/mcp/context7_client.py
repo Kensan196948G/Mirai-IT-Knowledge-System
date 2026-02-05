@@ -15,10 +15,25 @@ class Context7Client:
     mcp__context7__* ツールをロードする必要があります
     """
 
-    def __init__(self):
-        """初期化"""
-        self.enabled = False  # MCP利用可能かどうか
+    def __init__(self, auto_enable: bool = True):
+        """初期化
+
+        Args:
+            auto_enable: MCP自動有効化（デフォルト: True）
+        """
         self._cached_docs = {}  # ドキュメントキャッシュ
+        self.enabled = auto_enable and self._check_mcp_available()
+
+    def _check_mcp_available(self) -> bool:
+        """MCP利用可能性をチェック"""
+        try:
+            # Context7 MCPツールの存在を確認
+            import sys
+            tool = globals().get('mcp__context7__query_docs') or \
+                   getattr(sys.modules.get('__main__', {}), 'mcp__context7__query_docs', None)
+            return tool is not None
+        except Exception:
+            return False
 
     def query_documentation(
         self, library_name: str, query: str, max_results: int = 5
@@ -47,31 +62,74 @@ class Context7Client:
         if not self.enabled:
             return self._get_demo_results(library_name, query)
 
-        # TODO: 実際のMCP呼び出し
-        # results = mcp_call("mcp__context7__query-docs", {
-        #     "library": library_name,
-        #     "query": query,
-        #     "max_results": max_results
-        # })
+        try:
+            # 実際のMCP呼び出し
+            from ..tools import mcp__context7__resolve_library_id, mcp__context7__query_docs
 
-        return []
+            # まずライブラリIDを解決
+            library_resolution = mcp__context7__resolve_library_id(
+                libraryName=library_name,
+                query=query
+            )
 
-    def resolve_library_id(self, library_name: str) -> Optional[str]:
+            library_id = library_resolution.get("library_id")
+            if not library_id:
+                return self._get_demo_results(library_name, query)
+
+            # ドキュメントを検索
+            doc_results = mcp__context7__query_docs(
+                libraryId=library_id,
+                query=query
+            )
+
+            # 結果をフォーマット
+            formatted_results = []
+            for doc in doc_results.get("results", [])[:max_results]:
+                formatted_results.append({
+                    "title": doc.get("title", ""),
+                    "url": doc.get("url", ""),
+                    "snippet": doc.get("snippet", ""),
+                    "relevance": doc.get("score", 0.0)
+                })
+
+            # キャッシュに保存
+            cache_key = f"{library_name}:{query}"
+            self._cached_docs[cache_key] = formatted_results
+
+            return formatted_results
+
+        except Exception as e:
+            print(f"Warning: Context7 documentation search failed: {e}")
+            return self._get_demo_results(library_name, query)
+
+    def resolve_library_id(self, library_name: str, query: str = "") -> Optional[str]:
         """
         ライブラリIDを解決
 
         Args:
             library_name: ライブラリ名
+            query: 検索コンテキスト（オプション）
 
         Returns:
             ライブラリID（見つからない場合はNone）
         """
-        # TODO: 実際のMCP呼び出し
-        # library_id = mcp_call("mcp__context7__resolve-library-id", {
-        #     "library_name": library_name
-        # })
+        if not self.enabled:
+            return None
 
-        return None
+        try:
+            # 実際のMCP呼び出し
+            from ..tools import mcp__context7__resolve_library_id
+
+            result = mcp__context7__resolve_library_id(
+                libraryName=library_name,
+                query=query or f"Documentation for {library_name}"
+            )
+
+            return result.get("library_id")
+
+        except Exception as e:
+            print(f"Warning: Library ID resolution failed: {e}")
+            return None
 
     def _get_demo_results(self, library_name: str, query: str) -> List[Dict[str, Any]]:
         """デモ用の検索結果を返す"""
