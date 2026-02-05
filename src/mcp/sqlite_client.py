@@ -49,9 +49,18 @@ class SQLiteClient:
                 conn.executescript(schema)
 
     def get_connection(self) -> sqlite3.Connection:
-        """データベース接続を取得"""
-        conn = sqlite3.connect(self.db_path)
+        """データベース接続を取得（WALモード最適化）"""
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+
+        # SQLite最適化設定（Phase 8）
+        conn.execute("PRAGMA journal_mode = WAL")           # Write-Ahead Logging
+        conn.execute("PRAGMA synchronous = NORMAL")         # パフォーマンス重視
+        conn.execute("PRAGMA cache_size = -64000")          # 64MB キャッシュ
+        conn.execute("PRAGMA temp_store = MEMORY")          # 一時ファイルをメモリに
+        conn.execute("PRAGMA mmap_size = 268435456")        # 256MB mmap
+        conn.execute("PRAGMA busy_timeout = 5000")          # 5秒タイムアウト
+
         return conn
 
     # ========== ナレッジエントリ操作 ==========
