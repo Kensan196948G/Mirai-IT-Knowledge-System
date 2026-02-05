@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 # モジュールパスを追加
 project_root = Path(__file__).parent.parent.parent
@@ -229,7 +231,150 @@ class WorkflowEngine:
     def _execute_subagents_parallel(
         self, input_data: Dict[str, Any], execution_id: int
     ) -> Dict[str, Any]:
-        """サブエージェントを並列実行（簡易版: 実際は順次実行）"""
+        """サブエージェントを並列実行（真の並列実装）
+
+        SubAgentを依存関係に基づいて3つのフェーズで並列実行:
+        - Phase 1 (並列): Architect, KnowledgeCurator, ITSMExpert, DevOps
+        - Phase 2 (並列): QA, Coordinator (Phase 1の結果を利用)
+        - Phase 3 (順次): Documenter (全結果を統合)
+        """
+        results = {}
+        start_time = time.time()
+
+        try:
+            # Python 3.7+のイベントループ取得
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    raise RuntimeError()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # 非同期実行
+            results = loop.run_until_complete(
+                self._execute_subagents_async(input_data, execution_id)
+            )
+
+            parallel_time = int((time.time() - start_time) * 1000)
+            print(f"  ⚡ Parallel execution completed in {parallel_time}ms")
+
+        except Exception as e:
+            print(f"Warning: Parallel execution failed: {e}. Falling back to sequential.")
+            # フォールバック: 順次実行
+            results = self._execute_subagents_sequential(input_data, execution_id)
+
+        return results
+
+    async def _execute_subagents_async(
+        self, input_data: Dict[str, Any], execution_id: int
+    ) -> Dict[str, Any]:
+        """非同期SubAgent実行"""
+        results = {}
+
+        # Phase 1: 独立して実行可能なSubAgent（並列実行）
+        phase1_agents = ["architect", "knowledge_curator", "itsm_expert", "devops"]
+        print(f"  → Phase 1: Executing {len(phase1_agents)} agents in parallel...")
+
+        phase1_tasks = [
+            self._execute_subagent_async(name, input_data, execution_id)
+            for name in phase1_agents
+        ]
+        phase1_results = await asyncio.gather(*phase1_tasks, return_exceptions=True)
+
+        # Phase 1結果を統合
+        for name, result in zip(phase1_agents, phase1_results):
+            if isinstance(result, Exception):
+                print(f"  ⚠️  {name} failed: {result}")
+                results[name] = {"status": "error", "data": {}}
+            else:
+                results[name] = result
+
+        # Phase 2: Phase 1の結果を利用するSubAgent（並列実行）
+        phase2_agents = ["qa", "coordinator"]
+        print(f"  → Phase 2: Executing {len(phase2_agents)} agents in parallel...")
+
+        # Phase 1の結果をinput_dataに追加
+        enhanced_input = {**input_data, "phase1_results": results}
+
+        phase2_tasks = [
+            self._execute_subagent_async(name, enhanced_input, execution_id)
+            for name in phase2_agents
+        ]
+        phase2_results = await asyncio.gather(*phase2_tasks, return_exceptions=True)
+
+        # Phase 2結果を統合
+        for name, result in zip(phase2_agents, phase2_results):
+            if isinstance(result, Exception):
+                print(f"  ⚠️  {name} failed: {result}")
+                results[name] = {"status": "error", "data": {}}
+            else:
+                results[name] = result
+
+        # Phase 3: 最終処理（順次実行 - 全結果を統合）
+        print(f"  → Phase 3: Executing documenter (final integration)...")
+
+        documenter_input = {**input_data, "all_results": results}
+        documenter_result = await self._execute_subagent_async(
+            "documenter", documenter_input, execution_id
+        )
+
+        if isinstance(documenter_result, Exception):
+            print(f"  ⚠️  documenter failed: {documenter_result}")
+            results["documenter"] = {"status": "error", "data": {}}
+        else:
+            results["documenter"] = documenter_result
+
+        return results
+
+    async def _execute_subagent_async(
+        self, name: str, input_data: Dict[str, Any], execution_id: int
+    ) -> Dict[str, Any]:
+        """単一SubAgentを非同期実行"""
+        loop = asyncio.get_event_loop()
+
+        # SubAgent実行を別スレッドで実行（CPUバウンド処理の並列化）
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            result = await loop.run_in_executor(
+                executor,
+                self._execute_single_subagent,
+                name,
+                input_data,
+                execution_id
+            )
+
+        return result
+
+    def _execute_single_subagent(
+        self, name: str, input_data: Dict[str, Any], execution_id: int
+    ) -> Dict[str, Any]:
+        """単一SubAgent実行（スレッド内で実行）"""
+        if name not in self.subagents:
+            return {"status": "error", "data": {}, "message": f"SubAgent {name} not found"}
+
+        subagent = self.subagents[name]
+        print(f"    ├─ {name} ({subagent.role})...")
+
+        result = subagent.execute(input_data)
+
+        # ログ記録
+        self.db_client.log_subagent_execution(
+            workflow_execution_id=execution_id,
+            subagent_name=name,
+            role=subagent.role,
+            input_data={"title": input_data.get("title", "")},
+            output_data=result.to_dict()["data"],
+            execution_time_ms=result.execution_time_ms,
+            status=result.status,
+            message=result.message,
+        )
+
+        return result.to_dict()
+
+    def _execute_subagents_sequential(
+        self, input_data: Dict[str, Any], execution_id: int
+    ) -> Dict[str, Any]:
+        """SubAgentを順次実行（フォールバック用）"""
         results = {}
 
         for name, subagent in self.subagents.items():
