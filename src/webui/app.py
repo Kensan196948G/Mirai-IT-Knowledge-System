@@ -1229,6 +1229,65 @@ def api_settings_save():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# ========== KPIダッシュボード ==========
+
+
+@app.route("/kpi")
+def kpi_dashboard():
+    """KPIダッシュボードページ"""
+    # KPIメトリクスを取得（仮データまたはDB）
+    kpi_data = {
+        "automation_rate": 70.0,
+        "reduction_rate": 20.0,
+        "avg_response_time": 12.5,
+        "resolution_rate": 80.0,
+        "satisfaction_score": 4.0
+    }
+    return render_template("kpi.html", kpi_data=kpi_data)
+
+
+@app.route("/api/kpi/metrics")
+def get_kpi_metrics():
+    """KPIメトリクス取得API"""
+    metrics = {
+        "automation_rate": 70.0,
+        "reduction_rate": 20.0,
+        "avg_response_time": 12.5,
+        "resolution_rate": 80.0,
+        "satisfaction_score": 4.0
+    }
+    return jsonify(metrics)
+
+
+# ========== FAQ管理 ==========
+
+
+@app.route("/faq")
+def faq_list():
+    """FAQ一覧ページ"""
+    # FAQデータを取得（仮データまたはDB）
+    faqs = [
+        {"id": 1, "question": "VPN接続できない", "category": "ネットワーク"},
+        {"id": 2, "question": "パスワードリセット方法", "category": "アカウント"},
+        {"id": 3, "question": "メール設定方法", "category": "アプリケーション"},
+    ]
+    return render_template("faq.html", faqs=faqs)
+
+
+@app.route("/faq/manage")
+def faq_manage():
+    """FAQ管理ページ"""
+    return render_template("faq_manage.html")
+
+
+@app.route("/api/faq/search")
+def search_faq():
+    """FAQ検索API"""
+    query = request.args.get("q", "")
+    # 簡易実装
+    return jsonify({"results": [], "count": 0})
+
+
 if __name__ == "__main__":
     import socket
 
