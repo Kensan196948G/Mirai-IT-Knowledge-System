@@ -146,7 +146,7 @@ class FeedbackClient(SQLiteClient):
                 WHERE r.feedback_count >= 3
                 ORDER BY r.avg_rating DESC, r.feedback_count DESC
                 LIMIT ?
-            """.format(knowledge_table)  # 検証済みなので format() 使用は安全
+            """.format(knowledge_table)  # nosec B608 - ホワイトリスト検証済みテーブル名
 
             cursor.execute(query, (limit,))
             return [self._row_to_dict(row) for row in cursor.fetchall()]
@@ -237,7 +237,7 @@ class FeedbackClient(SQLiteClient):
             self._validate_column_names(update_columns)
 
             # セキュリティ: 検証済みカラム名を使用（SQL injection対策）
-            query = "UPDATE system_feedback SET {} WHERE id = ?".format(', '.join(updates))
+            query = "UPDATE system_feedback SET {} WHERE id = ?".format(', '.join(updates))  # nosec B608 - ホワイトリスト検証済みカラム名
             cursor.execute(query, params)
             conn.commit()
             return cursor.rowcount > 0
@@ -335,7 +335,7 @@ class FeedbackClient(SQLiteClient):
                 GROUP BY k.id
                 ORDER BY view_count DESC
                 LIMIT ?
-            """.format(knowledge_table)  # 検証済みなので format() 使用は安全
+            """.format(knowledge_table)  # nosec B608 - ホワイトリスト検証済みテーブル名
 
             cursor.execute(query, (days, limit))
             return [self._row_to_dict(row) for row in cursor.fetchall()]
