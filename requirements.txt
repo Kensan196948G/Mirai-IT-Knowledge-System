@@ -8,6 +8,7 @@ PyYAML>=6.0.1
 # AI API Clients
 anthropic>=0.21.0  # Claude API
 google-generativeai>=0.4.0  # Gemini API
+openai>=1.0.0  # OpenAI API / Perplexity
 
 # Database (Built-in with Python)
 # sqlite3 - 標準ライブラリに含まれています
