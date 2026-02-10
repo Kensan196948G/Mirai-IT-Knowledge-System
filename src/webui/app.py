@@ -367,8 +367,10 @@ def view_knowledge(knowledge_id):
     # 使用統計を記録
     try:
         feedback_client.log_knowledge_usage(knowledge_id, "view", user_id="webui_user")
-    except:
-        pass  # エラーがあっても表示は継続
+    except Exception as e:
+        # エラーがあっても表示は継続（ログのみ記録）
+        logger.warning(f"Failed to log knowledge usage: {e}")
+        pass
 
     # パンくずリスト用
     breadcrumb_items = [
