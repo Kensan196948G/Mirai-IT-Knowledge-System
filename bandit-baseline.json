@@ -1,0 +1,208 @@
+{
+  "errors": [],
+  "generated_at": "2026-02-10T13:07:41Z",
+  "metrics": {
+    "_totals": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 4,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 4,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 2035,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/__init__.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 5,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/claude_mem_client.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 501,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/context7_client.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 169,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/feedback_client.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 3,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 3,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 314,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/github_client.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 288,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/mcp_integration.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 197,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "src/mcp/sqlite_client.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 1,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 1,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 561,
+      "nosec": 0,
+      "skipped_tests": 0
+    }
+  },
+  "results": [
+    {
+      "code": "141             # \u30bb\u30ad\u30e5\u30ea\u30c6\u30a3: \u691c\u8a3c\u6e08\u307f\u30c6\u30fc\u30d6\u30eb\u540d\u3092\u4f7f\u7528\uff08SQL injection\u5bfe\u7b56\uff09\n142             query = \"\"\"\n143                 SELECT k.*, r.avg_rating, r.feedback_count\n144                 FROM {} k\n145                 JOIN knowledge_ratings r ON k.id = r.knowledge_id\n146                 WHERE r.feedback_count >= 3\n147                 ORDER BY r.avg_rating DESC, r.feedback_count DESC\n148                 LIMIT ?\n149             \"\"\".format(knowledge_table)  # \u691c\u8a3c\u6e08\u307f\u306a\u306e\u3067 format() \u4f7f\u7528\u306f\u5b89\u5168\n150 \n",
+      "col_offset": 20,
+      "end_col_offset": 15,
+      "filename": "src/mcp/feedback_client.py",
+      "issue_confidence": "LOW",
+      "issue_cwe": {
+        "id": 89,
+        "link": "https://cwe.mitre.org/data/definitions/89.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "line_number": 142,
+      "line_range": [
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
+      "test_id": "B608",
+      "test_name": "hardcoded_sql_expressions"
+    },
+    {
+      "code": "239             # \u30bb\u30ad\u30e5\u30ea\u30c6\u30a3: \u691c\u8a3c\u6e08\u307f\u30ab\u30e9\u30e0\u540d\u3092\u4f7f\u7528\uff08SQL injection\u5bfe\u7b56\uff09\n240             query = \"UPDATE system_feedback SET {} WHERE id = ?\".format(', '.join(updates))\n241             cursor.execute(query, params)\n",
+      "col_offset": 20,
+      "end_col_offset": 64,
+      "filename": "src/mcp/feedback_client.py",
+      "issue_confidence": "LOW",
+      "issue_cwe": {
+        "id": 89,
+        "link": "https://cwe.mitre.org/data/definitions/89.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "line_number": 240,
+      "line_range": [
+        240
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
+      "test_id": "B608",
+      "test_name": "hardcoded_sql_expressions"
+    },
+    {
+      "code": "328             # \u30bb\u30ad\u30e5\u30ea\u30c6\u30a3: \u691c\u8a3c\u6e08\u307f\u30c6\u30fc\u30d6\u30eb\u540d\u3092\u4f7f\u7528\uff08SQL injection\u5bfe\u7b56\uff09\n329             query = \"\"\"\n330                 SELECT k.*, COUNT(u.id) as view_count\n331                 FROM {} k\n332                 JOIN knowledge_usage_stats u ON k.id = u.knowledge_id\n333                 WHERE u.action_type = 'view'\n334                   AND u.created_at > datetime('now', '-' || ? || ' days')\n335                 GROUP BY k.id\n336                 ORDER BY view_count DESC\n337                 LIMIT ?\n338             \"\"\".format(knowledge_table)  # \u691c\u8a3c\u6e08\u307f\u306a\u306e\u3067 format() \u4f7f\u7528\u306f\u5b89\u5168\n339 \n",
+      "col_offset": 20,
+      "end_col_offset": 15,
+      "filename": "src/mcp/feedback_client.py",
+      "issue_confidence": "LOW",
+      "issue_cwe": {
+        "id": 89,
+        "link": "https://cwe.mitre.org/data/definitions/89.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "line_number": 329,
+      "line_range": [
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
+      "test_id": "B608",
+      "test_name": "hardcoded_sql_expressions"
+    },
+    {
+      "code": "641             cursor = conn.cursor()\n642             query = \"UPDATE knowledge_entries SET {} WHERE id = ?\".format(set_clause)\n643             cursor.execute(query, values)\n",
+      "col_offset": 20,
+      "end_col_offset": 66,
+      "filename": "src/mcp/sqlite_client.py",
+      "issue_confidence": "LOW",
+      "issue_cwe": {
+        "id": 89,
+        "link": "https://cwe.mitre.org/data/definitions/89.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "line_number": 642,
+      "line_range": [
+        642
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.7.5/plugins/b608_hardcoded_sql_expressions.html",
+      "test_id": "B608",
+      "test_name": "hardcoded_sql_expressions"
+    }
+  ]
+}
