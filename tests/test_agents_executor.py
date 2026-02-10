@@ -248,6 +248,32 @@ class TestSubAgentExecutor:
 
         assert max_workers == 3
 
+    # ========== Capabilities検証テスト ==========
+
+    def test_execute_agent_with_missing_capabilities_warning(self, mock_loader):
+        """必要なCapabilityが不足している場合に警告が出力されること"""
+        mock_agent = SubAgentConfig(
+            name="LimitedAgent",
+            description="Agent with limited capabilities",
+            capabilities=["read"],  # "write"がない
+            prompts={},
+        )
+        mock_loader.get_agent.return_value = mock_agent
+
+        executor = SubAgentExecutor(loader=mock_loader)
+
+        with patch("src.agents.executor.logger") as mock_logger:
+            input_data = {
+                "query": "test",
+                "required_capabilities": ["read", "write"],  # "write"が必要
+            }
+            executor.execute("limited_agent", input_data)
+
+            # 警告ログが呼び出されたか確認
+            assert mock_logger.warning.called
+            warning_args = mock_logger.warning.call_args[0][0]
+            assert "missing capabilities" in warning_args.lower()
+
 
 # ========== HookExecutor テスト ==========
 
@@ -421,6 +447,118 @@ class TestHookExecutor:
         history = hook_executor.get_execution_history()
 
         assert len(history) == 0
+
+    # ========== アクションタイプ別テスト ==========
+
+    def test_hook_action_notify(self, mock_hook_loader):
+        """通知アクションが正しく実行されること"""
+        notify_hook = HookConfig(
+            name="NotifyHook",
+            description="Notification hook",
+            trigger="test",
+            actions=["notify:Test notification message"],
+            prompts={},
+        )
+        mock_hook_loader.get_hook.return_value = notify_hook
+
+        hook_executor = HookExecutor(loader=mock_hook_loader)
+        result = hook_executor.execute_hook("notify_hook", {})
+
+        assert result.success is True
+        assert result.output["actions"][0]["type"] == "notify"
+        assert result.output["actions"][0]["status"] == "executed"
+        assert "Test notification message" in result.output["actions"][0]["message"]
+
+    def test_hook_action_log(self, mock_hook_loader):
+        """ログアクションが正しく実行されること"""
+        log_hook = HookConfig(
+            name="LogHook",
+            description="Log hook",
+            trigger="test",
+            actions=["log:DEBUG"],
+            prompts={},
+        )
+        mock_hook_loader.get_hook.return_value = log_hook
+
+        hook_executor = HookExecutor(loader=mock_hook_loader)
+        result = hook_executor.execute_hook("log_hook", {})
+
+        assert result.success is True
+        assert result.output["actions"][0]["type"] == "log"
+        assert result.output["actions"][0]["level"] == "DEBUG"
+
+    def test_hook_action_retry(self, mock_hook_loader):
+        """リトライアクションが正しく設定されること"""
+        retry_hook = HookConfig(
+            name="RetryHook",
+            description="Retry hook",
+            trigger="test",
+            actions=["retry:5"],
+            prompts={},
+        )
+        mock_hook_loader.get_hook.return_value = retry_hook
+
+        hook_executor = HookExecutor(loader=mock_hook_loader)
+        result = hook_executor.execute_hook("retry_hook", {})
+
+        assert result.success is True
+        assert result.output["actions"][0]["type"] == "retry"
+        assert result.output["actions"][0]["max_retries"] == 5
+
+    def test_hook_action_abort(self, mock_hook_loader):
+        """中断アクションが正しく実行されること"""
+        abort_hook = HookConfig(
+            name="AbortHook",
+            description="Abort hook",
+            trigger="test",
+            actions=["abort:Critical error detected"],
+            prompts={},
+        )
+        mock_hook_loader.get_hook.return_value = abort_hook
+
+        hook_executor = HookExecutor(loader=mock_hook_loader)
+        result = hook_executor.execute_hook("abort_hook", {})
+
+        assert result.success is True
+        assert result.output["actions"][0]["type"] == "abort"
+        assert result.output["actions"][0]["status"] == "aborted"
+        assert "Critical error detected" in result.output["actions"][0]["error"]
+
+    def test_hook_action_webhook(self, mock_hook_loader):
+        """Webhookアクションが正しく設定されること"""
+        webhook_hook = HookConfig(
+            name="WebhookHook",
+            description="Webhook hook",
+            trigger="test",
+            actions=["webhook:https://example.com/webhook"],
+            prompts={},
+        )
+        mock_hook_loader.get_hook.return_value = webhook_hook
+
+        hook_executor = HookExecutor(loader=mock_hook_loader)
+        result = hook_executor.execute_hook("webhook_hook", {})
+
+        assert result.success is True
+        assert result.output["actions"][0]["type"] == "webhook"
+        assert result.output["actions"][0]["url"] == "https://example.com/webhook"
+
+    def test_hook_action_unknown_type(self, mock_hook_loader):
+        """未知のアクションタイプがスキップされること"""
+        unknown_hook = HookConfig(
+            name="UnknownHook",
+            description="Unknown action hook",
+            trigger="test",
+            actions=["unknown_action:param"],
+            prompts={},
+        )
+        mock_hook_loader.get_hook.return_value = unknown_hook
+
+        hook_executor = HookExecutor(loader=mock_hook_loader)
+        result = hook_executor.execute_hook("unknown_hook", {})
+
+        assert result.success is True
+        assert result.output["actions"][0]["type"] == "unknown"
+        assert result.output["actions"][0]["status"] == "skipped"
 
 
 # ========== ExecutionResult テスト ==========
