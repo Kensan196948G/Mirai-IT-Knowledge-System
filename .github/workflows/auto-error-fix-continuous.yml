@@ -395,53 +395,129 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const totalErrors = '${{ needs.auto-fix-loop.outputs.total_errors }}';
-            const totalFixes = '${{ needs.auto-fix-loop.outputs.total_fixes }}';
-            const successRate = '${{ needs.auto-fix-loop.outputs.success_rate }}';
+            const totalErrors = '${{ needs.auto-fix-loop.outputs.total_errors }}' || '0';
+            const totalFixes = '${{ needs.auto-fix-loop.outputs.total_fixes }}' || '0';
+            const successRate = '${{ needs.auto-fix-loop.outputs.success_rate }}' || '0';
             const overallStatus = '${{ needs.auto-fix-loop.outputs.overall_status }}';
             const runId = '${{ needs.setup.outputs.run_id }}';
 
-            // 既存の同様のIssueを検索
+            const AUTO_CLOSE_THRESHOLD = 3; // 連続成功回数閾値
+            const ISSUE_DURATION_HOURS = 168; // 7日間（24 × 7）
+
+            // 既存の同様のIssueを検索（7日間）
             const existingIssues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               labels: 'auto-fix,bot',
               state: 'open',
-              per_page: 5
+              per_page: 10
             });
 
-            // 24時間以内の同様のIssueがあればスキップ
+            // 7日間以内の同様のIssueを検索
             const recentIssue = existingIssues.data.find(issue => {
               const createdAt = new Date(issue.created_at);
               const now = new Date();
               const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
-              return hoursDiff < 24;
+              return hoursDiff < ISSUE_DURATION_HOURS;
             });
 
-            if (recentIssue) {
-              console.log(`Similar issue exists: #${recentIssue.number}, skipping...`);
+            // エラーが0の場合の連続成功カウント
+            let consecutiveSuccesses = 0;
 
-              // 既存Issueにコメント追加
+            if (recentIssue) {
+              console.log(`Similar issue exists: #${recentIssue.number}`);
+
+              // 既存Issueの本文から連続成功カウントを抽出
+              const counterMatch = recentIssue.body.match(/<!-- consecutive_successes:(\d+) -->/);
+              if (counterMatch) {
+                consecutiveSuccesses = parseInt(counterMatch[1]);
+              }
+
+              // エラーが0の場合、カウント増加
+              if (totalErrors === '0') {
+                consecutiveSuccesses++;
+              } else {
+                consecutiveSuccesses = 0; // エラーがあればリセット
+              }
+
+              // 連続成功閾値に達したらIssueをクローズ
+              if (consecutiveSuccesses >= AUTO_CLOSE_THRESHOLD) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: recentIssue.number,
+                  body: `## ✅ 自動クローズ
+
+エラーが連続${consecutiveSuccesses}回検出されませんでした。システムは正常と判断し、このIssueを自動的にクローズします。
+
+| 指標 | 値 |
+|------|-----|
+| 検出エラー | ${totalErrors} |
+| 修復試行 | ${totalFixes} |
+| 成功率 | ${successRate}% |
+| ステータス | ${overallStatus} |
+| 連続成功 | ${consecutiveSuccesses}/${AUTO_CLOSE_THRESHOLD} ✅ |
+
+[詳細ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})
+
+---
+*自動クローズ条件: エラー0が連続${AUTO_CLOSE_THRESHOLD}回*`
+                });
+
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: recentIssue.number,
+                  state: 'closed'
+                });
+
+                console.log(`Issue #${recentIssue.number} auto-closed after ${consecutiveSuccesses} consecutive successes`);
+                return;
+              }
+
+              // 既存Issueにコメント追加（進捗表示）
+              const progressBar = '🟢'.repeat(consecutiveSuccesses) + '⚪'.repeat(AUTO_CLOSE_THRESHOLD - consecutiveSuccesses);
+
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: recentIssue.number,
                 body: `## 🔄 自動検知更新 (Run #${runId})
 
-            | 指標 | 値 |
-            |------|-----|
-            | 検出エラー | ${totalErrors} |
-            | 修復試行 | ${totalFixes} |
-            | 成功率 | ${successRate}% |
-            | ステータス | ${overallStatus} |
+| 指標 | 値 |
+|------|-----|
+| 検出エラー | ${totalErrors} |
+| 修復試行 | ${totalFixes} |
+| 成功率 | ${successRate}% |
+| ステータス | ${overallStatus} |
+| 連続成功 | ${consecutiveSuccesses}/${AUTO_CLOSE_THRESHOLD} ${progressBar} |
 
-            [詳細ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})`
+${consecutiveSuccesses > 0 ? `**あと${AUTO_CLOSE_THRESHOLD - consecutiveSuccesses}回連続成功で自動クローズします**` : ''}
+
+[詳細ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})
+
+<!-- consecutive_successes:${consecutiveSuccesses} -->`
               });
+
+              // Issue本文を更新（連続成功カウントを保存）
+              const updatedBody = recentIssue.body.replace(
+                /<!-- consecutive_successes:\d+ -->/,
+                `<!-- consecutive_successes:${consecutiveSuccesses} -->`
+              ) || recentIssue.body + `\n\n<!-- consecutive_successes:${consecutiveSuccesses} -->`;
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: recentIssue.number,
+                body: updatedBody
+              });
+
               return;
             }
 
-            // 新規Issue作成
+            // 新規Issue作成（7日間以内にIssueがない場合）
             const statusEmoji = overallStatus === 'critical' ? '🔴' : '🟡';
+            const priorityLabel = overallStatus === 'critical' ? 'priority:high' : 'priority:medium';
 
             await github.rest.issues.create({
               owner: context.repo.owner,
@@ -449,25 +525,31 @@ jobs:
               title: `${statusEmoji} [Auto-Fix] システムエラー検知 (${new Date().toISOString().split('T')[0]})`,
               body: `## 🤖 自動エラー検知・修復システム レポート
 
-            ### 📊 検知結果
-            | 指標 | 値 |
-            |------|-----|
-            | **検出エラー数** | ${totalErrors} |
-            | **修復試行数** | ${totalFixes} |
-            | **成功率** | ${successRate}% |
-            | **全体ステータス** | ${overallStatus} |
+### 📊 検知結果
+| 指標 | 値 |
+|------|-----|
+| **検出エラー数** | ${totalErrors} |
+| **修復試行数** | ${totalFixes} |
+| **成功率** | ${successRate}% |
+| **全体ステータス** | ${overallStatus} |
+| **連続成功** | 0/${AUTO_CLOSE_THRESHOLD} ⚪⚪⚪ |
 
-            ### 🔗 関連リンク
-            - [GitHub Actions ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})
+### 🔗 関連リンク
+- [GitHub Actions ログ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId})
 
-            ### 📝 対応方法
-            1. 上記ログを確認してエラー詳細を把握
-            2. 自動修復で解決できなかった問題を手動で対応
-            3. 対応完了後、このIssueをクローズ
+### 📝 対応方法
+1. 上記ログを確認してエラー詳細を把握
+2. 自動修復で解決できなかった問題を手動で対応
+3. 対応完了後、このIssueをクローズ（または自動クローズを待つ）
 
-            ---
-            *このIssueは自動エラー検知・修復システムにより自動作成されました*`,
-              labels: ['auto-fix', 'bot', overallStatus === 'critical' ? 'priority:high' : 'priority:medium']
+### ✅ 自動クローズ条件
+- エラー0が連続${AUTO_CLOSE_THRESHOLD}回検出された場合、自動的にクローズされます
+
+---
+*このIssueは自動エラー検知・修復システムにより自動作成されました*
+
+<!-- consecutive_successes:0 -->`,
+              labels: ['auto-fix', 'bot', priorityLabel]
             });
 
   # ===== 完了通知 =====
