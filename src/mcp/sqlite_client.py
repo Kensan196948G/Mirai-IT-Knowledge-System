@@ -639,7 +639,7 @@ class SQLiteClient:
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            query = "UPDATE knowledge_entries SET {} WHERE id = ?".format(set_clause)
+            query = "UPDATE knowledge_entries SET {} WHERE id = ?".format(set_clause)  # nosec B608 - ホワイトリスト検証済みカラム名
             cursor.execute(query, values)
             conn.commit()
             return cursor.rowcount > 0
