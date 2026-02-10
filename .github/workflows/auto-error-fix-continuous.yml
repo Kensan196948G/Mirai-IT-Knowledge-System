@@ -29,8 +29,9 @@ on:
           - 'no'
 
 # ワークフローの権限設定
+# git pushを許可（auto-repair結果のコミット用）
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 env:
@@ -488,3 +489,4 @@ jobs:
           echo "| Issue作成 | ${{ needs.create-issue.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Overall Status**: ${{ needs.auto-fix-loop.outputs.overall_status }}" >> $GITHUB_STEP_SUMMARY
+
