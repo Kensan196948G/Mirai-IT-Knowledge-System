@@ -25,6 +25,7 @@ class SubAgentConfig:
     priority: str = "medium"
     model: str = "claude-sonnet-4-20250514"
     enabled: bool = True
+    class_name: Optional[str] = None
 
 
 @dataclass

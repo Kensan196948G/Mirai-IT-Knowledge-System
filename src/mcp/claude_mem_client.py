@@ -1,69 +1,83 @@
 """
 Claude-Mem MCP Client
-会話履歴メモリクライアント（cccmemory連携）
+会話履歴メモリクライアント (実MCP接続対応)
+
+cccmemory MCPサーバーと連携して、会話履歴の永続化、
+セマンティック検索、決定追跡を提供します。
 
 使い分け:
 - memory (知識グラフ): エンティティ・関係管理、短期〜中期コンテキスト
 - claude-mem (本クライアント): 会話履歴、セマンティック検索、決定追跡、長期記憶
 """
 
+import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import json
-import os
 
-# MCP Tool動的インポート用のヘルパー
-def _import_mcp_tool(tool_name: str):
-    """MCPツールを動的にインポート"""
-    try:
-        import sys
-        # グローバルスコープからMCPツールを取得
-        return globals().get(tool_name) or getattr(sys.modules.get('__main__', {}), tool_name, None)
-    except Exception:
-        return None
+from .mcp_client_base import MCPClientBase
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeMemClient:
     """Claude-Mem連携クライアント
 
-    会話履歴、設計判断、過去の決定事項を記憶・検索する機能を提供
-    cccmemory MCP サーバーと連携
-
-    Features:
-    - セマンティック検索（類似の会話/決定を検索）
-    - 決定追跡（Decision Tracking）
-    - Git統合（コミットとの関連付け）
-    - 長期記憶（クロスセッション永続化）
-
-    Note: 実際のMCP連携には、MCPツールを使用して
-    mcp__claude-mem__* ツールを呼び出す必要があります
+    cccmemory MCPサーバーと実接続して記憶管理を行います。
+    MCP未検出時はデモデータにフォールバックします。
     """
+
+    # .mcp.json の claude-mem 設定に準拠
+    DEFAULT_COMMAND = "npx"
+    DEFAULT_ARGS = ["-y", "cccmemory"]
+    DEFAULT_DB_PATH = ".memory/claude-mem/conversations.db"
 
     def __init__(self, db_path: Optional[str] = None, auto_enable: bool = True):
         """初期化
 
         Args:
             db_path: データベースパス（省略時は環境変数から取得）
-            auto_enable: MCP自動有効化（デフォルト: True）
+            auto_enable: MCP自動接続（デフォルト: True）
         """
         self.db_path = db_path or os.environ.get(
-            "CCCMEMORY_DB_PATH",
-            ".memory/claude-mem/conversations.db"
+            "CCCMEMORY_DB_PATH", self.DEFAULT_DB_PATH
         )
-        self._memory_cache = []  # ローカルキャッシュ
-        self._decision_cache = []  # 決定追跡キャッシュ
+        self._memory_cache: List[Dict[str, Any]] = []
+        self._decision_cache: List[Dict[str, Any]] = []
+        self._mcp_client: Optional[MCPClientBase] = None
+        self.enabled = False
 
-        # MCP利用可能性チェック
-        self.enabled = auto_enable and self._check_mcp_available()
+        if auto_enable:
+            self.enabled = self._try_connect()
 
-    def _check_mcp_available(self) -> bool:
-        """MCP利用可能性をチェック"""
+    def _try_connect(self) -> bool:
+        """MCPサーバーへの接続を試行"""
         try:
-            # ToolSearchまたはMCPツールの存在を確認
-            tool = _import_mcp_tool('mcp__claude_mem__search_conversations')
-            return tool is not None
-        except Exception:
+            self._mcp_client = MCPClientBase(
+                server_command=self.DEFAULT_COMMAND,
+                server_args=self.DEFAULT_ARGS,
+                env={"CCCMEMORY_DB_PATH": self.db_path},
+                timeout=30.0,
+            )
+            connected = self._mcp_client.connect()
+            if connected:
+                logger.info("Claude-Mem MCP: 実接続成功")
+                return True
+            else:
+                logger.info("Claude-Mem MCP: 接続失敗、スタブモードで動作")
+                self._mcp_client = None
+                return False
+        except Exception as e:
+            logger.warning(f"Claude-Mem MCP: 接続エラー ({e})、スタブモードで動作")
+            self._mcp_client = None
             return False
+
+    def disconnect(self):
+        """MCP接続を切断"""
+        if self._mcp_client:
+            self._mcp_client.disconnect()
+            self._mcp_client = None
+        self.enabled = False
 
     # =========================================
     # セマンティック検索機能
@@ -85,38 +99,24 @@ class ClaudeMemClient:
 
         Returns:
             検索結果のリスト
-
-        Example:
-            memories = client.search_memories("データベース接続エラーの解決方法")
         """
-        if not self.enabled:
-            # MCP無効時はデモ実装にフォールバック
+        if not self.enabled or not self._mcp_client:
             return self._get_demo_memories(query)
 
         try:
-            # 実際のMCP呼び出し
-            from ..tools import mcp__claude_mem__search_conversations
+            result = self._mcp_client.call_tool("search_conversations", {
+                "query": query,
+                "limit": limit,
+                "scope": "all",
+            })
 
-            results = mcp__claude_mem__search_conversations(
-                query=query,
-                limit=limit,
-                scope="all"
-            )
+            if result is None:
+                return self._get_demo_memories(query)
 
-            # 結果を標準フォーマットに変換
-            formatted_results = []
-            for result in results.get("results", []):
-                formatted_results.append({
-                    "title": result.get("snippet", "")[:100],
-                    "content": result.get("content", ""),
-                    "timestamp": result.get("timestamp", ""),
-                    "tags": result.get("tags", []),
-                    "similarity": result.get("score", 0.0)
-                })
+            return self._format_search_results(result)
 
-            return formatted_results
         except Exception as e:
-            print(f"Warning: MCP search failed: {e}. Falling back to demo data.")
+            logger.warning(f"Claude-Mem search failed: {e}")
             return self._get_demo_memories(query)
 
     def search_similar_conversations(
@@ -134,34 +134,25 @@ class ClaudeMemClient:
         Returns:
             類似会話のリスト
         """
-        if not self.enabled:
+        if not self.enabled or not self._mcp_client:
             return []
 
         try:
-            # 実際のMCP呼び出し - セマンティック検索を利用
-            from ..tools import mcp__claude_mem__search_conversations
+            result = self._mcp_client.call_tool("search_conversations", {
+                "query": content[:200],
+                "limit": 10,
+                "scope": "all",
+            })
 
-            results = mcp__claude_mem__search_conversations(
-                query=content[:200],  # 先頭200文字を検索クエリとして使用
-                limit=10,
-                scope="all"
-            )
+            if result is None:
+                return []
 
-            # 類似度でフィルタリング
-            similar_conversations = []
-            for result in results.get("results", []):
-                score = result.get("score", 0.0)
-                if score >= threshold:
-                    similar_conversations.append({
-                        "conversation_id": result.get("conversation_id", ""),
-                        "content": result.get("content", ""),
-                        "timestamp": result.get("timestamp", ""),
-                        "similarity": score
-                    })
+            # テキストから結果を抽出
+            results = self._format_search_results(result)
+            return [r for r in results if r.get("similarity", 0) >= threshold]
 
-            return similar_conversations
         except Exception as e:
-            print(f"Warning: Similar conversation search failed: {e}")
+            logger.warning(f"Similar conversation search failed: {e}")
             return []
 
     # =========================================
@@ -206,17 +197,16 @@ class ClaudeMemClient:
             "status": "active"
         }
 
-        # ローカルキャッシュに保存
         self._decision_cache.append(decision_record)
 
-        # MCP経由で永続化（オプション）
-        if self.enabled:
+        # MCP経由で永続化
+        if self.enabled and self._mcp_client:
             try:
-                # Note: Claude-Memは決定を会話履歴の一部として自動抽出するため、
-                # 明示的なstore_decision APIは不要。代わりに会話として保存
-                pass
+                self._mcp_client.call_tool("remember", {
+                    "text": f"Decision: {title} - {decision} (Rationale: {rationale})",
+                })
             except Exception as e:
-                print(f"Warning: Decision storage to MCP failed: {e}")
+                logger.warning(f"Decision storage to MCP failed: {e}")
 
         return {"success": True, "decision_id": decision_record["id"]}
 
@@ -240,37 +230,24 @@ class ClaudeMemClient:
             決定のリスト
         """
         # MCP経由で検索
-        if self.enabled and query:
+        if self.enabled and self._mcp_client and query:
             try:
-                from ..tools import mcp__claude_mem__get_decisions
+                result = self._mcp_client.call_tool("get_decisions", {
+                    "query": query,
+                    "limit": limit,
+                    "scope": "all",
+                })
 
-                mcp_results = mcp__claude_mem__get_decisions(
-                    query=query,
-                    limit=limit,
-                    scope="all"
-                )
-
-                # MCPとローカルキャッシュをマージ
-                decisions = []
-                for result in mcp_results.get("decisions", []):
-                    decisions.append({
-                        "id": result.get("id", ""),
-                        "title": result.get("title", ""),
-                        "decision": result.get("decision", ""),
-                        "rationale": result.get("rationale", ""),
-                        "timestamp": result.get("timestamp", ""),
-                        "tags": result.get("tags", [])
-                    })
-
-                # ローカルキャッシュも追加
-                decisions.extend(self._decision_cache)
-                return decisions[:limit]
+                if result is not None:
+                    decisions = self._format_search_results(result)
+                    decisions.extend(self._decision_cache)
+                    return decisions[:limit]
 
             except Exception as e:
-                print(f"Warning: MCP decision search failed: {e}")
+                logger.warning(f"MCP decision search failed: {e}")
 
         # ローカルキャッシュから検索
-        results = self._decision_cache
+        results = list(self._decision_cache)
 
         if knowledge_id:
             results = [d for d in results if d.get("knowledge_id") == knowledge_id]
@@ -298,27 +275,7 @@ class ClaudeMemClient:
         status: str,
         notes: Optional[str] = None
     ) -> bool:
-        """
-        決定のステータスを更新
-
-        Args:
-            decision_id: 決定ID
-            status: 新しいステータス（active, superseded, deprecated）
-            notes: 更新メモ
-
-        Returns:
-            成功したかどうか
-        """
-        # Note: Claude-Memは決定を会話履歴として管理するため、
-        # ステータス更新は新しい会話メッセージとして記録
-        if self.enabled:
-            try:
-                # 新しい決定状態を会話として記録
-                pass
-            except Exception as e:
-                print(f"Warning: Decision status update to MCP failed: {e}")
-
-        # ローカルキャッシュを更新
+        """決定のステータスを更新"""
         for decision in self._decision_cache:
             if decision.get("id") == decision_id:
                 decision["status"] = status
@@ -337,17 +294,7 @@ class ClaudeMemClient:
         messages: List[Dict[str, str]],
         metadata: Optional[Dict[str, Any]] = None
     ) -> bool:
-        """
-        会話を保存
-
-        Args:
-            conversation_id: 会話ID
-            messages: メッセージリスト [{"role": "user/assistant", "content": "..."}]
-            metadata: メタデータ
-
-        Returns:
-            成功したかどうか
-        """
+        """会話を保存"""
         conversation = {
             "id": conversation_id,
             "messages": messages,
@@ -357,17 +304,13 @@ class ClaudeMemClient:
 
         self._memory_cache.append(conversation)
 
-        # MCP経由で永続化（会話は自動的にインデックス化される）
-        if self.enabled:
+        if self.enabled and self._mcp_client:
             try:
-                from ..tools import mcp__claude_mem__index_conversations
-
-                # 会話を現在のプロジェクトにインデックス化
-                mcp__claude_mem__index_conversations(
-                    session_id=conversation_id
-                )
+                self._mcp_client.call_tool("index_conversations", {
+                    "session_id": conversation_id,
+                })
             except Exception as e:
-                print(f"Warning: Conversation indexing to MCP failed: {e}")
+                logger.warning(f"Conversation indexing to MCP failed: {e}")
 
         return True
 
@@ -376,42 +319,22 @@ class ClaudeMemClient:
         topic: str,
         limit: int = 3
     ) -> List[Dict[str, Any]]:
-        """
-        トピックに関連する会話コンテキストを取得
-
-        Args:
-            topic: トピック
-            limit: 最大結果数
-
-        Returns:
-            関連会話のリスト
-        """
-        # MCP経由でトピック検索
-        if self.enabled:
+        """トピックに関連する会話コンテキストを取得"""
+        if self.enabled and self._mcp_client:
             try:
-                from ..tools import mcp__claude_mem__search_project_conversations
+                result = self._mcp_client.call_tool("search_project_conversations", {
+                    "query": topic,
+                    "limit": limit,
+                    "include_claude_code": True,
+                    "include_codex": True,
+                })
 
-                results = mcp__claude_mem__search_project_conversations(
-                    query=topic,
-                    limit=limit,
-                    include_claude_code=True,
-                    include_codex=True
-                )
+                if result is not None:
+                    return self._format_search_results(result)
 
-                context = []
-                for result in results.get("results", []):
-                    context.append({
-                        "conversation_id": result.get("conversation_id", ""),
-                        "content": result.get("content", ""),
-                        "timestamp": result.get("timestamp", ""),
-                        "relevance": result.get("score", 0.0)
-                    })
-
-                return context
             except Exception as e:
-                print(f"Warning: Conversation context retrieval failed: {e}")
+                logger.warning(f"Conversation context retrieval failed: {e}")
 
-        # フォールバック: セマンティック検索を利用
         return self.search_memories(topic, limit=limit)
 
     # =========================================
@@ -424,32 +347,17 @@ class ClaudeMemClient:
         commit_hash: str,
         commit_message: Optional[str] = None
     ) -> bool:
-        """
-        決定をGitコミットにリンク
-
-        Args:
-            decision_id: 決定ID
-            commit_hash: コミットハッシュ
-            commit_message: コミットメッセージ
-
-        Returns:
-            成功したかどうか
-        """
-        # MCP経由でコミット-会話リンクを作成
-        if self.enabled:
+        """決定をGitコミットにリンク"""
+        if self.enabled and self._mcp_client:
             try:
-                from ..tools import mcp__claude_mem__link_commits_to_conversations
-
-                # コミットと会話をリンク
-                mcp__claude_mem__link_commits_to_conversations(
-                    query=commit_hash,
-                    limit=1,
-                    scope="all"
-                )
+                self._mcp_client.call_tool("link_commits_to_conversations", {
+                    "query": commit_hash,
+                    "limit": 1,
+                    "scope": "all",
+                })
             except Exception as e:
-                print(f"Warning: Commit linking to MCP failed: {e}")
+                logger.warning(f"Commit linking to MCP failed: {e}")
 
-        # ローカルキャッシュも更新
         for decision in self._decision_cache:
             if decision.get("id") == decision_id:
                 if "git_links" not in decision:
@@ -463,46 +371,21 @@ class ClaudeMemClient:
         return False
 
     def get_decisions_by_commit(self, commit_hash: str) -> List[Dict[str, Any]]:
-        """
-        コミットに関連する決定を取得
-
-        Args:
-            commit_hash: コミットハッシュ
-
-        Returns:
-            関連決定のリスト
-        """
-        # MCP経由でコミット関連の決定を検索
-        if self.enabled:
+        """コミットに関連する決定を取得"""
+        if self.enabled and self._mcp_client:
             try:
-                from ..tools import mcp__claude_mem__link_commits_to_conversations
+                result = self._mcp_client.call_tool("link_commits_to_conversations", {
+                    "query": commit_hash,
+                    "limit": 10,
+                    "scope": "all",
+                })
 
-                commit_results = mcp__claude_mem__link_commits_to_conversations(
-                    query=commit_hash,
-                    limit=10,
-                    scope="all"
-                )
+                if result is not None:
+                    return self._format_search_results(result)
 
-                # コミットにリンクされた会話から決定を抽出
-                decisions = []
-                for commit_link in commit_results.get("commits", []):
-                    conversation_id = commit_link.get("conversation_id", "")
-                    if conversation_id:
-                        # その会話から決定を取得
-                        from ..tools import mcp__claude_mem__get_decisions
-
-                        conv_decisions = mcp__claude_mem__get_decisions(
-                            query=commit_hash,
-                            scope="all",
-                            limit=5
-                        )
-                        decisions.extend(conv_decisions.get("decisions", []))
-
-                return decisions[:10]
             except Exception as e:
-                print(f"Warning: Commit-related decisions retrieval failed: {e}")
+                logger.warning(f"Commit-related decisions retrieval failed: {e}")
 
-        # ローカルキャッシュから検索
         results = []
         for decision in self._decision_cache:
             for link in decision.get("git_links", []):
@@ -520,32 +403,19 @@ class ClaudeMemClient:
         knowledge_content: str,
         itsm_type: str
     ) -> Dict[str, Any]:
-        """
-        ナレッジを過去の記憶で補強
-
-        Args:
-            knowledge_content: ナレッジ内容
-            itsm_type: ITSMタイプ
-
-        Returns:
-            補強情報
-        """
-        # キーワード抽出
+        """ナレッジを過去の記憶で補強"""
         keywords = self._extract_keywords(knowledge_content)
 
-        # 関連記憶を検索
         all_memories = []
         for keyword in keywords[:3]:
             memories = self.search_memories(keyword, limit=2)
             all_memories.extend(memories)
 
-        # 関連決定を検索
         related_decisions = self.get_decisions(
             tags=[itsm_type.lower()],
             limit=3
         )
 
-        # 重複除去
         unique_memories = []
         seen_titles = set()
         for memory in all_memories:
@@ -584,53 +454,71 @@ class ClaudeMemClient:
 
         return found_keywords[:5]
 
+    def _format_search_results(self, result: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """MCP tools/call結果を標準フォーマットに変換"""
+        formatted = []
+        content_list = result.get("content", [])
+        for item in content_list:
+            text = item.get("text", "")
+            if text:
+                formatted.append({
+                    "title": text[:100],
+                    "content": text,
+                    "timestamp": datetime.now().isoformat(),
+                    "tags": [],
+                    "similarity": 0.8,
+                    "source": "Claude-Mem",
+                })
+        return formatted
+
     def _get_demo_memories(self, query: str) -> List[Dict[str, Any]]:
-        """デモ用のメモリデータ"""
+        """デモ用のメモリデータ（スタブモード）"""
         demo_memories = [
             {
                 "title": "データベース接続プール設定のベストプラクティス",
                 "content": "各アプリケーションサーバーの接続プール最大数は、データベース側の max_connections を超えないように設定する必要がある。",
                 "timestamp": "2025-12-15T10:00:00",
                 "tags": ["database", "connection-pool", "best-practice"],
-                "similarity": 0.85
+                "similarity": 0.85,
+                "source": "Claude-Mem-stub",
             },
             {
                 "title": "ITSMプロセスにおけるインシデント→問題管理の移行判断",
                 "content": "同じ事象が3回以上発生した場合、または根本原因が不明な場合は、問題管理プロセスへエスカレーションする。",
                 "timestamp": "2025-11-20T14:30:00",
                 "tags": ["itsm", "incident", "problem", "escalation"],
-                "similarity": 0.82
+                "similarity": 0.82,
+                "source": "Claude-Mem-stub",
             },
             {
                 "title": "証明書更新作業の標準手順",
                 "content": "SSL/TLS証明書の更新は、期限の2週間前から計画し、ステージング環境で事前検証を行う。",
                 "timestamp": "2025-10-05T09:00:00",
                 "tags": ["security", "certificate", "procedure"],
-                "similarity": 0.78
+                "similarity": 0.78,
+                "source": "Claude-Mem-stub",
             },
             {
                 "title": "ADアカウントロック対応の教訓",
                 "content": "パスワード変更後のセッション残存が主な原因。モバイルデバイスのメール同期設定も確認が必要。",
                 "timestamp": "2026-01-15T11:00:00",
                 "tags": ["active-directory", "account", "troubleshooting"],
-                "similarity": 0.75
+                "similarity": 0.75,
+                "source": "Claude-Mem-stub",
             },
             {
                 "title": "VPN接続障害の根本原因分析",
                 "content": "証明書期限切れが最多の原因。自動更新の仕組みと30日前通知の設定を推奨。",
                 "timestamp": "2026-02-01T09:30:00",
                 "tags": ["vpn", "certificate", "rca"],
-                "similarity": 0.72
+                "similarity": 0.72,
+                "source": "Claude-Mem-stub",
             }
         ]
 
-        # クエリに基づいたフィルタリングと類似度ソート
         query_lower = query.lower()
-        filtered = []
-
         for m in demo_memories:
-            # 簡易類似度計算
-            score = 0.5  # ベーススコア
+            score = 0.5
             if query_lower in m["title"].lower():
                 score += 0.3
             if query_lower in m["content"].lower():
@@ -638,14 +526,10 @@ class ClaudeMemClient:
             for tag in m["tags"]:
                 if tag.lower() in query_lower or query_lower in tag.lower():
                     score += 0.1
-
             m["similarity"] = min(score, 1.0)
-            filtered.append(m)
 
-        # 類似度でソート
-        filtered.sort(key=lambda x: x["similarity"], reverse=True)
-
-        return filtered[:5]
+        demo_memories.sort(key=lambda x: x["similarity"], reverse=True)
+        return demo_memories[:5]
 
     def get_stats(self) -> Dict[str, Any]:
         """統計情報を取得"""
@@ -653,9 +537,20 @@ class ClaudeMemClient:
             "total_memories": len(self._memory_cache),
             "total_decisions": len(self._decision_cache),
             "enabled": self.enabled,
-            "db_path": self.db_path
+            "mode": "live" if self.enabled else "stub",
+            "db_path": self.db_path,
+        }
+
+    def get_status(self) -> Dict[str, Any]:
+        """接続ステータスを返す"""
+        return {
+            "enabled": self.enabled,
+            "mode": "live" if self.enabled else "stub",
+            "db_path": self.db_path,
+            "cached_memories": len(self._memory_cache),
+            "cached_decisions": len(self._decision_cache),
         }
 
 
 # グローバルインスタンス
-claude_mem_client = ClaudeMemClient()
+claude_mem_client = ClaudeMemClient(auto_enable=False)

@@ -11,6 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
+from unittest.mock import MagicMock, patch, mock_open
 
 from src.core.itsm_classifier import ITSMClassifier
 
@@ -322,3 +323,647 @@ class TestCoreIntegration:
 
         except Exception as e:
             pytest.fail(f"Failed to import or instantiate core modules: {e}")
+
+
+# ========== WorkflowEngine エラーケーステスト ==========
+
+
+class TestWorkflowEngineErrorCases:
+    """WorkflowEngineのエラーケース・モックテスト"""
+
+    @pytest.fixture
+    def mocked_workflow_engine(self, tmp_path):
+        """モック依存のWorkflowEngineインスタンス"""
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration"):
+            mock_db = MagicMock()
+            mock_db.create_workflow_execution.return_value = 1
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            yield engine
+
+    def test_process_knowledge_pre_task_block_returns_failure(self, mocked_workflow_engine):
+        """Pre-Taskフックでブロックされた場合failureを返すこと"""
+        from unittest.mock import MagicMock
+        from src.hooks import HookResult
+
+        mock_pre_hook = MagicMock()
+        mock_pre_hook.is_enabled.return_value = True
+        mock_pre_hook_result = MagicMock()
+        mock_pre_hook_result.block_execution = True
+        mock_pre_hook_result.message = "Block reason"
+        mock_pre_hook.execute.return_value = mock_pre_hook_result
+        mock_pre_hook.hook_type = "pre_task"
+
+        mock_hook_result_log = MagicMock()
+        mock_hook_result_log.result = MagicMock()
+        mock_hook_result_log.result.value = "blocked"
+        mock_hook_result_log.message = "Blocked"
+        mock_hook_result_log.details = {}
+        mock_pre_hook.execute.return_value = mock_pre_hook_result
+
+        mocked_workflow_engine.hooks["pre_task"] = mock_pre_hook
+
+        result = mocked_workflow_engine.process_knowledge(
+            title="Test", content="Test content"
+        )
+        assert result["success"] is False
+
+    def test_process_knowledge_db_error_propagates(self, mocked_workflow_engine):
+        """execution_id取得時のDBエラーは例外が伝播すること（tryブロック外の動作確認）"""
+        from unittest.mock import MagicMock
+
+        # create_workflow_executionはtryブロック外（実装の仕様）なので例外が伝播する
+        mocked_workflow_engine.db_client.create_workflow_execution.side_effect = RuntimeError("DB Error")
+
+        with pytest.raises(RuntimeError, match="DB Error"):
+            mocked_workflow_engine.process_knowledge(
+                title="Test", content="Test content"
+            )
+
+    def test_process_knowledge_returns_execution_id_on_error(self, mocked_workflow_engine):
+        """エラー時にexecution_idが含まれること"""
+        from unittest.mock import MagicMock
+
+        mocked_workflow_engine.db_client.create_workflow_execution.return_value = 99
+        # サブエージェント実行でエラーを発生させる
+        mocked_workflow_engine._execute_subagents_parallel = MagicMock(
+            side_effect=RuntimeError("Parallel execution failed")
+        )
+
+        # Pre-taskフックをNoneにして通過させる
+        mock_pre_hook = MagicMock()
+        mock_pre_hook.is_enabled.return_value = False
+        mocked_workflow_engine.hooks["pre_task"] = mock_pre_hook
+
+        result = mocked_workflow_engine.process_knowledge(
+            title="Test", content="Test content"
+        )
+        assert "execution_id" in result
+
+    def test_execute_hook_disabled_hook_returns_none(self, mocked_workflow_engine):
+        """無効化されたフックがNoneを返すこと"""
+        from unittest.mock import MagicMock
+
+        mock_hook = MagicMock()
+        mock_hook.is_enabled.return_value = False
+        mocked_workflow_engine.hooks["pre_task"] = mock_hook
+
+        result = mocked_workflow_engine._execute_hook("pre_task", {}, 1)
+        assert result is None
+
+    def test_execute_hook_nonexistent_returns_none(self, mocked_workflow_engine):
+        """存在しないフック名でNoneを返すこと"""
+        result = mocked_workflow_engine._execute_hook("nonexistent_hook", {}, 1)
+        assert result is None
+
+    def test_workflow_engine_has_all_subagents(self, mocked_workflow_engine):
+        """全サブエージェントが登録されていること"""
+        required_agents = {"architect", "knowledge_curator", "itsm_expert",
+                          "devops", "qa", "coordinator", "documenter"}
+        assert required_agents.issubset(set(mocked_workflow_engine.subagents.keys()))
+
+    def test_workflow_engine_has_all_hooks(self, mocked_workflow_engine):
+        """全フックが登録されていること"""
+        required_hooks = {"pre_task", "duplicate_check", "deviation_check",
+                         "auto_summary", "post_task"}
+        assert required_hooks.issubset(set(mocked_workflow_engine.hooks.keys()))
+
+    def test_execute_subagents_parallel_falls_back_on_error(self, mocked_workflow_engine):
+        """並列実行失敗時に順次実行にフォールバックすること"""
+        from unittest.mock import MagicMock, patch
+
+        mock_sequential = MagicMock(return_value={"agent": {"status": "success"}})
+        mocked_workflow_engine._execute_subagents_sequential = mock_sequential
+
+        with patch("src.core.workflow.asyncio.new_event_loop") as mock_loop_factory:
+            mock_loop = MagicMock()
+            mock_loop.run_until_complete.side_effect = RuntimeError("Async failed")
+            mock_loop_factory.return_value = mock_loop
+
+            # イベントループのエラーを強制するためのモック
+            with patch("src.core.workflow.asyncio.get_event_loop",
+                      side_effect=RuntimeError("No loop")):
+                result = mocked_workflow_engine._execute_subagents_parallel(
+                    {"title": "test", "content": "test", "itsm_type": "Incident",
+                     "existing_knowledge": []},
+                    1
+                )
+            # フォールバック実行またはエラーハンドリングの確認
+            assert isinstance(result, dict)
+
+
+# ========== WorkflowEngine 内部メソッド詳細テスト ==========
+
+
+class TestWorkflowEngineAggregate:
+    """_aggregate_knowledge メソッドテスト"""
+
+    @pytest.fixture
+    def mocked_engine(self, tmp_path):
+        """モック依存のWorkflowEngineインスタンス"""
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration") as mock_mcp:
+            mock_db = MagicMock()
+            mock_db.create_workflow_execution.return_value = 1
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            engine._mcp_integration_mock = mock_mcp
+            yield engine
+
+    def test_aggregate_extracts_documenter_data(self, mocked_engine, sample_subagent_results):
+        """Documenterの結果からsummaryが抽出されること"""
+        result = mocked_engine._aggregate_knowledge(
+            "Test Title", "Test Content", "Incident", sample_subagent_results
+        )
+        assert result["summary_technical"] == "Webサーバーダウン時の標準対応手順"
+        assert result["summary_non_technical"] == "Webサービスが停止した時の復旧方法"
+
+    def test_aggregate_extracts_curator_tags(self, mocked_engine, sample_subagent_results):
+        """KnowledgeCuratorの結果からtags/keywordsが抽出されること"""
+        result = mocked_engine._aggregate_knowledge(
+            "Test", "Content", "Incident", sample_subagent_results
+        )
+        assert "Webサーバー" in result["tags"]
+        assert "障害対応" in result["tags"]
+        assert "障害" in result["keywords"]
+
+    def test_aggregate_extracts_importance(self, mocked_engine, sample_subagent_results):
+        """importanceが正しく抽出されること"""
+        result = mocked_engine._aggregate_knowledge(
+            "Test", "Content", "Incident", sample_subagent_results
+        )
+        assert result["importance"]["score"] == 0.8
+
+    def test_aggregate_merges_insights(self, mocked_engine, sample_subagent_results):
+        """recommendations + improvementsがinsightsに統合されること"""
+        # devopsサブエージェント結果を追加
+        sample_subagent_results["devops"] = {
+            "status": "success",
+            "message": "DevOps改善提案完了",
+            "data": {"improvements": ["CI/CDの改善"]},
+        }
+        result = mocked_engine._aggregate_knowledge(
+            "Test", "Content", "Incident", sample_subagent_results
+        )
+        assert any("影響範囲" in i for i in result["insights"])
+        assert "CI/CDの改善" in result["insights"]
+
+    def test_aggregate_includes_mcp_enrichments(self, mocked_engine, sample_subagent_results):
+        """MCP補強情報が含まれること"""
+        from src.core.workflow import mcp_integration
+        mcp_integration.enrich_knowledge_with_mcps.return_value = {
+            "related_memories": [{"title": "past incident"}],
+            "technical_documentation": {"python": [{"title": "docs"}]},
+        }
+        result = mocked_engine._aggregate_knowledge(
+            "Test", "Content", "Incident", sample_subagent_results
+        )
+        assert result["mcp_enrichments"] != {}
+
+    def test_aggregate_handles_mcp_error(self, mocked_engine, sample_subagent_results):
+        """MCP補強エラー時にもinsightsが返ること"""
+        from src.core.workflow import mcp_integration
+        mcp_integration.enrich_knowledge_with_mcps.side_effect = RuntimeError("MCP Error")
+        result = mocked_engine._aggregate_knowledge(
+            "Test", "Content", "Incident", sample_subagent_results
+        )
+        assert "title" in result
+        assert result["mcp_enrichments"] == {}
+
+    def test_aggregate_with_empty_subagent_results(self, mocked_engine):
+        """空のサブエージェント結果でも動作すること"""
+        from src.core.workflow import mcp_integration
+        mcp_integration.enrich_knowledge_with_mcps.return_value = {}
+        result = mocked_engine._aggregate_knowledge(
+            "Test", "Content", "Incident", {}
+        )
+        assert result["title"] == "Test"
+        assert result["tags"] == []
+        assert result["keywords"] == []
+
+    def test_aggregate_preserves_title_content_itsm_type(self, mocked_engine, sample_subagent_results):
+        """title, content, itsm_typeが正しく保存されること"""
+        from src.core.workflow import mcp_integration
+        mcp_integration.enrich_knowledge_with_mcps.return_value = {}
+        result = mocked_engine._aggregate_knowledge(
+            "My Title", "My Content", "Problem", sample_subagent_results
+        )
+        assert result["title"] == "My Title"
+        assert result["content"] == "My Content"
+        assert result["itsm_type"] == "Problem"
+
+
+class TestWorkflowEngineSaveKnowledge:
+    """_save_knowledge メソッドテスト"""
+
+    @pytest.fixture
+    def mocked_engine(self):
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration"):
+            mock_db = MagicMock()
+            mock_db.create_workflow_execution.return_value = 1
+            mock_db.create_knowledge.return_value = 42
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            yield engine
+
+    def test_save_knowledge_calls_create_knowledge(self, mocked_engine):
+        """create_knowledgeが正しく呼ばれること"""
+        knowledge = {
+            "title": "Test",
+            "itsm_type": "Incident",
+            "content": "Content",
+            "summary_technical": "tech",
+            "summary_non_technical": "non-tech",
+            "insights": [],
+            "tags": ["tag1"],
+        }
+        subagent_results = {"qa": {"data": {"duplicates": {"similar_knowledge": []}}},
+                           "itsm_expert": {"data": {"deviations": []}}}
+        kid = mocked_engine._save_knowledge(knowledge, "user1", subagent_results)
+        assert kid == 42
+        mocked_engine.db_client.create_knowledge.assert_called_once()
+
+    def test_save_knowledge_records_duplicates(self, mocked_engine):
+        """重複検知結果がrecord_duplicate_checkで記録されること"""
+        knowledge = {
+            "title": "T", "itsm_type": "Incident", "content": "C",
+            "summary_technical": "", "summary_non_technical": "",
+            "insights": [], "tags": [],
+        }
+        subagent_results = {
+            "qa": {"data": {"duplicates": {"similar_knowledge": [
+                {"knowledge_id": 10, "overall_similarity": 0.9},
+                {"knowledge_id": 20, "overall_similarity": 0.8},
+            ]}}},
+            "itsm_expert": {"data": {"deviations": []}},
+        }
+        mocked_engine._save_knowledge(knowledge, None, subagent_results)
+        assert mocked_engine.db_client.record_duplicate_check.call_count == 2
+
+    def test_save_knowledge_records_deviations(self, mocked_engine):
+        """逸脱検知結果がrecord_deviation_checkで記録されること"""
+        knowledge = {
+            "title": "T", "itsm_type": "Incident", "content": "C",
+            "summary_technical": "", "summary_non_technical": "",
+            "insights": [], "tags": [],
+        }
+        subagent_results = {
+            "qa": {"data": {"duplicates": {"similar_knowledge": []}}},
+            "itsm_expert": {"data": {"deviations": [
+                {"deviation_type": "missing_field", "severity": "high",
+                 "description": "影響範囲が未記載", "itsm_principle": "ITIL"},
+            ]}},
+        }
+        mocked_engine._save_knowledge(knowledge, None, subagent_results)
+        mocked_engine.db_client.record_deviation_check.assert_called_once()
+
+
+class TestWorkflowEngineSaveMarkdown:
+    """_save_markdown メソッドテスト"""
+
+    @pytest.fixture
+    def mocked_engine(self, tmp_path):
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration"):
+            mock_db = MagicMock()
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            yield engine
+
+    def test_save_markdown_creates_file(self, mocked_engine, tmp_path):
+        """Markdownファイルが作成されること"""
+        from unittest.mock import patch, mock_open
+        knowledge = {"itsm_type": "Incident", "markdown": "# Test\nContent"}
+        m = mock_open()
+        with patch("builtins.open", m), \
+             patch("pathlib.Path.mkdir"):
+            filepath = mocked_engine._save_markdown(1, knowledge)
+            assert "00001_Incident.md" in filepath
+            m.assert_called_once()
+            m().write.assert_called_once_with("# Test\nContent")
+
+    def test_save_markdown_updates_db(self, mocked_engine):
+        """update_knowledgeが呼ばれてmarkdown_pathが保存されること"""
+        from unittest.mock import patch, mock_open
+        knowledge = {"itsm_type": "Problem", "markdown": "# Problem\nDetails"}
+        with patch("builtins.open", mock_open()), \
+             patch("pathlib.Path.mkdir"):
+            mocked_engine._save_markdown(5, knowledge)
+        mocked_engine.db_client.update_knowledge.assert_called_once()
+        call_args = mocked_engine.db_client.update_knowledge.call_args
+        assert call_args[0][0] == 5
+        assert "00005_Problem.md" in call_args[1]["markdown_path"]
+
+
+class TestWorkflowEngineSubagentExecution:
+    """_execute_single_subagent / _execute_subagents_sequential テスト"""
+
+    @pytest.fixture
+    def mocked_engine(self):
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration"):
+            mock_db = MagicMock()
+            mock_db.create_workflow_execution.return_value = 1
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            yield engine
+
+    def test_execute_single_subagent_not_found(self, mocked_engine):
+        """存在しないSubAgent名でエラーレスポンスを返すこと"""
+        result = mocked_engine._execute_single_subagent("nonexistent", {}, 1)
+        assert result["status"] == "error"
+        assert "not found" in result["message"]
+
+    def test_execute_single_subagent_success(self, mocked_engine):
+        """正常なSubAgent実行が成功すること"""
+        from unittest.mock import MagicMock
+        mock_result = MagicMock()
+        mock_result.to_dict.return_value = {"status": "success", "data": {"key": "value"}}
+        mock_result.execution_time_ms = 100
+        mock_result.status = "success"
+        mock_result.message = "OK"
+        mock_subagent = MagicMock()
+        mock_subagent.role = "test_role"
+        mock_subagent.execute.return_value = mock_result
+        mocked_engine.subagents["test_agent"] = mock_subagent
+
+        result = mocked_engine._execute_single_subagent(
+            "test_agent", {"title": "Test"}, 1
+        )
+        assert result["status"] == "success"
+        mocked_engine.db_client.log_subagent_execution.assert_called_once()
+
+    def test_execute_subagents_sequential_runs_all(self, mocked_engine):
+        """全SubAgentが順次実行されること"""
+        from unittest.mock import MagicMock
+        mock_result = MagicMock()
+        mock_result.to_dict.return_value = {"status": "success", "data": {}}
+        mock_result.execution_time_ms = 50
+        mock_result.status = "success"
+        mock_result.message = "OK"
+
+        for name, agent in mocked_engine.subagents.items():
+            agent.role = f"{name}_role"
+            agent.execute.return_value = mock_result
+
+        result = mocked_engine._execute_subagents_sequential(
+            {"title": "Test", "content": "C"}, 1
+        )
+        assert len(result) == len(mocked_engine.subagents)
+        assert mocked_engine.db_client.log_subagent_execution.call_count == len(mocked_engine.subagents)
+
+
+class TestWorkflowEngineQualityHooks:
+    """_execute_quality_hooks テスト"""
+
+    @pytest.fixture
+    def mocked_engine(self):
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration"):
+            mock_db = MagicMock()
+            mock_db.create_workflow_execution.return_value = 1
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            yield engine
+
+    def test_execute_quality_hooks_all_enabled(self, mocked_engine):
+        """全品質フックが有効な場合3件の結果が返ること"""
+        for hook_name in ["duplicate_check", "deviation_check", "auto_summary"]:
+            mock_hook = MagicMock()
+            mock_hook.is_enabled.return_value = True
+            mock_hook.hook_type = hook_name
+            mock_result = MagicMock()
+            mock_result.result.value = "pass"
+            mock_result.message = "OK"
+            mock_result.details = {}
+            mock_hook.execute.return_value = mock_result
+            mocked_engine.hooks[hook_name] = mock_hook
+
+        results = mocked_engine._execute_quality_hooks({"title": "T"}, 1)
+        assert len(results) == 3
+        assert all(r["result"] == "pass" for r in results)
+
+    def test_execute_quality_hooks_some_disabled(self, mocked_engine):
+        """一部フックが無効な場合その分が除外されること"""
+        # duplicate_check のみ有効
+        mock_hook = MagicMock()
+        mock_hook.is_enabled.return_value = True
+        mock_hook.hook_type = "duplicate_check"
+        mock_result = MagicMock()
+        mock_result.result.value = "pass"
+        mock_result.message = "OK"
+        mock_result.details = {}
+        mock_hook.execute.return_value = mock_result
+        mocked_engine.hooks["duplicate_check"] = mock_hook
+
+        # 残りは無効
+        for hook_name in ["deviation_check", "auto_summary"]:
+            disabled_hook = MagicMock()
+            disabled_hook.is_enabled.return_value = False
+            mocked_engine.hooks[hook_name] = disabled_hook
+
+        results = mocked_engine._execute_quality_hooks({"title": "T"}, 1)
+        assert len(results) == 1
+
+    def test_execute_hook_enabled_logs_to_db(self, mocked_engine):
+        """有効なフック実行後にDB記録されること"""
+        mock_hook = MagicMock()
+        mock_hook.is_enabled.return_value = True
+        mock_hook.hook_type = "pre_task"
+        mock_result = MagicMock()
+        mock_result.result.value = "pass"
+        mock_result.message = "OK"
+        mock_result.details = {}
+        mock_result.block_execution = False
+        mock_hook.execute.return_value = mock_result
+        mocked_engine.hooks["pre_task"] = mock_hook
+
+        result = mocked_engine._execute_hook("pre_task", {"title": "T"}, 1)
+        assert result is not None
+        mocked_engine.db_client.log_hook_execution.assert_called_once()
+
+
+class TestWorkflowEngineFullFlow:
+    """process_knowledge 成功フローテスト"""
+
+    @pytest.fixture
+    def mocked_engine(self, tmp_path):
+        from unittest.mock import MagicMock, patch
+        from src.core.workflow import WorkflowEngine
+
+        with patch("src.core.workflow.SQLiteClient") as mock_sqlite_cls, \
+             patch("src.core.workflow.ArchitectSubAgent"), \
+             patch("src.core.workflow.KnowledgeCuratorSubAgent"), \
+             patch("src.core.workflow.ITSMExpertSubAgent"), \
+             patch("src.core.workflow.DevOpsSubAgent"), \
+             patch("src.core.workflow.QASubAgent"), \
+             patch("src.core.workflow.CoordinatorSubAgent"), \
+             patch("src.core.workflow.DocumenterSubAgent"), \
+             patch("src.core.workflow.PreTaskHook"), \
+             patch("src.core.workflow.DuplicateCheckHook"), \
+             patch("src.core.workflow.DeviationCheckHook"), \
+             patch("src.core.workflow.AutoSummaryHook"), \
+             patch("src.core.workflow.PostTaskHook"), \
+             patch("src.core.workflow.mcp_integration"):
+            mock_db = MagicMock()
+            mock_db.create_workflow_execution.return_value = 1
+            mock_db.create_knowledge.return_value = 42
+            mock_db.search_knowledge.return_value = []
+            mock_sqlite_cls.return_value = mock_db
+            engine = WorkflowEngine()
+            engine.db_client = mock_db
+            yield engine
+
+    def test_process_knowledge_success_flow(self, mocked_engine, sample_subagent_results):
+        """process_knowledge 成功時に全キーが返ること"""
+        from unittest.mock import MagicMock, patch, mock_open
+        from src.core.workflow import mcp_integration
+
+        # Pre-Task Hook: 通過
+        mock_pre = MagicMock()
+        mock_pre.is_enabled.return_value = True
+        mock_pre.hook_type = "pre_task"
+        mock_pre_result = MagicMock()
+        mock_pre_result.block_execution = False
+        mock_pre_result.message = "OK"
+        mock_pre_result.details = {}
+        mock_pre_result.result.value = "pass"
+        mock_pre.execute.return_value = mock_pre_result
+        mocked_engine.hooks["pre_task"] = mock_pre
+
+        # Post-Task Hook
+        mock_post = MagicMock()
+        mock_post.is_enabled.return_value = True
+        mock_post.hook_type = "post_task"
+        mock_post_result = MagicMock()
+        mock_post_result.message = "OK"
+        mock_post_result.details = {"overall_assessment": {"score": 0.9}}
+        mock_post_result.result.value = "pass"
+        mock_post.execute.return_value = mock_post_result
+        mocked_engine.hooks["post_task"] = mock_post
+
+        # Quality Hooks: 全て無効（簡略化）
+        for hook_name in ["duplicate_check", "deviation_check", "auto_summary"]:
+            mock_hook = MagicMock()
+            mock_hook.is_enabled.return_value = False
+            mocked_engine.hooks[hook_name] = mock_hook
+
+        # サブエージェント並列実行をモック
+        mocked_engine._execute_subagents_parallel = MagicMock(
+            return_value=sample_subagent_results
+        )
+
+        # MCP enrichment
+        mcp_integration.enrich_knowledge_with_mcps.return_value = {}
+
+        # Markdown書き込みをモック
+        with patch("builtins.open", mock_open()), \
+             patch("pathlib.Path.mkdir"):
+            result = mocked_engine.process_knowledge(
+                title="Webサーバー障害", content="障害内容", itsm_type="Incident"
+            )
+
+        assert result["success"] is True
+        assert result["knowledge_id"] == 42
+        assert result["execution_id"] == 1
+        assert "execution_time_ms" in result
+        assert "markdown_path" in result
+        assert "aggregated_knowledge" in result

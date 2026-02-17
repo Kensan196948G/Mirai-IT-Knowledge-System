@@ -28,6 +28,60 @@ from src.agents.executor import (
 from src.agents.loader import AgentLoader, HookConfig, HookLoader, SubAgentConfig
 
 
+# ========== テスト用モックエージェントクラス ==========
+
+
+class MockBaseSubAgent:
+    """テスト用のモックSubAgent基底クラス"""
+
+    def __init__(self):
+        self.execution_count = 0
+
+    def execute(self, input_data):
+        """モック実行メソッド"""
+        self.execution_count += 1
+        return {
+            "agent": "TestAgent",
+            "status": "processed",
+            "capabilities": ["test", "validation"],
+            "input": input_data,
+            "execution_count": self.execution_count,
+        }
+
+
+class TestAgent(MockBaseSubAgent):
+    """テスト用TestAgent"""
+
+    pass
+
+
+class ErrorAgent(MockBaseSubAgent):
+    """エラーをシミュレートするAgent"""
+
+    def execute(self, input_data):
+        raise RuntimeError("Simulated agent error")
+
+
+class DisabledAgent(MockBaseSubAgent):
+    """無効化テスト用Agent"""
+
+    pass
+
+
+class LimitedAgent(MockBaseSubAgent):
+    """制限機能テスト用Agent"""
+
+    def __init__(self):
+        super().__init__()
+        self.capabilities = ["basic"]
+
+
+class IntegrationAgent(MockBaseSubAgent):
+    """統合テスト用Agent"""
+
+    pass
+
+
 # ========== SubAgentExecutor テスト ==========
 
 
@@ -52,6 +106,7 @@ class TestSubAgentExecutor:
             priority="high",
             model="claude-sonnet-4-20250514",
             enabled=True,
+            class_name="test_agents_executor.TestAgent",
         )
 
         loader.get_agent.return_value = mock_agent
@@ -121,6 +176,7 @@ class TestSubAgentExecutor:
             description="Agent that causes error",
             capabilities=["test"],
             prompts={},
+            class_name="test_agents_executor.ErrorAgent",
         )
         mock_loader.get_agent.return_value = mock_agent
 
@@ -141,6 +197,7 @@ class TestSubAgentExecutor:
             description="Agent that causes error",
             capabilities=["test"],
             prompts={},
+            class_name="test_agents_executor.ErrorAgent",
         )
         mock_loader.get_agent.return_value = mock_agent
 
@@ -202,6 +259,7 @@ class TestSubAgentExecutor:
             prompts={},
             priority="high",
             enabled=False,
+            class_name="test_agents_executor.DisabledAgent",
         )
         mock_loader.get_agents_by_priority.return_value = [disabled_agent]
 
@@ -257,6 +315,7 @@ class TestSubAgentExecutor:
             description="Agent with limited capabilities",
             capabilities=["read"],  # "write"がない
             prompts={},
+            class_name="test_agents_executor.LimitedAgent",
         )
         mock_loader.get_agent.return_value = mock_agent
 
@@ -655,6 +714,7 @@ class TestAgentExecutorIntegration:
             description="Integration test agent",
             capabilities=["test"],
             prompts={},
+            class_name="test_agents_executor.IntegrationAgent",
         )
         return loader
 

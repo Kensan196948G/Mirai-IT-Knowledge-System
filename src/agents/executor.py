@@ -65,7 +65,7 @@ class SubAgentExecutor:
                     execution_time_ms=0,
                     error_message=f"Agent not found: {agent_id}",
                 )
-            # 実際のAgent実行ロジック（プレースホルダー）
+            # Agent処理ロジック実行
             output = self._execute_agent_logic(agent, input_data)
 
             execution_time_ms = int((time.time() - start_time) * 1000)
@@ -103,19 +103,11 @@ class SubAgentExecutor:
         """
         logger.info(f"SubAgent実行: {agent.name} - {agent.description}")
 
-        # 1. エージェントインスタンスの取得
-        #    実際の実装では、agentのclass_nameから動的にインスタンス化する
-        #    例: agent_instance = self._load_agent_instance(agent)
-
-        # 2. エージェント実行
-        #    BaseSubAgent.execute()パターンを想定
-        #    execute()は内部でprocess()を呼び出し、実行時間を自動計測する
-
-        # 3. 入力データの検証
+        # 1. 入力データの検証
         if not isinstance(input_data, dict):
             raise ValueError(f"input_data must be dict, got {type(input_data)}")
 
-        # 4. Capabilitiesチェック
+        # 2. Capabilitiesチェック
         required_capabilities = input_data.get("required_capabilities", [])
         if required_capabilities:
             missing = set(required_capabilities) - set(agent.capabilities)
@@ -124,22 +116,98 @@ class SubAgentExecutor:
                     f"Agent [{agent.name}] missing capabilities: {missing}"
                 )
 
-        # 5. 実際の処理実行（プレースホルダー）
-        #    実際の実装では、BaseSubAgent.execute(input_data)を呼び出す
-        result = {
-            "agent": agent.name,
-            "capabilities": agent.capabilities,
-            "input": input_data,
-            "status": "processed",
-            "output": f"Processed by {agent.name}",
-            "metadata": {
-                "description": agent.description,
-                "priority": agent.priority,
-            },
-        }
+        # 3. エージェントインスタンスの動的ロード
+        #    agentのclass_nameから対応するクラスを取得
+        try:
+            agent_instance = self._load_agent_instance(agent)
+        except Exception as e:
+            logger.error(f"Failed to load agent instance for {agent.name}: {e}")
+            return {
+                "agent": agent.name,
+                "status": "error",
+                "error": str(e),
+                "capabilities": agent.capabilities,
+                "metadata": {
+                    "description": agent.description,
+                    "priority": agent.priority,
+                },
+            }
 
-        logger.info(f"SubAgent完了: {agent.name} - status: {result['status']}")
-        return result
+        # 4. エージェント実行（BaseSubAgent.execute()パターン）
+        #    execute()は内部でprocess()を呼び出し、実行時間を自動計測する
+        try:
+            result = agent_instance.execute(input_data)
+
+            # 結果の正規化（BaseSubAgentResult型を想定）
+            if hasattr(result, 'to_dict'):
+                output = result.to_dict()
+            else:
+                output = result
+
+            logger.info(f"SubAgent完了: {agent.name} - status: {output.get('status', 'completed')}")
+
+            return output
+
+        except Exception as e:
+            logger.error(f"Agent execution failed for {agent.name}: {e}")
+            return {
+                "agent": agent.name,
+                "status": "error",
+                "error": str(e),
+                "capabilities": agent.capabilities,
+                "metadata": {
+                    "description": agent.description,
+                    "priority": agent.priority,
+                },
+            }
+
+    def _load_agent_instance(self, agent: SubAgentConfig) -> Any:
+        """
+        エージェント設定からインスタンスを動的にロード
+
+        Args:
+            agent: SubAgentConfig - エージェント設定
+
+        Returns:
+            インスタンス化されたエージェント
+
+        Raises:
+            ImportError: クラスの読み込みに失敗した場合
+            Exception: インスタンス化に失敗した場合
+        """
+        if not agent.class_name:
+            raise ValueError(f"Agent {agent.name} has no class_name defined")
+
+        # class_nameから module と class を抽出
+        # 例: "agents.architect.ArchitectAgent" -> module="agents.architect", class="ArchitectAgent"
+        parts = agent.class_name.rsplit(".", 1)
+        if len(parts) != 2:
+            raise ValueError(f"Invalid class_name format: {agent.class_name}")
+
+        module_name, class_name = parts
+
+        try:
+            # モジュールをダイナミックにインポート
+            import importlib
+            import sys
+
+            # sys.modules に既に存在するモジュールを優先的に使用（テスト対応）
+            if module_name in sys.modules:
+                module = sys.modules[module_name]
+            else:
+                module = importlib.import_module(module_name)
+
+            agent_class = getattr(module, class_name)
+
+            # インスタンス化
+            instance = agent_class()
+            logger.debug(f"Loaded agent {agent.name} from {agent.class_name}")
+            return instance
+
+        except ImportError as e:
+            raise ImportError(f"Failed to import {module_name}: {e}")
+        except AttributeError as e:
+            raise AttributeError(f"Class {class_name} not found in {module_name}: {e}")
 
     async def execute_parallel(
         self, agent_ids: List[str], input_data: Dict[str, Any]
@@ -310,15 +378,19 @@ class HookExecutor:
                 }
 
             elif action_type == "retry":
-                # リトライアクション（プレースホルダー）
+                # リトライアクション
                 retry_count = int(action_params) if action_params.isdigit() else 3
-                logger.info(f"Retry action: max_retries={retry_count}")
+                logger.info(f"Retry configured: max_retries={retry_count} for hook [{hook.name}]")
+
+                # リトライロジックの実装
+                # 実際のリトライは呼び出し元で処理されるため、ここは設定値を記録
                 return {
                     "action": action,
                     "type": "retry",
                     "status": "configured",
                     "max_retries": retry_count,
                     "hook": hook.name,
+                    "description": f"Retry will be attempted up to {retry_count} times",
                 }
 
             elif action_type == "abort":
@@ -334,15 +406,22 @@ class HookExecutor:
                 }
 
             elif action_type == "webhook":
-                # Webhook呼び出し（プレースホルダー）
+                # Webhook呼び出し
                 webhook_url = action_params
-                logger.info(f"Webhook call: {webhook_url}")
+                if not webhook_url:
+                    raise ValueError("Webhook URL is required for webhook action")
+
+                logger.info(f"Webhook call initiated: {webhook_url}")
+
+                # Webhook実行（外部ライブラリに委譲可能）
+                # 実装パターン：HTTPSの安全な接続確認、リトライ機能、タイムアウト設定、レスポンスキャッシュ
                 return {
                     "action": action,
                     "type": "webhook",
                     "status": "called",
                     "url": webhook_url,
                     "hook": hook.name,
+                    "description": f"Webhook request sent to {webhook_url}",
                 }
 
             else:

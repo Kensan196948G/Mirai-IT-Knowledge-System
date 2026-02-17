@@ -9,7 +9,28 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# tests ディレクトリもパスに追加（テストモジュール動的ロード対応）
+sys.path.insert(0, str(Path(__file__).parent))
+
 import pytest
+import importlib.util
+
+# テストモジュールを sys.modules に登録（executor の動的ロードに対応）
+def _register_test_modules():
+    """テストモジュールを sys.modules に登録"""
+    test_dir = Path(__file__).parent
+    test_module_file = test_dir / "test_agents_executor.py"
+
+    if test_module_file.exists():
+        spec = importlib.util.spec_from_file_location(
+            "test_agents_executor", test_module_file
+        )
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["test_agents_executor"] = module
+            spec.loader.exec_module(module)
+
+_register_test_modules()
 
 
 @pytest.fixture(scope="session")

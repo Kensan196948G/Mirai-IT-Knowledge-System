@@ -496,6 +496,8 @@ def api_health():
 def api_classify():
     """ITSM分類API"""
     data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON format"}), 400
     title = data.get("title", "")
     content = data.get("content", "")
 
@@ -670,6 +672,8 @@ def chat():
 def chat_message():
     """チャットメッセージ処理"""
     data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON format"}), 400
     session_id = data.get("session_id")
     message = data.get("message")
     user_id = data.get("user_id", "webui_user")
