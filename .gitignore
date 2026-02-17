@@ -59,11 +59,11 @@ Thumbs.db
 
 # Environment files (contains sensitive API keys)
 .env
-.env.*
 .env.local
 .env.development
 .env.production
 .env.test
+# .env.example はテンプレートとして含める
 
 # State management (GitHub Actions runtime state)
 state.json

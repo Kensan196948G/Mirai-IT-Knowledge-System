@@ -21,7 +21,7 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-brave-search"],
       "env": {
-        "BRAVE_API_KEY": "BSAg8mI-C1724Gro5K1UHthSdPNurDT"
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
       },
       "description": "Web検索（Brave Search API）"
     },
